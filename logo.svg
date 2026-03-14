@@ -1,0 +1,43 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#EBC75A;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#D4AF37;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#B09433;stop-opacity:1" />
+    </linearGradient><svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#EBC75A;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#D4AF37;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#B09433;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <path d="M 100,10 A 90,90 0 1,1 100,190 A 90,90 0 1,1 100,10 Z M 100,20 A 80,80 0 1,0 100,180 A 80,80 0 1,0 100,20 Z" fill="url(#goldGradient)" />
+
+  <path d="M 100,20 A 80,80 0 1,1 100,180 A 80,80 0 1,1 100,20 Z" fill="#111" />
+  <path d="M 100,25 A 75,75 0 1,1 100,175 A 75,75 0 1,1 100,25 Z M 100,35 A 65,65 0 1,0 100,165 A 65,65 0 1,0 100,35 Z" fill="url(#goldGradient)" />
+
+  <circle cx="100" cy="100" r="30" fill="none" stroke="url(#goldGradient)" stroke-width="8" />
+  
+  <path d="M 100,75 A 25,25 0 0,1 125,100 A 25,25 0 0,1 100,125 A 25,25 0 0,1 75,100 A 25,25 0 0,1 100,75 Z M 100,85 A 15,15 0 1,0 100,115 A 15,15 0 1,0 100,85 Z" fill="url(#goldGradient)" />
+
+  <path d="M 100,185 L 175,110 L 175,120 L 185,110 Z" fill="#111" />
+  
+  <path d="M 100,190 L 170,115 L 170,125 L 180,115 Z" fill="url(#goldGradient)" />
+</svg>
+  </defs>
+
+  <path d="M 100,10 A 90,90 0 1,1 100,190 A 90,90 0 1,1 100,10 Z M 100,20 A 80,80 0 1,0 100,180 A 80,80 0 1,0 100,20 Z" fill="url(#goldGradient)" />
+
+  <path d="M 100,20 A 80,80 0 1,1 100,180 A 80,80 0 1,1 100,20 Z" fill="#111" />
+  <path d="M 100,25 A 75,75 0 1,1 100,175 A 75,75 0 1,1 100,25 Z M 100,35 A 65,65 0 1,0 100,165 A 65,65 0 1,0 100,35 Z" fill="url(#goldGradient)" />
+
+  <circle cx="100" cy="100" r="30" fill="none" stroke="url(#goldGradient)" stroke-width="8" />
+  
+  <path d="M 100,75 A 25,25 0 0,1 125,100 A 25,25 0 0,1 100,125 A 25,25 0 0,1 75,100 A 25,25 0 0,1 100,75 Z M 100,85 A 15,15 0 1,0 100,115 A 15,15 0 1,0 100,85 Z" fill="url(#goldGradient)" />
+
+  <path d="M 100,185 L 175,110 L 175,120 L 185,110 Z" fill="#111" />
+  
+  <path d="M 100,190 L 170,115 L 170,125 L 180,115 Z" fill="url(#goldGradient)" />
+</svg>
