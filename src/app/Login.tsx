@@ -7,12 +7,15 @@ import { useState } from 'react'
 import { BlurView } from "expo-blur";
 import { router } from "expo-router";
 import LoginForms from "../Components/LoginForm";
-import Register from "./Register";
+import Register from "../Components/register";
+
 
 
 
 export default function Login() {
     const [showRegister, setShowRegister] = useState(false);
+    console.log("-> Login screen re-rendered! showRegister state:", showRegister);
+    
     return (
         <View style={{ flex: 1 }}>
             {showRegister ? (

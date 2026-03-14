@@ -27,13 +27,12 @@ export default function RootLayout() {
     if (loading) return;
 
     const inAuthGroup = segments[0] === '(tabs)';
-    const inPublicGroup = segments[0] === 'login' || segments[0] === 'register';
 
     if (!session && inAuthGroup) {
       // Si no hay sesión y quiere entrar a la red social -> Al Login
       router.replace('/login');
-    } else if (session && inPublicGroup) {
-      // Si hay sesión y está en login o register -> Al Muro Principal
+    } else if (session && segments[0] !== '(tabs)') {
+      // Si hay sesión y está en login -> Al Muro Principal
       router.replace('/');
     }
   }, [session, loading, segments]);
@@ -47,9 +46,8 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false}}>
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="login"/>
-      <Stack.Screen name="register" />
       <Stack.Screen name="(tabs)" />
     </Stack>
   );

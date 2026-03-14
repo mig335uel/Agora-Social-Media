@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from 'expo-linear-gradient';
 import { RegisterForm } from "../Types/LoginForm";
 import { BlurView } from "expo-blur";
-import { router } from "expo-router";
 
 
 
@@ -35,6 +34,7 @@ export default function Register({ onNavigateToLogin }: { onNavigateToLogin: () 
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         className="absolute inset-0"
+                        pointerEvents="none"
                     />
                     {/* 1. SECCIÓN LOGO Y TÍTULO (Sin flex, para que ocupe solo lo que necesita) */}
                     <View className="items-center mb-8">
@@ -51,6 +51,13 @@ export default function Register({ onNavigateToLogin }: { onNavigateToLogin: () 
                     {/* 2. SECCIÓN FORMULARIO */}
                     <View className="w-full space-y-4">
                         <TextInput
+                            placeholder="Name"
+                            placeholderTextColor="#9ca3af"
+                            className="px-5 py-4 border border-gray-200 rounded-[20px] w-full text-lg"
+                            value={registerForm.name}
+                            onChangeText={(text) => setRegisterForm({ ...registerForm, name: text })}
+                        />
+                        <TextInput
                             placeholder="Email"
                             placeholderTextColor="#9ca3af"
                             className="px-5 py-4 border border-gray-200 rounded-[20px] w-full text-lg"
@@ -65,7 +72,7 @@ export default function Register({ onNavigateToLogin }: { onNavigateToLogin: () 
                             value={registerForm.password}
                             onChangeText={(text) => setRegisterForm({ ...registerForm, password: text })}
                         />
-                        <TouchableOpacity onPress={() => router.navigate("/login")}>
+                        <TouchableOpacity onPress={onNavigateToLogin}>
                             <Text className="text-blue-500 text-center font-bold text-lg hover:text-blue-600">¿Ya tienes cuenta? Inicia Sesión</Text>
                         </TouchableOpacity>
                         {/* Botón de ejemplo para ver el conjunto */}

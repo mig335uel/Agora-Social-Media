@@ -21,6 +21,7 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         className="absolute inset-0"
+                        pointerEvents="none"
                     />
                     {/* 1. SECCIÓN LOGO Y TÍTULO (Sin flex, para que ocupe solo lo que necesita) */}
                     <View className="items-center mb-8">
@@ -51,7 +52,7 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                             value={loginForm.password}
                             onChangeText={(text) => setLoginForm({ ...loginForm, password: text })}
                         />
-                        <TouchableOpacity onPress={onNavigateToRegister}>
+                        <TouchableOpacity onPress={() => onNavigateToRegister()}>
                             <Text className="text-blue-500 text-center font-bold text-lg hover:text-blue-600">¿No tienes cuenta? Registrate</Text>
                         </TouchableOpacity>
                         {/* Botón de ejemplo para ver el conjunto */}
