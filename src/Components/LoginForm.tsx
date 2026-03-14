@@ -1,30 +1,16 @@
-import {useState} from 'react';
+import { Ionicons } from "@expo/vector-icons";
 import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from 'expo-linear-gradient';
-import { RegisterForm } from "../Types/LoginForm";
+import { LoginForm } from "../Types/LoginForm";
+import { useState } from 'react'
 import { BlurView } from "expo-blur";
-import { router } from "expo-router";
 
 
-
-
-
-export default function Register({ onNavigateToLogin }: { onNavigateToLogin: () => void }) {
-
-    const [registerForm, setRegisterForm] = useState<RegisterForm>({
-        name: "",
-        last_name: "",
-        username: "",
-        display_name: "",
-        email: "",
-        password: "",
-        birth_date: "",
-        gender: "male"
-    });
-
+export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegister: () => void }){
+    const [loginForm, setLoginForm] = useState<LoginForm>({ email: "", password: "" });
     return (
-        <SafeAreaView style={{ flex: 1 }} className="bg-white">
+    <SafeAreaView style={{ flex: 1 }} className="bg-white">
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
@@ -44,7 +30,7 @@ export default function Register({ onNavigateToLogin }: { onNavigateToLogin: () 
                             resizeMode="contain"
                         />
                         <Text style={styles.title} className="mt-4">
-                            Registrate en Agora
+                            Inicia sesión en Agora
                         </Text>
                     </View>
 
@@ -54,19 +40,19 @@ export default function Register({ onNavigateToLogin }: { onNavigateToLogin: () 
                             placeholder="Email"
                             placeholderTextColor="#9ca3af"
                             className="px-5 py-4 border border-gray-200 rounded-[20px] w-full text-lg"
-                            value={registerForm.email}
-                            onChangeText={(text) => setRegisterForm({ ...registerForm, email: text })}
+                            value={loginForm.email}
+                            onChangeText={(text) => setLoginForm({ ...loginForm, email: text })}
                         />
                         <TextInput
                             placeholder="Password"
                             placeholderTextColor="#9ca3af"
                             secureTextEntry
                             className="px-5 py-4 border border-gray-200 rounded-[20px] w-full text-lg mt-4 mb-5"
-                            value={registerForm.password}
-                            onChangeText={(text) => setRegisterForm({ ...registerForm, password: text })}
+                            value={loginForm.password}
+                            onChangeText={(text) => setLoginForm({ ...loginForm, password: text })}
                         />
-                        <TouchableOpacity onPress={() => router.navigate("/login")}>
-                            <Text className="text-blue-500 text-center font-bold text-lg hover:text-blue-600">¿Ya tienes cuenta? Inicia Sesión</Text>
+                        <TouchableOpacity onPress={onNavigateToRegister}>
+                            <Text className="text-blue-500 text-center font-bold text-lg hover:text-blue-600">¿No tienes cuenta? Registrate</Text>
                         </TouchableOpacity>
                         {/* Botón de ejemplo para ver el conjunto */}
                         <TouchableOpacity className="bg-black p-5 rounded-[20px] mt-6">

@@ -4,7 +4,7 @@ import { supabase } from '../lib/supbase/supabase';
 import { View, ActivityIndicator } from 'react-native';
 import { useState } from 'react';
 import { Session } from '@supabase/supabase-js';
-
+import "../../global.css";
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,12 +27,13 @@ export default function RootLayout() {
     if (loading) return;
 
     const inAuthGroup = segments[0] === '(tabs)';
+    const inPublicGroup = segments[0] === 'login' || segments[0] === 'register';
 
     if (!session && inAuthGroup) {
       // Si no hay sesión y quiere entrar a la red social -> Al Login
       router.replace('/login');
-    } else if (session && segments[0] !== '(tabs)') {
-      // Si hay sesión y está en login -> Al Muro Principal
+    } else if (session && inPublicGroup) {
+      // Si hay sesión y está en login o register -> Al Muro Principal
       router.replace('/');
     }
   }, [session, loading, segments]);
@@ -46,8 +47,9 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="login" />
+    <Stack screenOptions={{ headerShown: false}}>
+      <Stack.Screen name="login"/>
+      <Stack.Screen name="register" />
       <Stack.Screen name="(tabs)" />
     </Stack>
   );
