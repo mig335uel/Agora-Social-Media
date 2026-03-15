@@ -72,6 +72,7 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
                             value={registerForm.password}
                             onChangeText={(text) => setRegisterForm({ ...registerForm, password: text })}
                         />
+                        
                         <TouchableOpacity>
                             <Text className="text-blue-500 text-center font-bold text-lg hover:text-blue-600" onPress={onNavigateToLogin}>¿Ya tienes cuenta? Inicia Sesión</Text>
                         </TouchableOpacity>
