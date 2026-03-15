@@ -12,15 +12,23 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "notification": {
+      "icon": "./assets/AgorasLogo.png",
+      "color": "#FC0000",
+      "iosDisplayInForeground": true
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anihodio.agora",
+      "bundleIdentifier": "com.antihodio.agora",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIBackgroundModes": [
-          "remote-notification"
+          "remote-notification",
+          "NSPhotoLibraryUsageDescription",
+          "NSPhotoLibraryAddUsageDescription"
         ]
       }
+
     },
     "android": {
       "adaptiveIcon": {
@@ -29,9 +37,19 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.READ_INTERNAL_STORAGE",
+        "android.permission.WRITE_INTERNAL_STORAGE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO"
+      ],
       "googleServicesFile": "./google-services.json",
       "predictiveBackGestureEnabled": false,
-      "package": "com.anihodio.agora"
+      "package": "com.antihodio.agora"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,9 +57,18 @@
     "plugins": [
       "expo-sqlite",
       "expo-router",
+      "expo-notifications",
       "@react-native-community/datetimepicker",
       "@react-native-firebase/app",
-      "@react-native-firebase/messaging"
+      "@react-native-firebase/messaging",
+     [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
     ]
   }
 }

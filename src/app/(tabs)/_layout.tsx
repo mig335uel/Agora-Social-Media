@@ -21,14 +21,13 @@ export default function TabLayout() {
           Platform.OS === 'ios' ? (
             <BlurView intensity={80} tint="dark" style={{ flex: 1 }} />
           ) : null,
-        headerStyle: { backgroundColor: '#000' },
-        headerTitleStyle: { color: '#fff', fontWeight: 'bold' },
+        headerShown: false
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Muro',
+          title: 'Inicio',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
           ),

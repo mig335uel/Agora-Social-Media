@@ -5,12 +5,32 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { LoginForm } from "../Types/LoginForm";
 import { useState } from 'react'
 import { BlurView } from "expo-blur";
+import { LoginAuth } from "../Services/authService";
+import { requestNotificationPermission, saveDeviceToken } from "../Services/NotificacitonService";
+import { router } from "expo-router";
 
 
 export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegister: () => void }){
     const [loginForm, setLoginForm] = useState<LoginForm>({ email: "", password: "" });
     const scheme = useColorScheme();
     const isDark = scheme === 'dark';
+
+
+
+    const handleLogin = async () => {
+        try {
+            const results = await LoginAuth({ loginForm });
+            if (results && results.user) {
+                const token = await requestNotificationPermission();
+                if(token){
+                    await saveDeviceToken(results.user.id, token);
+                }
+                router.replace('/');
+            }
+        } catch (error) {
+            console.error("Error during login:", error);
+        }
+    };
 
     return (
     <SafeAreaView style={{ flex: 1 }} className={isDark ? "bg-[#121212]" : "bg-white"}>
@@ -22,7 +42,7 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                     {Platform.OS === 'ios' ? (
                         <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
                     ) : (
-                        <View style={StyleSheet.absoluteFill} className={isDark ? "bg-[#1e1e1e]/90" : "bg-white/90"} />
+                        <View style={StyleSheet.absoluteFill} className={isDark ? "bg-black" : "bg-white"} />
                     )}
                     <LinearGradient
                         colors={['rgba(255,255,255,0.3)', 'transparent']}
@@ -48,6 +68,7 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                         <TextInput
                             placeholder="Email"
                             placeholderTextColor={isDark ? "#6b7280" : "#9ca3af"}
+                            autoCapitalize="none"
                             className={`px-5 py-4 border rounded-[20px] w-full text-lg ${isDark ? "border-gray-700 bg-black text-white" : "border-gray-200 bg-white text-black"}`}
                             value={loginForm.email}
                             onChangeText={(text) => setLoginForm({ ...loginForm, email: text })}
@@ -56,6 +77,7 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                             placeholder="Password"
                             placeholderTextColor={isDark ? "#6b7280" : "#9ca3af"}
                             secureTextEntry
+                            autoCapitalize="none"
                             className={`px-5 py-4 border rounded-[20px] w-full text-lg mt-4 mb-5 ${isDark ? "border-gray-700 bg-black text-white" : "border-gray-200 bg-white text-black"}`}
                             value={loginForm.password}
                             onChangeText={(text) => setLoginForm({ ...loginForm, password: text })}
@@ -67,7 +89,10 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                             <Text className={`text-center font-bold text-lg ${isDark ? "text-blue-400" : "text-blue-500"}`} onPress={onNavigateToRegister}>¿No tienes cuenta? Registrate</Text>
                         </TouchableOpacity>
                         {/* Botón de ejemplo para ver el conjunto */}
-                        <TouchableOpacity className={`p-5 rounded-[20px] mt-2 ${isDark ? "bg-white" : "bg-black"}`}>
+                        <TouchableOpacity 
+                            className={`p-5 rounded-[20px] mt-2 ${isDark ? "bg-white" : "bg-black"}`}
+                            onPress={handleLogin}
+                        >
                             <Text className={`text-center font-bold text-lg ${isDark ? "text-black" : "text-white"}`}>Entrar</Text>
                         </TouchableOpacity>
                     </View>

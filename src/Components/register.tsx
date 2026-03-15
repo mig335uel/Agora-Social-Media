@@ -7,6 +7,7 @@ import { BlurView } from "expo-blur";
 import { Picker } from '@react-native-picker/picker';
 import SelectorAgora from './SelectorGenero';
 import BirthDateSelector from './DateInput';
+import { RegisterAuth } from '../Services/authService';
 
 
 
@@ -32,7 +33,15 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
     const [genero, setGenero] = useState("");
 
     const onSubmit = async () => {
-
+        try{
+            const results = await RegisterAuth({registerForm});
+            if(results && results.profile){
+                await handleNotificationSetup(results.profile.id);
+                
+            }
+        }catch(error){
+            console.log(error);
+        }
     }
 
     const scheme = useColorScheme();
@@ -40,9 +49,13 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
 
     return (
         <SafeAreaView style={{ flex: 1 }} className={isDark ? "bg-[#121212]" : "bg-white"}>
-            <ScrollView>
+            <ScrollView 
+                contentContainerStyle={{ flexGrow: 1 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
                 <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                     style={{ flex: 1 }}
                 >
                     <View className="flex-1 justify-center p-6 overflow-hidden">
@@ -132,8 +145,8 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
                                 <Text className={`text-center font-bold text-lg ${isDark ? "text-blue-400" : "text-blue-500"}`} onPress={onNavigateToLogin}>¿Ya tienes cuenta? Inicia Sesión</Text>
                             </TouchableOpacity>
                             {/* Botón de ejemplo para ver el conjunto */}
-                            <TouchableOpacity className={`p-5 rounded-[20px] mt-6 ${isDark ? "bg-white" : "bg-black"}`}>
-                                <Text className={`text-center font-bold text-lg ${isDark ? "text-black" : "text-white"}`}>Entrar</Text>
+                            <TouchableOpacity className={`p-5 rounded-[20px] mt-6 ${isDark ? "bg-white" : "bg-black"}`} onPress={onSubmit}>
+                                <Text className={`text-center font-bold text-lg ${isDark ? "text-black" : "text-white"}`}>Registrate</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -151,3 +164,7 @@ const styles = StyleSheet.create({
 
     }
 });
+function handleNotificationSetup(id: any) {
+    throw new Error('Function not implemented.');
+}
+
