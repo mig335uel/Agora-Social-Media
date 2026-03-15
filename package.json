@@ -11,6 +11,8 @@
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
     "@react-native-community/datetimepicker": "8.6.0",
+    "@react-native-firebase/app": "^23.8.8",
+    "@react-native-firebase/messaging": "^23.8.8",
     "@react-native-picker/picker": "2.11.4",
     "@supabase/supabase-js": "^2.99.1",
     "babel-preset-expo": "~55.0.8",
