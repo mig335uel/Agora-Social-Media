@@ -1,10 +1,11 @@
-import {useState} from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from 'expo-linear-gradient';
 import { RegisterForm } from "../Types/LoginForm";
 import { BlurView } from "expo-blur";
-
+import { Picker } from '@react-native-picker/picker';
+import SelectorAgora from './SelectorGenero';
 
 
 
@@ -19,8 +20,15 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
         email: "",
         password: "",
         birth_date: "",
-        gender: "male"
+        gender: ""
     });
+    const opcionesGenero = [
+        { label: 'Masculino', value: 'male' },
+        { label: 'Femenino', value: 'female' },
+    ];
+
+    // 2. En tu componente Register, crea el estado
+    const [genero, setGenero] = useState("");
 
     return (
         <SafeAreaView style={{ flex: 1 }} className="bg-white">
@@ -28,7 +36,12 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
             >
-                <BlurView intensity={60} tint="light" className="flex-1 justify-center p-6">
+                <View className="flex-1 justify-center p-6 overflow-hidden">
+                    {Platform.OS === 'ios' ? (
+                        <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
+                    ) : (
+                        <View style={StyleSheet.absoluteFill} className="bg-white/90" />
+                    )}
                     <LinearGradient
                         colors={['rgba(255,255,255,0.3)', 'transparent']}
                         start={{ x: 0, y: 0 }}
@@ -60,6 +73,7 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
                         <TextInput
                             placeholder="Email"
                             placeholderTextColor="#9ca3af"
+                            keyboardType='email-address'
                             className="px-5 py-4 border border-gray-200 rounded-[20px] w-full text-lg"
                             value={registerForm.email}
                             onChangeText={(text) => setRegisterForm({ ...registerForm, email: text })}
@@ -72,7 +86,12 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
                             value={registerForm.password}
                             onChangeText={(text) => setRegisterForm({ ...registerForm, password: text })}
                         />
-                        
+                        <SelectorAgora
+                            label="Selecciona tu género"
+                            options={opcionesGenero}
+                            value={registerForm.gender}
+                            onSelect={(value) => setRegisterForm({ ...registerForm, gender: value as "male" | "female" })}
+                        />
                         <TouchableOpacity>
                             <Text className="text-blue-500 text-center font-bold text-lg hover:text-blue-600" onPress={onNavigateToLogin}>¿Ya tienes cuenta? Inicia Sesión</Text>
                         </TouchableOpacity>
@@ -82,7 +101,7 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
                         </TouchableOpacity>
                     </View>
 
-                </BlurView>
+                </View>
             </KeyboardAvoidingView>
         </SafeAreaView >
     );

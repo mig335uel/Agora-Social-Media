@@ -15,7 +15,12 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
             >
-                <BlurView intensity={60} tint="light" className="flex-1 justify-center p-6">
+                <View className="flex-1 justify-center p-6 overflow-hidden">
+                    {Platform.OS === 'ios' ? (
+                        <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
+                    ) : (
+                        <View style={StyleSheet.absoluteFill} className="bg-white/90" />
+                    )}
                     <LinearGradient
                         colors={['rgba(255,255,255,0.3)', 'transparent']}
                         start={{ x: 0, y: 0 }}
@@ -64,7 +69,7 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                         </TouchableOpacity>
                     </View>
 
-                </BlurView>
+                </View>
             </KeyboardAvoidingView>
         </SafeAreaView >
     );

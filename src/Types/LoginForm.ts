@@ -13,5 +13,5 @@ export interface RegisterForm {
     email: string;
     password: string;
     birth_date: string;
-    gender: "male" | "female";
+    gender: "male" | "female" | "";
 }
