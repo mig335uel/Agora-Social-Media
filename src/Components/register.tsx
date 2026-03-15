@@ -9,7 +9,7 @@ import { BlurView } from "expo-blur";
 
 
 
-export default function Register({ onNavigateToLogin }: { onNavigateToLogin: () => void }) {
+export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateToLogin: () => void }) {
 
     const [registerForm, setRegisterForm] = useState<RegisterForm>({
         name: "",
@@ -53,7 +53,7 @@ export default function Register({ onNavigateToLogin }: { onNavigateToLogin: () 
                         <TextInput
                             placeholder="Name"
                             placeholderTextColor="#9ca3af"
-                            className="px-5 py-4 border border-gray-200 rounded-[20px] w-full text-lg"
+                            className="px-5 py-4 border border-gray-200 rounded-[20px] w-full text-lg mb-5"
                             value={registerForm.name}
                             onChangeText={(text) => setRegisterForm({ ...registerForm, name: text })}
                         />
@@ -72,8 +72,8 @@ export default function Register({ onNavigateToLogin }: { onNavigateToLogin: () 
                             value={registerForm.password}
                             onChangeText={(text) => setRegisterForm({ ...registerForm, password: text })}
                         />
-                        <TouchableOpacity onPress={onNavigateToLogin}>
-                            <Text className="text-blue-500 text-center font-bold text-lg hover:text-blue-600">¿Ya tienes cuenta? Inicia Sesión</Text>
+                        <TouchableOpacity>
+                            <Text className="text-blue-500 text-center font-bold text-lg hover:text-blue-600" onPress={onNavigateToLogin}>¿Ya tienes cuenta? Inicia Sesión</Text>
                         </TouchableOpacity>
                         {/* Botón de ejemplo para ver el conjunto */}
                         <TouchableOpacity className="bg-black p-5 rounded-[20px] mt-6">

@@ -52,11 +52,14 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                             value={loginForm.password}
                             onChangeText={(text) => setLoginForm({ ...loginForm, password: text })}
                         />
-                        <TouchableOpacity onPress={() => onNavigateToRegister()}>
-                            <Text className="text-blue-500 text-center font-bold text-lg hover:text-blue-600">¿No tienes cuenta? Registrate</Text>
+                        <TouchableOpacity 
+                            activeOpacity={0.7}
+                            style={{ paddingVertical: 10 }}
+                        >
+                            <Text className="text-blue-500 text-center font-bold text-lg hover:text-blue-600" onPress={onNavigateToRegister}>¿No tienes cuenta? Registrate</Text>
                         </TouchableOpacity>
                         {/* Botón de ejemplo para ver el conjunto */}
-                        <TouchableOpacity className="bg-black p-5 rounded-[20px] mt-6">
+                        <TouchableOpacity className="bg-black p-5 rounded-[20px] mt-2">
                             <Text className="text-white text-center font-bold text-lg">Entrar</Text>
                         </TouchableOpacity>
                     </View>

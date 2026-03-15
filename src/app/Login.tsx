@@ -3,30 +3,28 @@ import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvo
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from 'expo-linear-gradient';
 import { LoginForm } from "../Types/LoginForm";
-import { useState } from 'react'
+
 import { BlurView } from "expo-blur";
 import { router } from "expo-router";
 import LoginForms from "../Components/LoginForm";
-import Register from "../Components/register";
 
+import React, { useState } from 'react';
+// Imagino que tienes un RegisterForm en tus componentes
+import RegisterForm from '../Components/register';
 
+export default function LoginScreen() {
+    // Estado para saber qué formulario mostrar
+    const [showRegister, setShowRegister] = useState<boolean>(false);
 
-
-export default function Login() {
-    const [showRegister, setShowRegister] = useState(false);
-    console.log("-> Login screen re-rendered! showRegister state:", showRegister);
-    
-    return (
-        <View style={{ flex: 1 }}>
-            {showRegister ? (
-                // Si es TRUE, mostramos el registro y le pasamos la función para VOLVER
-                <Register onNavigateToLogin={() => setShowRegister(false)} />
-            ) : (
-                // Si es FALSE, mostramos el login y le pasamos la función para IR AL REGISTRO
-                <LoginForms onNavigateToRegister={() => setShowRegister(true)} />
-            )}
-        </View>
-    );
+    if(showRegister){
+        return (
+            <RegisterForm onNavigateToLogin={() => setShowRegister(false)} />
+        )
+    }else{
+        return (
+            <LoginForms onNavigateToRegister={() => setShowRegister(true)} />
+        )
+    }
 }
 
 const styles = StyleSheet.create({
