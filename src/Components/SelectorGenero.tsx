@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, SafeAreaView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, FlatList, SafeAreaView, Platform, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur'; // Para el efecto Liquid Glass que querías
 
@@ -8,6 +8,8 @@ export default function SelectorAgora({ label, options, value, onSelect }: { lab
 
     // Buscamos el texto de la opción seleccionada
     const selectedOption = options.find(opt => opt.value === value);
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
 
     return (
         <View className="w-full mb-5">
@@ -17,9 +19,9 @@ export default function SelectorAgora({ label, options, value, onSelect }: { lab
                     onPress={() => setVisible(true)}
                     activeOpacity={0.7}
                     // Usamos las mismas clases que tienes en tus TextInputs
-                    className="px-5 py-5 border border-gray-300 rounded-[20px] w-full flex-row justify-between items-center bg-white"
+                    className={`px-5 py-5 border rounded-[20px] w-full flex-row justify-between items-center ${isDark ? "border-gray-700 bg-black" : "border-gray-300 bg-white"}`}
                 >
-                    <Text className={value ? "text-black text-lg" : "text-gray-400 text-lg"}>
+                    <Text className={value ? (isDark ? "text-white text-lg" : "text-black text-lg") : "text-gray-400 text-lg"}>
                         {selectedOption ? selectedOption.label : label}
                     </Text>
                     <Ionicons name="chevron-down" size={20} color="#9ca3af" />
@@ -29,9 +31,9 @@ export default function SelectorAgora({ label, options, value, onSelect }: { lab
                     onPress={() => setVisible(true)}
                     activeOpacity={1}
                     // Usamos las mismas clases que tienes en tus TextInputs
-                    className="px-5 py-5 border border-gray-300 rounded-[20px] w-full flex-row justify-between items-center bg-white"
+                    className={`px-5 py-5 border rounded-[20px] w-full flex-row justify-between items-center ${isDark ? "border-gray-700 bg-black" : "border-gray-300 bg-white"}`}
                 >
-                    <Text className={value ? "text-black text-lg" : "text-gray-400 text-lg"}>
+                    <Text className={value ? (isDark ? "text-white text-lg" : "text-black text-lg") : "text-gray-400 text-lg"}>
                         {selectedOption ? selectedOption.label : label}
                     </Text>
                     <Ionicons name="chevron-down" size={20} color="#9ca3af" />
@@ -47,15 +49,15 @@ export default function SelectorAgora({ label, options, value, onSelect }: { lab
                         onPress={() => setVisible(false)}
                     />
 
-                    <View className="rounded-t-[30px] overflow-hidden bg-white/95" style={Platform.OS === 'android' ? { elevation: 10 } : {}}>
+                    <View className={`rounded-t-[30px] overflow-hidden ${isDark ? 'bg-[#1e1e1e]' : 'bg-white/95'}`} style={Platform.OS === 'android' ? { elevation: 10 } : {}}>
                         {Platform.OS === 'ios' && (
-                            <BlurView intensity={80} tint="light" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+                            <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
                         )}
                         <SafeAreaView>
                             <View className="p-6">
-                                <View className="w-10 h-1 bg-gray-300 rounded-full self-center mb-6" />
+                                <View className={`w-10 h-1 rounded-full self-center mb-6 ${isDark ? "bg-gray-600" : "bg-gray-300"}`} />
 
-                                <Text className="text-xl font-bold mb-6 text-center text-gray-800">
+                                <Text className={`text-xl font-bold mb-6 text-center ${isDark ? "text-white" : "text-gray-800"}`}>
                                     Selecciona {label}
                                 </Text>
 
@@ -66,13 +68,20 @@ export default function SelectorAgora({ label, options, value, onSelect }: { lab
                                             onSelect(item.value);
                                             setVisible(false);
                                         }}
-                                        className={`py-4 px-6 rounded-2xl mb-2 flex-row justify-between items-center ${value === item.value ? 'bg-black' : 'bg-gray-100/50'
-                                            }`}
+                                        className={`py-4 px-6 rounded-2xl mb-2 flex-row justify-between items-center ${
+                                            value === item.value 
+                                                ? (isDark ? 'bg-white' : 'bg-black') 
+                                                : (isDark ? 'bg-[#2c2c2e]' : 'bg-gray-100/50')
+                                        }`}
                                     >
-                                        <Text className={`text-lg ${value === item.value ? 'text-white font-bold' : 'text-gray-700'}`}>
+                                        <Text className={`text-lg ${
+                                            value === item.value 
+                                                ? (isDark ? 'text-black font-bold' : 'text-white font-bold') 
+                                                : (isDark ? 'text-gray-300' : 'text-gray-700')
+                                        }`}>
                                             {item.label}
                                         </Text>
-                                        {value === item.value && <Ionicons name="checkmark" size={20} color="white" />}
+                                        {value === item.value && <Ionicons name="checkmark" size={20} color={isDark ? "black" : "white"} />}
                                     </TouchableOpacity>
                                 ))}
 

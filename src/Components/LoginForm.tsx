@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from 'expo-linear-gradient';
 import { LoginForm } from "../Types/LoginForm";
@@ -9,17 +9,20 @@ import { BlurView } from "expo-blur";
 
 export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegister: () => void }){
     const [loginForm, setLoginForm] = useState<LoginForm>({ email: "", password: "" });
+    const scheme = useColorScheme();
+    const isDark = scheme === 'dark';
+
     return (
-    <SafeAreaView style={{ flex: 1 }} className="bg-white">
+    <SafeAreaView style={{ flex: 1 }} className={isDark ? "bg-[#121212]" : "bg-white"}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
             >
                 <View className="flex-1 justify-center p-6 overflow-hidden">
                     {Platform.OS === 'ios' ? (
-                        <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
+                        <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
                     ) : (
-                        <View style={StyleSheet.absoluteFill} className="bg-white/90" />
+                        <View style={StyleSheet.absoluteFill} className={isDark ? "bg-[#1e1e1e]/90" : "bg-white/90"} />
                     )}
                     <LinearGradient
                         colors={['rgba(255,255,255,0.3)', 'transparent']}
@@ -35,7 +38,7 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                             className="w-48 h-48 self-center"
                             resizeMode="contain"
                         />
-                        <Text style={styles.title} className="mt-4">
+                        <Text style={styles.title} className={`mt-4 ${isDark ? "text-white" : "text-black"}`}>
                             Inicia sesión en Agora
                         </Text>
                     </View>
@@ -44,16 +47,16 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                     <View className="w-full space-y-4">
                         <TextInput
                             placeholder="Email"
-                            placeholderTextColor="#9ca3af"
-                            className="px-5 py-4 border border-gray-200 rounded-[20px] w-full text-lg"
+                            placeholderTextColor={isDark ? "#6b7280" : "#9ca3af"}
+                            className={`px-5 py-4 border rounded-[20px] w-full text-lg ${isDark ? "border-gray-700 bg-black text-white" : "border-gray-200 bg-white text-black"}`}
                             value={loginForm.email}
                             onChangeText={(text) => setLoginForm({ ...loginForm, email: text })}
                         />
                         <TextInput
                             placeholder="Password"
-                            placeholderTextColor="#9ca3af"
+                            placeholderTextColor={isDark ? "#6b7280" : "#9ca3af"}
                             secureTextEntry
-                            className="px-5 py-4 border border-gray-200 rounded-[20px] w-full text-lg mt-4 mb-5"
+                            className={`px-5 py-4 border rounded-[20px] w-full text-lg mt-4 mb-5 ${isDark ? "border-gray-700 bg-black text-white" : "border-gray-200 bg-white text-black"}`}
                             value={loginForm.password}
                             onChangeText={(text) => setLoginForm({ ...loginForm, password: text })}
                         />
@@ -61,11 +64,11 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                             activeOpacity={0.7}
                             style={{ paddingVertical: 10 }}
                         >
-                            <Text className="text-blue-500 text-center font-bold text-lg hover:text-blue-600" onPress={onNavigateToRegister}>¿No tienes cuenta? Registrate</Text>
+                            <Text className={`text-center font-bold text-lg ${isDark ? "text-blue-400" : "text-blue-500"}`} onPress={onNavigateToRegister}>¿No tienes cuenta? Registrate</Text>
                         </TouchableOpacity>
                         {/* Botón de ejemplo para ver el conjunto */}
-                        <TouchableOpacity className="bg-black p-5 rounded-[20px] mt-2">
-                            <Text className="text-white text-center font-bold text-lg">Entrar</Text>
+                        <TouchableOpacity className={`p-5 rounded-[20px] mt-2 ${isDark ? "bg-white" : "bg-black"}`}>
+                            <Text className={`text-center font-bold text-lg ${isDark ? "text-black" : "text-white"}`}>Entrar</Text>
                         </TouchableOpacity>
                     </View>
 
