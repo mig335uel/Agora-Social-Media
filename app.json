@@ -23,7 +23,7 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIBackgroundModes": [
-          "remote-notification",
+
           "NSPhotoLibraryUsageDescription",
           "NSPhotoLibraryAddUsageDescription"
         ]
