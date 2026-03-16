@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, RefreshControl, Image, ActivityIndicator, useColorScheme } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, RefreshControl, Image, ActivityIndicator, useColorScheme, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { signOut } from '../../Services/authService';
@@ -124,7 +124,7 @@ export default function Home() {
     );
 
     return (
-        <SafeAreaView style={{ flex: 1}} className={isDark ? 'bg-black' : 'bg-white'}>
+        <SafeAreaView style={{ flex: 1}} className={isDark ? 'bg-[#141414]' : 'bg-white'}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 15, alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: '#eee' }}>
                 <Text className={isDark ? 'text-white' : 'text-black'} style={{ fontSize: 20, fontWeight: 'bold' }}>Agora</Text>
                 <TouchableOpacity onPress={logout}>
@@ -138,8 +138,8 @@ export default function Home() {
                 renderItem={renderPost}
                 ListHeaderComponent={
                     <View>
-                        <CreatePostScreen/>
-                        <Text style={{ fontSize: 18, fontWeight: 'bold', margin: 15 }}>Para ti</Text>
+                        <CreatePostScreen />
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', margin: 15, color: isDark ? '#fff' : '#000' }} onPress={Keyboard.dismiss}>Para ti</Text>
                     </View>
                 }
                 ListEmptyComponent={

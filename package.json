@@ -36,7 +36,7 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.83.2",
-    "react-native-controlled-mentions": "^0.0.22",
+    "react-native-controlled-mentions": "^3.1.0",
     "react-native-pell-rich-editor": "^1.10.0",
     "react-native-reanimated": "4.2.1",
     "react-native-render-html": "^6.3.4",

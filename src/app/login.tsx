@@ -30,7 +30,6 @@ export default function LoginScreen() {
         return (
             <View style={{ flex: 1 }} className={isDark ? "bg-black" : "bg-white"}>
                 <LoginForms onNavigateToRegister={() => setShowRegister(true)} />
-                    
             </View>
         )
     }
