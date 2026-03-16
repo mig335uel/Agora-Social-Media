@@ -118,6 +118,8 @@ export default function CreatePostScreen() {
               },
               
               
+              
+              
             }}
             triggersConfig={triggersConfig}
             placeholder="¿Qué está pasando?"
