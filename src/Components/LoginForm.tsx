@@ -34,7 +34,7 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
     };
 
     return (
-        <SafeAreaView style={{ flex: 1 }} className={isDark ? "bg-[#121212]" : "bg-white"}>
+        <SafeAreaView style={{ flex: 1 }} className={isDark ? "bg-black" : "bg-white"}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
@@ -42,17 +42,11 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                 
                 <View className="flex-1 justify-center p-6 overflow-hidden">
                     {Platform.OS === 'ios' ? (
-                        <GlassView glassEffectStyle="regular" colorScheme={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+                        <View style={StyleSheet.absoluteFill} className={isDark ? "bg-transparent" : "bg-transparent"} />
                     ) : (
                         <View style={StyleSheet.absoluteFill} className={isDark ? "bg-black" : "bg-white"} />
                     )}
-                    <LinearGradient
-                        colors={['rgba(255,255,255,0.3)', 'transparent']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        className="absolute inset-0"
-                        pointerEvents="none"
-                    />
+                    
                     {/* 1. SECCIÓN LOGO Y TÍTULO (Sin flex, para que ocupe solo lo que necesita) */}
                     <View className="items-center mb-8">
                         <Image

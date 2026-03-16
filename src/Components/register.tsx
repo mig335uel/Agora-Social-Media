@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, useColorScheme } from "react-native";
+import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, useColorScheme, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from 'expo-linear-gradient';
 import { RegisterForm } from "../Types/LoginForm";
@@ -49,7 +49,10 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
     const isDark = scheme === 'dark';
 
     return (
-        <SafeAreaView style={{ flex: 1 }} className={isDark ? "bg-[#121212]" : "bg-white"}>
+        
+        <SafeAreaView style={{ flex: 1 }} className={isDark ? "bg-black" : "bg-white"}>
+            
+           
             <ScrollView 
                 contentContainerStyle={{ flexGrow: 1 }}
                 keyboardShouldPersistTaps="handled"
@@ -62,17 +65,11 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
                     
                     <View className="flex-1 justify-center p-6 overflow-hidden">
                         {Platform.OS === 'ios' ? (
-                            <GlassView glassEffectStyle="regular" colorScheme={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+                            <BlurView style={StyleSheet.absoluteFill} className={isDark ? "bg-transparent" : "bg-transparent"} />
                         ) : (
                             <View style={StyleSheet.absoluteFill} className={isDark ? "bg-[#1e1e1e]/90" : "bg-white/90"} />
                         )}
-                        <LinearGradient
-                            colors={['rgba(255,255,255,0.3)', 'transparent']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            className="absolute inset-0"
-                            pointerEvents="none"
-                        />
+                        
                         {/* 1. SECCIÓN LOGO Y TÍTULO (Sin flex, para que ocupe solo lo que necesita) */}
                         <View className="items-center mb-8">
                             <Image
@@ -155,9 +152,9 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
                     </View>
                 </KeyboardAvoidingView>
             </ScrollView>
-            <GlassContainer spacing={10} style={styles.containerStyle}>
-                <GlassView/>
-            </GlassContainer>
+            
+                
+
         </SafeAreaView >
     );
 }
@@ -167,15 +164,6 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
 
-    },
-    containerStyle: {
-        flex: 1,
-        padding: 16,
-        borderRadius: 20,
-        overflow: 'hidden',
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
     },
 });
 function handleNotificationSetup(id: any) {

@@ -5,6 +5,7 @@ import { uploadAgoraImage } from '../Services/ImageService';
 import { searchUsers } from '../Services/UserService';
 import { getTrendingTopics } from '../Services/PostService';
 import { Usuario } from '../Types/Users';
+import { useColorScheme } from 'react-native';
 
 interface Props {
   onContentChange: (html: string) => void;
@@ -12,7 +13,8 @@ interface Props {
 
 export const AgoraEditor = ({ onContentChange }: Props) => {
   const richText = useRef<RichEditor>(null);
-  
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
   // Estados para sugerencias
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -27,18 +29,18 @@ export const AgoraEditor = ({ onContentChange }: Props) => {
 
   const handleChange = async (html: string) => {
     onContentChange(html);
-    
+
     // 1. Limpiamos HTML para detectar texto plano al final
     // Sustituimos etiquetas por nada para no añadir espacios extra que rompan la detección al escribir
     const cleanText = html.replace(/<[^>]*>?/gm, '');
-    
+
     // 2. Detección de Menciones (@usuario)
     // Cambiado a * para que salte desde que pones el @ si hay resultados generales o populares
     const mentionMatch = cleanText.match(/@(\w*)$/);
     if (mentionMatch) {
       const query = mentionMatch[1];
       // Si solo hay @, podemos mostrar sugerencias generales o esperar a 1-2 letras para evitar ruido
-      if (query.length >= 0) { 
+      if (query.length >= 0) {
         const results = await searchUsers(query);
         setSuggestions(results);
         setSuggestionType('mention');
@@ -65,7 +67,7 @@ export const AgoraEditor = ({ onContentChange }: Props) => {
 
   const selectSuggestion = (item: any) => {
     let htmlToInsert = '';
-    
+
     if (suggestionType === 'mention') {
       const user = item as Usuario;
       htmlToInsert = `<span style="color: #1DA1F2; font-weight: bold;">@${user.username}</span>&nbsp;`;
@@ -73,7 +75,7 @@ export const AgoraEditor = ({ onContentChange }: Props) => {
       const topic = item as string;
       htmlToInsert = `<span style="color: #1DA1F2; font-weight: bold;">#${topic}</span>&nbsp;`;
     }
-    
+
     // Insertamos el HTML estilizado. 
     // Nota: Esto NO borra el @ o # que el usuario ya escribió, lo añade después.
     // Para borrar lo anterior se necesitaría acceso directo al cursor del WebView, 
@@ -87,9 +89,9 @@ export const AgoraEditor = ({ onContentChange }: Props) => {
       const user = item as Usuario;
       return (
         <TouchableOpacity style={styles.suggestionItem} onPress={() => selectSuggestion(user)}>
-          <Image 
-            source={{ uri: user.profile_picture_url || 'https://via.placeholder.com/40' }} 
-            style={styles.suggestionAvatar} 
+          <Image
+            source={{ uri: user.profile_picture_url || 'https://via.placeholder.com/40' }}
+            style={styles.suggestionAvatar}
           />
           <View>
             <Text style={styles.suggestionName}>{user.display_name}</Text>
@@ -114,7 +116,7 @@ export const AgoraEditor = ({ onContentChange }: Props) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} className={isDark ? 'bg-black' : 'bg-white'}>
       {showSuggestions && (
         <View style={styles.suggestionsContainer}>
           <FlatList
@@ -125,27 +127,29 @@ export const AgoraEditor = ({ onContentChange }: Props) => {
           />
         </View>
       )}
-      
+
       <RichEditor
         ref={richText}
         placeholder="¿Qué está pasando en tu perímetro?..."
         onChange={handleChange}
         style={styles.editor}
         initialFocus={true}
+        containerStyle={{ backgroundColor: isDark ? 'black' : 'white' }}
       />
-      
+
       <RichToolbar
         editor={richText}
         actions={[
-            actions.setBold,
-            actions.setItalic,
-            actions.insertOrderedList,
-            actions.insertLink,
-            actions.insertImage,
+          actions.setBold,
+          actions.setItalic,
+          actions.insertOrderedList,
+          actions.insertLink,
+          actions.insertImage,
         ]}
         onPressAddImage={handleInsertImage}
         iconTint="#555"
-        style={styles.toolbar}
+        style={{ ...styles.toolbar, backgroundColor: isDark ? 'black' : '#fff' }}
+
         selectedIconTint="#000"
       />
     </View>
@@ -154,12 +158,12 @@ export const AgoraEditor = ({ onContentChange }: Props) => {
 
 const styles = StyleSheet.create({
   container: { minHeight: 180, marginBottom: 10, zIndex: 10 },
-  editor: { flex: 1, minHeight: 150, backgroundColor: '#fff' },
-  toolbar: { 
+  editor: { flex: 1, minHeight: 150 },
+  toolbar: {
     backgroundColor: '#fff',
     borderTopWidth: 0.5,
     borderTopColor: '#eee'
-   },
+  },
   suggestionsContainer: {
     position: 'absolute',
     bottom: 52, // Justo encima de la toolbar

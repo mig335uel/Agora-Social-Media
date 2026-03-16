@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from 'expo-linear-gradient';
 import { LoginForm } from "../Types/LoginForm";
@@ -21,14 +21,16 @@ export default function LoginScreen() {
 
     if(showRegister){
         return (
-            <View style={{ flex: 1 }} className={isDark ? "bg-[#121212]" : "bg-white"}>
+            <View style={{ flex: 1 }} className={isDark ? "bg-black" : "bg-white"}>
                 <RegisterForm onNavigateToLogin={() => setShowRegister(false)} />
+              
             </View>
         )
     }else{
         return (
-            <View style={{ flex: 1 }} className={isDark ? "bg-[#121212]" : "bg-white"}>
+            <View style={{ flex: 1 }} className={isDark ? "bg-black" : "bg-white"}>
                 <LoginForms onNavigateToRegister={() => setShowRegister(true)} />
+                    
             </View>
         )
     }
