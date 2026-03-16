@@ -54,15 +54,13 @@
       "package": "com.antihodio.agora"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/AgorasLogo.png"
     },
     "plugins": [
       "expo-sqlite",
       "expo-router",
       "expo-notifications",
       "@react-native-community/datetimepicker",
-      "@react-native-firebase/app",
-      "@react-native-firebase/messaging",
      [
         "expo-build-properties",
         {
