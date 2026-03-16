@@ -59,16 +59,24 @@ export async function getTrendingTopics(query: string = ''): Promise<string[]> {
   try {
     let request = supabase
       .from('trending_topics')
-      .select('topic_name')
+      .select(`
+        topic_name,
+        trending_hashtags(hashtag)
+      `)
+      .gt('expires_at', new Date().toISOString())
       .order('volume_score', { ascending: false })
       .limit(10);
 
     if (query) {
-      request = request.ilike('topic_name', `%${query}%`);
+      request = request.or(
+        `topic_name.ilike.%${query}%,trending_hashtags.hashtag.ilike.%${query}%`
+      );
     }
 
     const { data, error } = await request;
     if (error) throw error;
+
+    if (!data) return [];
 
     return data.map(item => item.topic_name);
   } catch (error) {

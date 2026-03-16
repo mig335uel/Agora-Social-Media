@@ -91,7 +91,9 @@ export async function LoginAuth({ loginForm }: { loginForm: LoginForm }) {
 export async function signOut() {
     try {
         const { data: { user } } = await supabase.auth.getUser();
-        await supabase.auth.signOut();
+        console.log(user?.id);
+        
+        
 
         if (user) {
             const { error: deviceError } = await supabase
@@ -99,6 +101,8 @@ export async function signOut() {
                 .delete()
                 .eq('user_id', user.id);
             if (deviceError) throw deviceError;
+
+            await supabase.auth.signOut();
         }
         return true;
     } catch (error) {

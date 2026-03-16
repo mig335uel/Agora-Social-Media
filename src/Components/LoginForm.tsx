@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, useColorScheme } from "react-native";
+import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, useColorScheme, Keyboard } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from 'expo-linear-gradient';
 import { LoginForm } from "../Types/LoginForm";
@@ -19,6 +19,7 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
 
 
     const handleLogin = async () => {
+        Keyboard.dismiss();
         try {
             const results = await LoginAuth({ loginForm });
             if (results && results.user) {
