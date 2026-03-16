@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,15 +8,72 @@ import {
   Platform,
   ActivityIndicator,
   useColorScheme,
-  FlatList
+  FlatList,
 } from 'react-native';
 import { createPost, getTrendingTopics } from '../Services/PostService';
 import { searchUsers } from '../Services/UserService';
-import { MentionInput, SuggestionsProvidedProps } from 'react-native-controlled-mentions';
+import { MentionInput, Triggers } from 'react-native-controlled-mentions';
+
+// ─── Tipos de triggers que usamos ────────────────────────────────────────────
+type TriggerName = 'mention' | 'hashtag';
+
+// ─── Componente de lista de sugerencias (estable fuera del padre) ─────────────
+type SuggestionsListProps = {
+  keyword?: string;
+  onSelect: (suggestion: { id: string; name: string }) => void;
+  trigger: string;
+  fetchFn: (q: string) => Promise<{ id: string; name: string }[]>;
+  isDark: boolean;
+};
+
+function SuggestionsList({ keyword, onSelect, trigger, fetchFn, isDark }: SuggestionsListProps) {
+  const [suggestions, setSuggestions] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    if (keyword == null) {
+      setSuggestions([]);
+      return;
+    }
+    fetchFn(keyword).then(setSuggestions);
+  }, [keyword]);
+
+  if (keyword == null || suggestions.length === 0) return null;
+
+  return (
+    <View style={[styles.suggestionsContainer, isDark ? styles.suggestionsDark : styles.suggestionsLight]}>
+      <FlatList
+        data={suggestions}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <TouchableOpacity onPress={() => onSelect(item)} style={styles.suggestionItem}>
+            <Text style={{ color: isDark ? 'white' : 'black' }}>
+              {trigger}{item.name}
+            </Text>
+          </TouchableOpacity>
+        )}
+      />
+    </View>
+  );
+}
+
+// ─── Funciones de fetch estáticas ─────────────────────────────────────────────
+const fetchUsers = async (q: string): Promise<{ id: string; name: string }[]> => {
+  const users = await searchUsers(q);
+  return users.map((u) => ({ id: u.id, name: u.username }));
+};
+
+const fetchHashtags = async (q: string): Promise<{ id: string; name: string }[]> => {
+  const trends = await getTrendingTopics(q);
+  return trends.map((t) => ({ id: t, name: t }));
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function CreatePostScreen() {
   const [content, setContent] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
+  const [triggers, setTriggers] = useState<Triggers<TriggerName>>({} as Triggers<TriggerName>);
+
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
@@ -33,100 +90,58 @@ export default function CreatePostScreen() {
     }
   };
 
-  // Componente de sugerencias reutilizable para @ y #
-  const SuggestionsList = ({
-    keyword,
-    onSelect,
-    trigger,
-    fetchFn,
-  }: SuggestionsProvidedProps & {
-    trigger: string;
-    fetchFn: (q: string) => Promise<{ id: string; name: string }[]>;
-  }) => {
-    const [suggestions, setSuggestions] = useState<{ id: string; name: string }[]>([]);
-
-    React.useEffect(() => {
-      if (keyword == null) {
-        setSuggestions([]);
-        return;
-      }
-      fetchFn(keyword).then(setSuggestions);
-    }, [keyword]);
-
-    if (!keyword || suggestions.length === 0) return null;
-
-    return (
-      <View style={[styles.suggestionsContainer, isDark ? styles.suggestionsDark : styles.suggestionsLight]}>
-        <FlatList
-          data={suggestions}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => onSelect(item)} style={styles.suggestionItem}>
-              <Text style={{ color: isDark ? 'white' : 'black' }}>
-                {trigger}{item.name}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-      </View>
-    );
-  };
-
-  const triggersConfig = {
+  // triggersConfig: detecta @ y # y aplica estilo azul en negrita al texto del trigger
+  const triggersConfig = useMemo(() => ({
     mention: {
       trigger: '@',
-      renderSuggestions: (props: SuggestionsProvidedProps) => (
-        <SuggestionsList
-          {...props}
-          trigger="@"
-          fetchFn={async (q) => {
-            const users = await searchUsers(q);
-            return users.map((u) => ({ id: u.id, name: u.username }));
-          }}
-        />
-      ),
+      allowedSpacesCount: 0,
       textStyle: { fontWeight: 'bold' as const, color: '#1DA1F2' },
     },
     hashtag: {
       trigger: '#',
-      renderSuggestions: (props: SuggestionsProvidedProps) => (
-        <SuggestionsList
-          {...props}
-          trigger="#"
-          fetchFn={async (q) => {
-            const trends = await getTrendingTopics(q);
-            return trends.map((t) => ({ id: t, name: t }));
-          }}
-        />
-      ),
+      allowedSpacesCount: 0,
       textStyle: { fontWeight: 'bold' as const, color: '#1DA1F2' },
     },
-
-  };
+  }), []);
 
   return (
     <View style={[styles.mainContainer, { borderBottomColor: isDark ? '#333' : '#eee' }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+
+        {/* Dropdowns: se renderizan fuera del MentionInput, consumiendo triggers */}
+        <SuggestionsList
+          keyword={triggers.mention?.keyword}
+          onSelect={triggers.mention?.onSelect ?? (() => {})}
+          trigger="@"
+          fetchFn={fetchUsers}
+          isDark={isDark}
+        />
+        <SuggestionsList
+          keyword={triggers.hashtag?.keyword}
+          onSelect={triggers.hashtag?.onSelect ?? (() => {})}
+          trigger="#"
+          fetchFn={fetchHashtags}
+          isDark={isDark}
+        />
+
         <View style={[styles.editorWrapper, { height: 150 }]}>
           <MentionInput
             value={content}
             onChange={setContent}
+            triggersConfig={triggersConfig}
             patternsConfig={{
-              plainText: {
-                pattern: /[\s\S]+/g,
+              text: {
+                pattern: /([^@#]+)/g,
                 textStyle: { color: isDark ? '#fff' : '#000', fontSize: 18 },
               },
-              
-              
-              
-              
             }}
-            triggersConfig={triggersConfig}
+            onTriggersChange={setTriggers}
             placeholder="¿Qué está pasando?"
-            placeholderTextColor={isDark ? '#FFFFFF' : '#000000'}
+            placeholderTextColor={isDark ? '#aaa' : '#888'}
             style={{
               flex: 1,
               fontSize: 18,
+              color: isDark ? '#fff' : '#000',
               textAlignVertical: 'top',
               paddingTop: 0,
             }}
@@ -170,6 +185,7 @@ const styles = StyleSheet.create({
   publishText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
   suggestionsContainer: {
     maxHeight: 200,
+    marginHorizontal: 15,
     borderWidth: 1,
     borderRadius: 8,
     marginBottom: 5,
