@@ -23,10 +23,12 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIBackgroundModes": [
+          "remote-notification"
+        ],
+        "NSPhotoLibraryUsageDescription": "Agora necesita acceder a tus fotos para que puedas compartir imágenes en tus posts.",
+        "NSPhotoLibraryAddUsageDescription": "Agora necesita permiso para guardar imágenes editadas en tu carrete.",
+        "NSCameraUsageDescription": "Agora necesita usar la cámara si quieres tomar fotos directamente para tus posts."
 
-          "NSPhotoLibraryUsageDescription",
-          "NSPhotoLibraryAddUsageDescription"
-        ]
       }
 
     },
@@ -65,7 +67,10 @@
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "static"
+            "useFrameworks": "static",
+            "extraPods": [
+              { "name": "FirebaseCore", "modular_headers": true }
+            ]
           }
         }
       ]
