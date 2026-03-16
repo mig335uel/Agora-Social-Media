@@ -36,7 +36,7 @@ export default function CreatePostScreen() {
   // Componente de sugerencias reutilizable para @ y #
   const SuggestionsList = ({
     keyword,
-    onSuggestionPress,
+    onSelect,
     trigger,
     fetchFn,
   }: SuggestionsProvidedProps & {
@@ -61,7 +61,7 @@ export default function CreatePostScreen() {
           data={suggestions}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => onSuggestionPress(item)} style={styles.suggestionItem}>
+            <TouchableOpacity onPress={() => onSelect(item)} style={styles.suggestionItem}>
               <Text style={{ color: isDark ? 'white' : 'black' }}>
                 {trigger}{item.name}
               </Text>
