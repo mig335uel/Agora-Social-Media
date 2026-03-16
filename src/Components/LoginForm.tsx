@@ -8,9 +8,10 @@ import { BlurView } from "expo-blur";
 import { LoginAuth } from "../Services/authService";
 import { requestNotificationPermission, saveDeviceToken } from "../Services/NotificacitonService";
 import { router } from "expo-router";
+import { GlassView } from "expo-glass-effect";
 
 
-export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegister: () => void }){
+export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegister: () => void }) {
     const [loginForm, setLoginForm] = useState<LoginForm>({ email: "", password: "" });
     const scheme = useColorScheme();
     const isDark = scheme === 'dark';
@@ -22,7 +23,7 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
             const results = await LoginAuth({ loginForm });
             if (results && results.user) {
                 const token = await requestNotificationPermission();
-                if(token){
+                if (token) {
                     await saveDeviceToken(results.user.id, token);
                 }
                 router.replace('/');
@@ -33,14 +34,15 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
     };
 
     return (
-    <SafeAreaView style={{ flex: 1 }} className={isDark ? "bg-[#121212]" : "bg-white"}>
+        <SafeAreaView style={{ flex: 1 }} className={isDark ? "bg-[#121212]" : "bg-white"}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
             >
+                
                 <View className="flex-1 justify-center p-6 overflow-hidden">
                     {Platform.OS === 'ios' ? (
-                        <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+                        <GlassView glassEffectStyle="regular" colorScheme={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
                     ) : (
                         <View style={StyleSheet.absoluteFill} className={isDark ? "bg-black" : "bg-white"} />
                     )}
@@ -82,14 +84,14 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                             value={loginForm.password}
                             onChangeText={(text) => setLoginForm({ ...loginForm, password: text })}
                         />
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             activeOpacity={0.7}
                             style={{ paddingVertical: 10 }}
                         >
                             <Text className={`text-center font-bold text-lg ${isDark ? "text-blue-400" : "text-blue-500"}`} onPress={onNavigateToRegister}>¿No tienes cuenta? Registrate</Text>
                         </TouchableOpacity>
                         {/* Botón de ejemplo para ver el conjunto */}
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             className={`p-5 rounded-[20px] mt-2 ${isDark ? "bg-white" : "bg-black"}`}
                             onPress={handleLogin}
                         >

@@ -1,39 +1,35 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur'; // Para el efecto de transparencia en iOS
-import { Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
+import { GlassContainer, GlassView } from 'expo-glass-effect';
+import { NativeTabs } from 'expo-router/build/native-tabs';
+
+
+
+
 
 export default function TabLayout() {
+
+  // Guardamos si es iOS en una constante para que el código quede más limpio
+  const isIOS = Platform.OS === 'ios';
+
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: '#1D9BF0', // Azul tipo Twitter/Pulse
-        tabBarInactiveTintColor: '#8899A6',
-        tabBarStyle: {
-          position: 'absolute', // Hace que el menú "flote" sobre el contenido
-          backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#000',
-          borderTopWidth: 0,
-          elevation: 0,
-          height: 60,
-          paddingBottom: 10,
-        },
-        tabBarBackground: () => 
-          Platform.OS === 'ios' ? (
-            <BlurView intensity={80} tint="dark" style={{ flex: 1 }} />
-          ) : null,
-        headerShown: false
-      }}
+    <NativeTabs backgroundColor={isIOS ? 'transparent' : '#141414'}
+      
     >
-      <Tabs.Screen
+      <NativeTabs.Trigger
         name="index"
-        options={{
-          title: 'Inicio',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
-          ),
-        }}
-      />
-      {/* Agrega aquí más pestañas como "Buscar" o "Notificaciones" */}
-    </Tabs>
+      >
+        <NativeTabs.Trigger.Label>Inicio</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger
+        name="search"
+        
+      >
+        <NativeTabs.Trigger.Label>Buscar</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
+      </NativeTabs.Trigger>
+    </NativeTabs>
   );
 }

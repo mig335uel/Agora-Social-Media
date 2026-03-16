@@ -8,6 +8,7 @@ import { Picker } from '@react-native-picker/picker';
 import SelectorAgora from './SelectorGenero';
 import BirthDateSelector from './DateInput';
 import { RegisterAuth } from '../Services/authService';
+import { GlassContainer, GlassView } from 'expo-glass-effect';
 
 
 
@@ -58,9 +59,10 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                     style={{ flex: 1 }}
                 >
+                    
                     <View className="flex-1 justify-center p-6 overflow-hidden">
                         {Platform.OS === 'ios' ? (
-                            <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+                            <GlassView glassEffectStyle="regular" colorScheme={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
                         ) : (
                             <View style={StyleSheet.absoluteFill} className={isDark ? "bg-[#1e1e1e]/90" : "bg-white/90"} />
                         )}
@@ -153,6 +155,9 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
                     </View>
                 </KeyboardAvoidingView>
             </ScrollView>
+            <GlassContainer spacing={10} style={styles.containerStyle}>
+                <GlassView/>
+            </GlassContainer>
         </SafeAreaView >
     );
 }
@@ -162,7 +167,16 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
 
-    }
+    },
+    containerStyle: {
+        flex: 1,
+        padding: 16,
+        borderRadius: 20,
+        overflow: 'hidden',
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
 });
 function handleNotificationSetup(id: any) {
     throw new Error('Function not implemented.');
