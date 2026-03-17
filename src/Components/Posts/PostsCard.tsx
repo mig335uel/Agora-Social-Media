@@ -125,7 +125,7 @@ export default function PostCard({ posts }: { posts: Post[] }) {
         data: posts,
         keyExtractor: (item: Post) => item.id,
         renderItem: renderCard,
-        contentContainerStyle: { paddingVertical: 12, paddingHorizontal: 12, paddingBottom: 80 },
+        contentContainerStyle: { paddingVertical: 12, paddingHorizontal: 12, paddingBottom: ((Platform.OS === 'ios') ? 0: 80) },
         showsVerticalScrollIndicator: false,
         ItemSeparatorComponent: () => <View style={{ height: 8 }} />,
     };

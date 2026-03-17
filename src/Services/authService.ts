@@ -1,8 +1,8 @@
 import { LoginForm, RegisterForm } from "../Types/LoginForm";
 import { supabase } from "../lib/supbase/supabase";
 import { Usuario } from "../Types/Users";
-
-
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
 export async function RegisterAuth({ registerForm }: { registerForm: RegisterForm }) {
     try {
         // --- 1. VALIDACIÓN: ¿Existe ya el username? ---
@@ -14,7 +14,7 @@ export async function RegisterAuth({ registerForm }: { registerForm: RegisterFor
             .maybeSingle(); // Devuelve null si no existe, o el objeto si existe
 
         if (checkError) throw checkError;
-        
+
         if (existingUser) {
             throw new Error('El nombre de usuario ya está en uso');
         }
@@ -70,17 +70,17 @@ export async function RegisterAuth({ registerForm }: { registerForm: RegisterFor
 
 export async function LoginAuth({ loginForm }: { loginForm: LoginForm }) {
     try {
-        const {data, error} = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
             email: loginForm.email,
             password: loginForm.password,
         });
-        if(error) throw error;
-        const {data: user, error: userError} = await supabase.schema('public').from('users').select('*').eq('id', data.user.id).single();
+        if (error) throw error;
+        const { data: user, error: userError } = await supabase.schema('public').from('users').select('*').eq('id', data.user.id).single();
 
-        if(userError) throw userError;
+        if (userError) throw userError;
 
 
-        return {user, session: data};
+        return { user, session: data };
     } catch (error) {
         console.log(error);
         throw error;
@@ -91,17 +91,22 @@ export async function LoginAuth({ loginForm }: { loginForm: LoginForm }) {
 
 
 export async function signOut() {
+    let token;
     try {
         const { data: { user } } = await supabase.auth.getUser();
         console.log(user?.id);
-        
-        
+        try {
+            token = (await Notifications.getDevicePushTokenAsync()).data;
+        } catch (e) {
+            console.log("No se pudo obtener el token, procediendo con borrado parcial");
+        }
+
 
         if (user) {
             const { error: deviceError } = await supabase
                 .from('devices')
                 .delete()
-                .eq('user_id', user.id);
+                .eq('user_id', user.id).eq('device_identifier', Device.osBuildId).eq('device_name', Device.deviceName).eq('fcm_token', token);
             if (deviceError) throw deviceError;
 
             await supabase.auth.signOut();
@@ -112,4 +117,3 @@ export async function signOut() {
         throw error;
     }
 }
-    

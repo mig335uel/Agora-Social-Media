@@ -14,13 +14,11 @@ export default function AppBar({ title }: { title: string }) {
     const isDark = scheme === 'dark';
 
     const usuario = useAuth();
-
-    const isiOS = Platform.OS === 'ios';
     return (
         <>
 
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 15, alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: '#eee' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15, paddingBottom: 2, alignItems: 'center', backgroundColor: isDark ? '#000' : '#fff'}}>
                 <UserAvatar />
                 <Text className={isDark ? 'text-white' : 'text-black'} style={{ fontSize: 20, fontWeight: 'bold', alignSelf: 'center', alignItems: 'center' }}>{title}</Text>
             </View>

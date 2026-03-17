@@ -35,9 +35,9 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/AgorasFinalLogo.png",
-        "backgroundImage": "./assets/AgorasFinalLogo.png",
-        "monochromeImage": "./assets/AgorasLogo.png"
+        "foregroundImage": "./assets/AgorasAndroidLogo.png",
+        "backgroundImage": "./assets/AgorasAndroidLogo.png",
+        "monochromeImage": "./assets/AgorasAndroidLogo.png"
       },
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",

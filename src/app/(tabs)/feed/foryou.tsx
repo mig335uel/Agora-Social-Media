@@ -1,4 +1,3 @@
-import { Redirect } from 'expo-router';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, RefreshControl, Image, ActivityIndicator, useColorScheme, Keyboard } from 'react-native';
@@ -12,12 +11,12 @@ import useAuth from '@/hooks/useAuth';
 import { Usuario } from '@/Types/Users';
 import UserAvatar from '@/Components/UserAvatar';
 import AppBar from '@/Components/AppBar';
-import { posts } from '@/Components/Prueba.json';
+import {posts} from '@/Components/Prueba.json';
 import PostCard from '@/Components/Posts/PostsCard';
 import { Post } from '@/Types/Posts';
-import TopBarNavigation from './feed/_layout';
 
-export default function Home() {
+
+export default function ForYou() {
     // const [posts, setPosts] = useState<RankedPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -104,7 +103,10 @@ export default function Home() {
     }).current;
 
     return (
-       <Redirect href="/feed" />
+        <View style={{ flex: 1 }} className={`h-full ${isDark ? 'bg-black' : 'bg-white'}`}>
 
+            <PostCard posts={pruebaPost} />
+
+        </View>
     );
 }

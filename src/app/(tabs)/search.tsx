@@ -20,7 +20,7 @@ export default function search() {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <SafeAreaView className={`flex-1  ${isDark ? 'bg-black' : 'bg-white'}`} >
             <AppBar title="Buscar" />
-            <View className='flex-1 w-full  justify-center self-start' onPress={() => Keyboard.dismiss()}>
+            <View className='flex-1 w-full  justify-center self-start'>
                 <TextInput placeholder='Busca aquí' className={`w-full  h-16 rounded-lg border px-4 border-gray-300 ${isDark ? 'bg-black' : 'bg-white'}, ${isDark ? 'text-white' : 'text-black'}`} />
             </View>
         </SafeAreaView>

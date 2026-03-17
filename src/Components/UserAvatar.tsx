@@ -43,7 +43,7 @@ export default function UserAvatar() {
 
     return (
         <>
-            <TouchableOpacity onPress={handlePress}>
+            <TouchableOpacity onPress={handlePress} className='rounded-full overflow-hidden'>
                 <Image source={{ uri: "https://cdn-icons-png.flaticon.com/512/149/149071.png" }} style={styles.avatar} />
             </TouchableOpacity>
 
@@ -58,8 +58,8 @@ export default function UserAvatar() {
 
 const styles = StyleSheet.create({
     avatar: {
-        width: 25,
-        height: 25,
+        width: 30,
+        height: 30,
 
     }
 });

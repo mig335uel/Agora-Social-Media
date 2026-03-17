@@ -28,16 +28,16 @@ export default function TabLayout() {
 
         screenOptions={{
           tabBarStyle: {
-            backgroundColor: isDark ? '#141414' : '#fff',
-
+            backgroundColor: isDark ? '#000' : '#fff',
+            
             shadowColor: isDark ? '#fff' : '#000',
             shadowOffset: { width: 0, height: -2 },
             shadowOpacity: 0.2,
             shadowRadius: 2,
             backfaceVisibility: 'hidden',
             borderStyle: 'solid',
-            borderTopColor: 'transparent',
-            
+            borderTopColor: isDark ? '#fff' : '#000',
+
           },
 
           tabBarShowLabel: false,
@@ -67,13 +67,14 @@ export default function TabLayout() {
       >
 
 
-        <Tabs.Screen name="index" options={{
-          title: "Inicio",
+        <Tabs.Screen name="feed" options={{
+          title: "Feed",
           tabBarIcon: ({ color, size }) => (
             <Octicons name="home-fill" size={size} color={color} />
-
           ),
-
+        }} />
+        <Tabs.Screen name="index" options={{
+          href: null, // Ocultamos el index si vamos a usar /feed
         }} />
         <Tabs.Screen name="search" options={{
           title: "Buscar",
@@ -86,11 +87,11 @@ export default function TabLayout() {
   }
 
   return (
-    <NativeTabs backgroundColor={isIOS ? 'transparent' : isDark ? '#141414' : '#fff'} tintColor={isDark ? '#fff' : '#000'}
+    <NativeTabs backgroundColor={isDark ? '#141414' : '#fff'} tintColor={isDark ? '#fff' : '#000'}
 
     >
       <NativeTabs.Trigger
-        name="index"
+        name="feed"
       >
         <NativeTabs.Trigger.Label>Inicio</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
