@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome, Octicons } from '@expo/vector-icons';
-import { Platform, StyleSheet, useColorScheme, View, Text } from 'react-native';
+import { Platform, StyleSheet, useColorScheme, View, Text, Button } from 'react-native';
 import { GlassContainer, GlassView } from 'expo-glass-effect';
 import { NativeTabs } from 'expo-router/build/native-tabs';
 import "../../../global.css";
@@ -39,13 +39,12 @@ export default function TabLayout() {
             borderTopColor: 'transparent',
             
           },
-          tabBarActiveTintColor: isDark ? '#00FF00' : '#00FF00',
-          tabBarInactiveTintColor: isDark ? '#008000' : '#008000',
+
           tabBarShowLabel: false,
           headerShown: false,
           tabBarVisibilityAnimationConfig: {
             hide: {
-              
+
               animation: 'spring',
               config: {
                 damping: 13,
@@ -97,9 +96,7 @@ export default function TabLayout() {
         <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger
-        name="search"
-
-      >
+        name="search">
         <NativeTabs.Trigger.Label>Buscar</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
       </NativeTabs.Trigger>

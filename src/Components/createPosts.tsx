@@ -10,9 +10,10 @@ import {
   useColorScheme,
   FlatList,
 } from 'react-native';
-import { createPost, getTrendingTopics } from '../Services/PostService';
-import { searchUsers } from '../Services/UserService';
-import { MentionInput, Triggers } from 'react-native-controlled-mentions';
+import { createPost, getTrendingTopics } from '@/Services/PostService';
+import { searchUsers } from '@/Services/UserService';
+// import { MentionInput, Triggers } from 'react-native-controlled-mentions';
+import { AgoraEditor } from './AgoraEditor';
 
 // ─── Tipos de triggers que usamos ────────────────────────────────────────────
 type TriggerName = 'mention' | 'hashtag';
@@ -72,43 +73,43 @@ const fetchHashtags = async (q: string): Promise<{ id: string; name: string }[]>
 export default function CreatePostScreen() {
   const [content, setContent] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
-  const [triggers, setTriggers] = useState<Triggers<TriggerName>>({} as Triggers<TriggerName>);
+  // const [triggers, setTriggers] = useState<Triggers<TriggerName>>({} as Triggers<TriggerName>);
 
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
-  const handlePublish = async () => {
-    if (!content || isPublishing) return;
-    setIsPublishing(true);
-    try {
-      await createPost(content);
-      setContent('');
-    } catch (error) {
-      console.error('Error publicando:', error);
-    } finally {
-      setIsPublishing(false);
-    }
-  };
+  // const handlePublish = async () => {
+  //   if (!content || isPublishing) return;
+  //   setIsPublishing(true);
+  //   try {
+  //     await createPost(content);
+  //     setContent('');
+  //   } catch (error) {
+  //     console.error('Error publicando:', error);
+  //   } finally {
+  //     setIsPublishing(false);
+  //   }
+  // };
 
-  // triggersConfig: detecta @ y # y aplica estilo azul en negrita al texto del trigger
-  const triggersConfig = useMemo(() => ({
-    mention: {
-      trigger: '@',
-      allowedSpacesCount: 0,
-      textStyle: { fontWeight: 'bold' as const, color: '#1DA1F2' },
-    },
-    hashtag: {
-      trigger: '#',
-      allowedSpacesCount: 0,
-      textStyle: { fontWeight: 'bold' as const, color: '#1DA1F2' },
-    },
-  }), []);
+  // // triggersConfig: detecta @ y # y aplica estilo azul en negrita al texto del trigger
+  // const triggersConfig = useMemo(() => ({
+  //   mention: {
+  //     trigger: '@',
+  //     allowedSpacesCount: 0,
+  //     textStyle: { fontWeight: 'bold' as const, color: '#1DA1F2' },
+  //   },
+  //   hashtag: {
+  //     trigger: '#',
+  //     allowedSpacesCount: 0,
+  //     textStyle: { fontWeight: 'bold' as const, color: '#1DA1F2' },
+  //   },
+  // }), []);
 
+  /* Dropdowns: se renderizan fuera del MentionInput, consumiendo triggers */
   return (
     <View style={[styles.mainContainer, { borderBottomColor: isDark ? '#333' : '#eee' }]}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      {/* <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
 
-        {/* Dropdowns: se renderizan fuera del MentionInput, consumiendo triggers */}
         <SuggestionsList
           keyword={triggers.mention?.keyword}
           onSelect={triggers.mention?.onSelect ?? (() => {})}
@@ -124,29 +125,8 @@ export default function CreatePostScreen() {
           isDark={isDark}
         />
 
-        <View style={[styles.editorWrapper, { height: 150 }]}>
-          <MentionInput
-            value={content}
-            onChange={setContent}
-            triggersConfig={triggersConfig}
-            patternsConfig={{
-              text: {
-                pattern: /([^@#]+)/g,
-                textStyle: { color: isDark ? '#fff' : '#000', fontSize: 18 },
-              },
-            }}
-            onTriggersChange={setTriggers}
-            placeholder="¿Qué está pasando?"
-            placeholderTextColor={isDark ? '#aaa' : '#888'}
-            style={{
-              flex: 1,
-              fontSize: 18,
-              color: isDark ? '#fff' : '#000',
-              textAlignVertical: 'top',
-              paddingTop: 0,
-            }}
-            multiline
-          />
+        <View style={[styles.editorWrapper]}>
+          <AgoraEditor onContentChange={setContent} />;
         </View>
 
         <View style={[styles.footer, { borderTopColor: isDark ? '#333' : '#ccc' }]}>
@@ -162,7 +142,7 @@ export default function CreatePostScreen() {
             )}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAvoidingView> */}
     </View>
   );
 }

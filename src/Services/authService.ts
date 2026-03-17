@@ -40,6 +40,8 @@ export async function RegisterAuth({ registerForm }: { registerForm: RegisterFor
             .from('users')
             .insert({
                 id: authData.user.id, // Relación directa con Auth
+                name: registerForm.name,
+                last_name: registerForm.last_name,
                 username: registerForm.username.toLowerCase(),
                 display_name: registerForm.display_name,
                 birth_date: registerForm.birth_date, // Tu campo DATE

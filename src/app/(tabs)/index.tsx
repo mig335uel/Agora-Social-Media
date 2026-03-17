@@ -3,15 +3,17 @@ import { View, Text, TouchableOpacity, FlatList, RefreshControl, Image, Activity
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { signOut } from '../../Services/authService';
-import CreatePostScreen from '../../Components/createPosts';
-import { getForYouFeed, RankedPost } from '../../Services/FeedService';
-import { recordInteractions, InteractionPayload } from '../../Services/InteractionService';
+import CreatePostScreen from '@/Components/createPosts';
+import { getForYouFeed, RankedPost } from '@/Services/FeedService';
+import { recordInteractions, InteractionPayload } from '@/Services/InteractionService';
+import useAuth from '@/hooks/useAuth';
+import { Usuario } from '@/Types/Users';
+import UserAvatar from '@/Components/UserAvatar';
 
 export default function Home() {
     const [posts, setPosts] = useState<RankedPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    
     // Tracking de dwell time
     const visibleItems = useRef<Set<string>>(new Set());
     const dwellBuffer = useRef<{ [postId: string]: number }>({});
@@ -93,70 +95,17 @@ export default function Home() {
     }).current;
 
     const renderPost = ({ item: post }: { item: RankedPost }) => (
-        <View style={{ marginBottom: 25, borderBottomWidth: 0.5, borderBottomColor: '#eee', paddingBottom: 20, paddingHorizontal: 15 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <Image 
-                    source={{ uri: post.profile_picture_url || 'https://via.placeholder.com/40' }} 
-                    style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#eee', marginRight: 12 }} 
-                />
-                <View>
-                    <Text style={{ fontWeight: 'bold', fontSize: 15 }}>{post.display_name}</Text>
-                    <Text style={{ color: '#666', fontSize: 13 }}>@{post.username}</Text>
-                </View>
-            </View>
-            
-            <Text style={{ fontSize: 16, lineHeight: 22, color: '#111', marginBottom: 12 }}>
-                {post.content.replace(/<[^>]*>?/gm, '')}
-            </Text>
-
-            {post.media_url && (
-                <View style={{ width: '100%', height: 250, backgroundColor: '#f0f0f0', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-                    <Image source={{ uri: post.media_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                </View>
-            )}
-
-            <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 5 }}>
-                <Text style={{ color: '#666', fontSize: 13 }}>💬 {post.replies_count}</Text>
-                <Text style={{ color: '#666', fontSize: 13 }}>🔁 {post.reposts_count}</Text>
-                <Text style={{ color: '#666', fontSize: 13 }}>❤️ {post.likes_count}</Text>
-            </View>
-        </View>
+    //    <PostCard post={post}} />
+        <></>
     );
-
     return (
         <SafeAreaView style={{ flex: 1}} className={isDark ? 'bg-[#141414]' : 'bg-white'}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 15, alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: '#eee' }}>
                 <Text className={isDark ? 'text-white' : 'text-black'} style={{ fontSize: 20, fontWeight: 'bold' }}>Agora</Text>
-                <TouchableOpacity onPress={logout}>
-                    <Text className={isDark ? 'text-white' : 'text-black'}>Cerrar sesión</Text>
-                </TouchableOpacity>
+                <UserAvatar />
             </View>
             
-            <FlatList
-                data={posts}
-                keyExtractor={(item) => item.id}
-                renderItem={renderPost}
-                ListHeaderComponent={
-                    <View>
-                        <CreatePostScreen />
-                        <Text style={{ fontSize: 18, fontWeight: 'bold', margin: 15, color: isDark ? '#fff' : '#000' }} onPress={Keyboard.dismiss}>Para ti</Text>
-                    </View>
-                }
-                ListEmptyComponent={
-                    loading ? (
-                        <ActivityIndicator color="#000" style={{ marginTop: 40 }} />
-                    ) : (
-                        <View style={{ alignItems: 'center', marginTop: 40 }}>
-                            <Text style={{ color: '#666', fontSize: 16 }}>No hay publicaciones todavía.</Text>
-                        </View>
-                    )
-                }
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />
-                }
-                onViewableItemsChanged={onViewableItemsChanged}
-                viewabilityConfig={viewabilityConfig}
-            />
+            
         </SafeAreaView>
     );
 }
