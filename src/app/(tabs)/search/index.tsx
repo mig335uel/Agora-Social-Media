@@ -1,8 +1,6 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, RefreshControl, Image, ActivityIndicator, useColorScheme, StyleSheet, TextInput, Keyboard, TouchableWithoutFeedback } from 'react-native';
-import { SearchBar } from 'react-native-screens';
-import AppBar from '@/Components/AppBar';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useState, useMemo, useContext } from 'react';
+import { View, Text, TouchableOpacity, FlatList, useColorScheme, StyleSheet } from 'react-native';
+import { SearchContext } from './_layout';
 import { Trending_topics } from '@/Types/Trendings';
 import { supabase } from '@/lib/supbase/supabase';
 
@@ -17,7 +15,18 @@ export default function search() {
 
     const scheme = useColorScheme();
     const isDark = scheme === 'dark';
+    const { searchQuery } = useContext(SearchContext);
     const [trending, setTrending] = useState<TrendWithTags[]>([]);
+
+    const filteredTrends = useMemo(() => {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return trending;
+      return trending.filter((item) => {
+        const topic = item.topic_name.toLowerCase();
+        const tags = (item.hashtags || []).join(' ').toLowerCase();
+        return topic.includes(q) || tags.includes(q);
+      });
+    }, [searchQuery, trending]);
 
     useEffect(() => {
         // Se define una función asíncrona dentro de useEffect porque
@@ -63,7 +72,7 @@ export default function search() {
 
     return (
         <FlatList
-            data={trending}
+            data={filteredTrends}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
                 <View style={{ padding: 16, borderBottomWidth: 1, borderColor: isDark ? '#333' : '#ccc' , backgroundColor: isDark ? '#000' : '#fff' }}>
