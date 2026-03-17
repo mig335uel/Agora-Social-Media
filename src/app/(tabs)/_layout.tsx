@@ -3,7 +3,7 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome, Octicons 
 import { Platform, StyleSheet, useColorScheme, View, Text, Button } from 'react-native';
 import { GlassContainer, GlassView } from 'expo-glass-effect';
 import { NativeTabs } from 'expo-router/build/native-tabs';
-import "../../../global.css";
+import "/global.css";
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 

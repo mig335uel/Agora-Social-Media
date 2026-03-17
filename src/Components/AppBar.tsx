@@ -18,7 +18,7 @@ export default function AppBar({ title }: { title: string }) {
         <>
 
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15, paddingBottom: 2, alignItems: 'center', backgroundColor: isDark ? '#000' : '#fff'}}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15, paddingBottom: 2, alignItems: 'center', backgroundColor: isDark ? '#000' : '#fff', marginBottom: 5}}>
                 <UserAvatar />
                 <Text className={isDark ? 'text-white' : 'text-black'} style={{ fontSize: 20, fontWeight: 'bold', alignSelf: 'center', alignItems: 'center' }}>{title}</Text>
             </View>
