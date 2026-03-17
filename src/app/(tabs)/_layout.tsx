@@ -29,7 +29,7 @@ export default function TabLayout() {
         screenOptions={{
           tabBarStyle: {
             backgroundColor: isDark ? '#141414' : '#fff',
-            overflow: 'visible',
+
             shadowColor: isDark ? '#fff' : '#000',
             shadowOffset: { width: 0, height: -2 },
             shadowOpacity: 0.2,

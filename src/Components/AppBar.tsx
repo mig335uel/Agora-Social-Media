@@ -6,6 +6,7 @@ import useAuth from "../hooks/useAuth";
 
 import { Usuario } from "../Types/Users";
 import { GlassView } from "expo-glass-effect";
+import UserAvatar from "./UserAvatar";
 
 export default function AppBar({ title }: { title: string }) {
 
@@ -18,17 +19,13 @@ export default function AppBar({ title }: { title: string }) {
     return (
         <>
 
-            {isiOS ? (
-                <GlassView>
-                    <View className={`flex-2 flex-row  space-between ${isDark ? 'bg-black' : 'bg-white'}`}>
-                        <Text className={`text-2xl font-bold  ${isDark ? 'text-white' : 'text-black'}`}>{title}</Text>
-                    </View>
-                </GlassView>
-            ) : (
-                <View className={`flex-2 flex-row ${isDark ? 'bg-black' : 'bg-white'} `}>
-                    <Text className={`text-2xl font-bold  ${isDark ? 'text-white' : 'text-black'}`}>{title}</Text>
-                </View>
-            )}
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 15, alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: '#eee' }}>
+                <UserAvatar />
+                <Text className={isDark ? 'text-white' : 'text-black'} style={{ fontSize: 20, fontWeight: 'bold', alignSelf: 'center', alignItems: 'center' }}>{title}</Text>
+            </View>
+
+
         </>
 
     );

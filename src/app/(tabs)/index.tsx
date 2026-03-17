@@ -9,9 +9,12 @@ import { recordInteractions, InteractionPayload } from '@/Services/InteractionSe
 import useAuth from '@/hooks/useAuth';
 import { Usuario } from '@/Types/Users';
 import UserAvatar from '@/Components/UserAvatar';
-
+import AppBar from '@/Components/AppBar';
+import {posts} from '@/Components/Prueba.json';
+import PostCard from '@/Components/PostsCard';
+import { Post } from '@/Types/Posts';
 export default function Home() {
-    const [posts, setPosts] = useState<RankedPost[]>([]);
+    // const [posts, setPosts] = useState<RankedPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     // Tracking de dwell time
@@ -20,20 +23,22 @@ export default function Home() {
     const lastSyncTime = useRef(Date.now());
     const scheme = useColorScheme();
     const isDark = scheme === 'dark';
-    const fetchFeed = async () => {
-        try {
-            const feed = await getForYouFeed();
-            setPosts(feed);
-        } catch (error) {
-            console.error("Error fetching feed:", error);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    };
+    const pruebaPost: Post[] = posts;
+   
+    // const fetchFeed = async () => {
+    //     try {
+    //         const feed = await getForYouFeed();
+    //         setPosts(feed);
+    //     } catch (error) {
+    //         console.error("Error fetching feed:", error);
+    //     } finally {
+    //         setLoading(false);
+    //         setRefreshing(false);
+    //     }
+    // };
 
     useEffect(() => {
-        fetchFeed();
+        // fetchFeed();
         
         // Timer para acumular dwell time cada segundo
         const timer = setInterval(() => {
@@ -68,7 +73,7 @@ export default function Home() {
 
     const onRefresh = () => {
         setRefreshing(true);
-        fetchFeed();
+        // fetchFeed();
         syncInteractions(); // Aprovechamos para limpiar buffer
     };
 
@@ -94,17 +99,12 @@ export default function Home() {
         itemVisiblePercentThreshold: 50 // Se considera visible si aparece el 50%
     }).current;
 
-    const renderPost = ({ item: post }: { item: RankedPost }) => (
-    //    <PostCard post={post}} />
-        <></>
-    );
+ 
     return (
         <SafeAreaView style={{ flex: 1}} className={isDark ? 'bg-[#141414]' : 'bg-white'}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 15, alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: '#eee' }}>
-                <Text className={isDark ? 'text-white' : 'text-black'} style={{ fontSize: 20, fontWeight: 'bold' }}>Agora</Text>
-                <UserAvatar />
-            </View>
+            <AppBar title="Agora"/>
             
+            <PostCard posts={pruebaPost} />
             
         </SafeAreaView>
     );

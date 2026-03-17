@@ -12,4 +12,5 @@ export interface Usuario{
     birth_date: string;
     gender: string;
     is_private: boolean;
+    is_verified?: boolean;
 }

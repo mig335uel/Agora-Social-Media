@@ -1,14 +1,18 @@
-export interface Post{
+import { Usuario } from "./Users";
+
+export interface Post {
     id: string;
-    user_id: string;
+    
     content: string;
-    parent_post_id: string | null;
-    media_url: string;
-    media_type: string;
+    parent_post_id?: string | null;
+    media_url: string | null;
+    media_type: string | null;
     likes_count: number;
     replies_count: number;
     reposts_count: number;
+    shares_count: number;
     created_at: string;
+    user: Usuario;
 }
 
 export interface likes{
