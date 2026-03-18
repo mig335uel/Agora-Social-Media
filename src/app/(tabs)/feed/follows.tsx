@@ -52,7 +52,11 @@ export default function Follows() {
 
     return (
         <View className={`flex-1 justify-center items-center ${isDark ? 'bg-black': 'bg-white'}`}>
-            <PostCard posts={followingPost} />
+            {followingPost.length > 0 ? (
+                <PostCard posts={followingPost} />
+            ) : (
+                <Text className={`text-2xl text-center font-bold ${isDark ? 'text-white' : 'text-black'}`}>No sigues a nadie o no hay posts disponibles</Text>
+            )}
         </View>
     );
 }

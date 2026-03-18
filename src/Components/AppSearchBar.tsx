@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useColorScheme, View, Text, TouchableOpacity, Platform, TextInput } from "react-native";
+import { useColorScheme, View, Text, TouchableOpacity, Platform, TextInput,Image} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import useAuth from "../hooks/useAuth";
 
@@ -54,9 +54,8 @@ export default function AppSearchBar({ query, onSearch }: AppSearchBarProps) {
             }}
           />
         </View>
-
+        <Image source={require('../../assets/AgorasLogo.png')} style={{ width: 30, height: 30 }} />
         {/* Espacio derecho fijo (puede contener icono si quieres), evita que la caja se desplace al centro */}
-        <View style={{ width: 40 }} />
       </View>
     </View>
   );

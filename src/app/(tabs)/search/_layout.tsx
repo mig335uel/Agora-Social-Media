@@ -51,6 +51,7 @@ export default function SearchLayout() {
           }}
         >
           <MaterialTopTabs.Screen name="index" options={{ title: 'Tendencias' }} />
+          <MaterialTopTabs.Screen name="usersearch" options={{ title: 'Usuarios' }} />
         </MaterialTopTabs>
       </SafeAreaView>
     </SearchContext.Provider>
