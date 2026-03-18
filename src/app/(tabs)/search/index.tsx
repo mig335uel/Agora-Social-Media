@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, FlatList, useColorScheme, StyleSheet } fr
 import { SearchContext } from './_layout';
 import { Trending_topics } from '@/Types/Trendings';
 import { supabase } from '@/lib/supbase/supabase';
+import { Stack } from 'expo-router';
 
 
 
@@ -19,13 +20,13 @@ export default function search() {
     const [trending, setTrending] = useState<TrendWithTags[]>([]);
 
     const filteredTrends = useMemo(() => {
-      const q = searchQuery.trim().toLowerCase();
-      if (!q) return trending;
-      return trending.filter((item) => {
-        const topic = item.topic_name.toLowerCase();
-        const tags = (item.hashtags || []).join(' ').toLowerCase();
-        return topic.includes(q) || tags.includes(q);
-      });
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return trending;
+        return trending.filter((item) => {
+            const topic = item.topic_name.toLowerCase();
+            const tags = (item.hashtags || []).join(' ').toLowerCase();
+            return topic.includes(q) || tags.includes(q);
+        });
     }, [searchQuery, trending]);
 
     useEffect(() => {
@@ -71,23 +72,25 @@ export default function search() {
     }, []);
 
     return (
-        <FlatList
-            data={filteredTrends}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-                <View style={{ padding: 16, borderBottomWidth: 1, borderColor: isDark ? '#333' : '#ccc' , backgroundColor: isDark ? '#000' : '#fff' }}>
-                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: isDark ? '#fff' : '#000' }}>{item.topic_name}</Text>
-                    <Text style={{ color: isDark ? '#aaa' : '#555' }}>{item.category} - {item.region}</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
-                        {item.hashtags.map((hashtag, index) => (
-                            <TouchableOpacity key={index} style={{ backgroundColor: isDark ? '#555' : '#eee', padding: 8, borderRadius: 16, marginRight: 8, marginBottom: 8 }}>
-                                <Text style={{ color: isDark ? '#fff' : '#000' }}>#{hashtag}</Text>
-                            </TouchableOpacity>
-                        ))}
+        <>  
+            <FlatList
+                data={filteredTrends}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                    <View style={{ padding: 16, borderBottomWidth: 1, borderColor: isDark ? '#333' : '#ccc', backgroundColor: isDark ? '#000' : '#fff' }}>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: isDark ? '#fff' : '#000' }}>{item.topic_name}</Text>
+                        <Text style={{ color: isDark ? '#aaa' : '#555' }}>{item.category} - {item.region}</Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
+                            {item.hashtags.map((hashtag, index) => (
+                                <TouchableOpacity key={index} style={{ backgroundColor: isDark ? '#555' : '#eee', padding: 8, borderRadius: 16, marginRight: 8, marginBottom: 8 }}>
+                                    <Text style={{ color: isDark ? '#fff' : '#000' }}>#{hashtag}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     </View>
-                </View>
-            )}
-        />
+                )}
+            />
+        </>
     );
 }
 

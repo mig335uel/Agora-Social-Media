@@ -1,10 +1,11 @@
 import { Tabs } from 'expo-router';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome, Octicons } from '@expo/vector-icons';
-import { Platform, StyleSheet, useColorScheme, View, Text, Button } from 'react-native';
+import { Platform, StyleSheet, useColorScheme, View, Text, Button, TouchableOpacity } from 'react-native';
 import { GlassContainer, GlassView } from 'expo-glass-effect';
 import { NativeTabs } from 'expo-router/build/native-tabs';
 import "/global.css";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeTabsBottomAccessory } from 'expo-router/build/native-tabs/common/elements';
 
 
 
@@ -29,7 +30,7 @@ export default function TabLayout() {
         screenOptions={{
           tabBarStyle: {
             backgroundColor: isDark ? '#000' : '#fff',
-            
+
             shadowColor: isDark ? '#fff' : '#000',
             shadowOffset: { width: 0, height: -2 },
             shadowOpacity: 0.2,
@@ -76,31 +77,50 @@ export default function TabLayout() {
         <Tabs.Screen name="index" options={{
           href: null, // Ocultamos el index si vamos a usar /feed
         }} />
-        <Tabs.Screen name="search" options={{
+       
+        
+         <Tabs.Screen name="search" options={{
           title: "Buscar",
           tabBarIcon: ({ color, size }) => (
             <Octicons name="search" size={size} color={color} />
           ),
+        }} />
+        <Tabs.Screen name="newpost" options={{
+          title: "Buscar",
+          tabBarIcon: ({ color, size }) => (
+            <Octicons name="plus" size={size} color={color} />
+          ),
+          tabBarButton: ({ onPress }) => (
+            <TouchableOpacity onPress={onPress} className={`w-20 h-10 border border-gray-300 rounded-lg items-center justify-center self-center`}>
+              <Octicons name="plus" size={24} color={isDark ? '#fff' : '#000'} />
+            </TouchableOpacity>
+          )
         }} />
       </Tabs>
     );
   }
 
   return (
-    <NativeTabs backgroundColor={isDark ? '#141414' : '#fff'} tintColor={isDark ? '#fff' : '#000'}
+    <>
+      <NativeTabs backgroundColor={isDark ? '#141414' : '#fff'} 
 
-    >
-      <NativeTabs.Trigger
-        name="feed"
       >
-        <NativeTabs.Trigger.Label>Inicio</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger
-        name="search">
-        <NativeTabs.Trigger.Label>Buscar</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+        <NativeTabs.Trigger
+          name="feed"
+        >
+          <NativeTabs.Trigger.Label>Inicio</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger
+          name="search">
+          <NativeTabs.Trigger.Label>Buscar</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
+        </NativeTabs.Trigger>
+
+        <NativeTabs.Trigger name='newpost' role='more'>
+          <NativeTabs.Trigger.Icon sf="plus" md="add"/>
+        </NativeTabs.Trigger>
+      </NativeTabs>
+    </>
   );
 }

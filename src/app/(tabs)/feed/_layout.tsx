@@ -9,7 +9,7 @@ export default function TopBarNavigation() {
     const isDark = scheme === 'dark';
     if (Platform.OS === 'ios') {
         return (
-            <SafeAreaView style={{ flex: 1 }} className={`${isDark ? 'bg-black' : 'bg-white'}`} edges={['top']}>
+            <SafeAreaView style={{ flex: 1 }} className={`${isDark ? 'bg-black' : 'bg-white'}`}  edges={['top']}>
                 <AppBar title="Agora" />
                 <MaterialTopTabs
                     screenOptions={{
