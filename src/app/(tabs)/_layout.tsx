@@ -85,17 +85,7 @@ export default function TabLayout() {
             <Octicons name="search" size={size} color={color} />
           ),
         }} />
-        <Tabs.Screen name="newpost" options={{
-          title: "Buscar",
-          tabBarIcon: ({ color, size }) => (
-            <Octicons name="plus" size={size} color={color} />
-          ),
-          tabBarButton: ({ onPress }) => (
-            <TouchableOpacity onPress={onPress} className={`w-20 h-10 border border-gray-300 rounded-lg items-center justify-center self-center`}>
-              <Octicons name="plus" size={24} color={isDark ? '#fff' : '#000'} />
-            </TouchableOpacity>
-          )
-        }} />
+        
       </Tabs>
     );
   }
@@ -115,10 +105,6 @@ export default function TabLayout() {
           name="search">
           <NativeTabs.Trigger.Label>Buscar</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
-        </NativeTabs.Trigger>
-
-        <NativeTabs.Trigger name='newpost' role='more'>
-          <NativeTabs.Trigger.Icon sf="plus" md="add"/>
         </NativeTabs.Trigger>
       </NativeTabs>
     </>
