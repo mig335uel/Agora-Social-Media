@@ -31,7 +31,7 @@ export default function TabLayout() {
 
             shadowColor: isDark ? '#fff' : '#000',
             backfaceVisibility: 'hidden',
-            borderStyle: 'dotted',
+            borderStyle: 'dashed',
             borderTopColor: isDark ? '#fff' : '#000',
             bottom: 20,           // Margen inferior
             left: 20,             // Margen izquierdo
