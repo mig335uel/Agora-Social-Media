@@ -17,11 +17,6 @@ export default function TabLayout() {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
-  const backgroundIOSStyle = {
-    backgroundColor: 'transparent',
-
-  }
-
   if (Platform.OS === 'android') {
     return (
       <Tabs
@@ -105,31 +100,21 @@ export default function TabLayout() {
 
   return (
     <>
-      <NativeTabs backgroundColor={isDark ? '#141414' : '#fff'}
-
-      >
-        <NativeTabs.Trigger
-          name="feed"
-        >
+      <NativeTabs backgroundColor={isDark ? '#141414' : '#fff'}>
+        <NativeTabs.Trigger name="feed">
           <NativeTabs.Trigger.Label>Inicio</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger
-          name="search">
+
+        <NativeTabs.Trigger name="search">
           <NativeTabs.Trigger.Label>Explorar</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
         </NativeTabs.Trigger>
 
-        <NativeTabs.Trigger
-          name="profile">
+        <NativeTabs.Trigger name="profile">
           <NativeTabs.Trigger.Label>Cuenta</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="person.fill" md="person" />
         </NativeTabs.Trigger>
-
-
-
-
-
       </NativeTabs>
     </>
   );

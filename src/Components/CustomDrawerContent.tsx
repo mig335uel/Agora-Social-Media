@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, useColorScheme, Alert, TouchableNativeFeedback } from 'react-native';
+import { View, Text, Pressable, StyleSheet, useColorScheme, Alert } from 'react-native';
 import { DrawerContentScrollView, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { BlurView } from 'expo-blur';
 import { router, useNavigation } from 'expo-router';
@@ -80,10 +80,12 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
       </View>
       
       <View style={styles.section}>
-          <TouchableNativeFeedback className={`border border-white rounded-full ${isDark ? 'bg-white' : 'bg-black'}`}>
+          <TouchableOpacity 
+            activeOpacity={0.7}
+            className={`border border-white rounded-full ${isDark ? 'bg-white' : 'bg-black'}`}
+          >
             <Text className={`font-bold text-xl ${isDark ? 'text-white' : 'text-black'}`}>Hola</Text>
-
-          </TouchableNativeFeedback>
+          </TouchableOpacity>
       </View>
     </DrawerContentScrollView>
   );

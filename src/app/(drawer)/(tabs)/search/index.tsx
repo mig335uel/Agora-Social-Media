@@ -195,7 +195,7 @@ export default function SearchScreen() {
                     key={index}
                     className="bg-gray-100 dark:bg-white/5 px-3 py-1.5 rounded-full mr-2 mb-2"
                   >
-                    <Text className="text-xs font-bold text-gray-600 dark:text-gray-300">#{hashtag}</Text>
+                    <Text className="text-xs font-bold text-gray-600 dark:text-gray-300">{hashtag}</Text>
                   </View>
                 ))}
               </View>

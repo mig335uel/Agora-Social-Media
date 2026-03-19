@@ -9,7 +9,7 @@ import { LoginAuth } from "../Services/authService";
 import { requestNotificationPermission, saveDeviceToken } from "../Services/NotificacitonService";
 import { router } from "expo-router";
 import { GlassView } from "expo-glass-effect";
-import { TouchableNativeFeedback } from "react-native";
+import { TouchableWithoutFeedback } from "react-native";
 
 
 export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegister: () => void }) {
@@ -36,7 +36,7 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
     };
 
     return (
-        <TouchableNativeFeedback onPress={() => Keyboard.dismiss()}>
+        <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
             <SafeAreaView style={{ flex: 1 }} className={isDark ? "bg-black" : "bg-white"}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -102,7 +102,7 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
                     </View>
                 </KeyboardAvoidingView>
             </SafeAreaView >
-        </TouchableNativeFeedback>
+        </TouchableWithoutFeedback>
     );
 }
 

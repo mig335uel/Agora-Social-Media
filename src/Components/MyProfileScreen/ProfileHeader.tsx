@@ -1,13 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Usuario } from '@/Types/Users';
 import { supabase } from '@/lib/supbase/supabase';
-import { useProfileRefresh } from '@/app/(drawer)/(tabs)/profile/_context';
-
-
+import { useProfileRefresh } from '@/Controller/_context';
 
 
 interface ProfileHeaderProps {
@@ -26,16 +24,22 @@ export default function ProfileHeader({ user }: ProfileHeaderProps) {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Stability: extract ID to avoid dependency on the whole user object
+  const userId = useMemo(() => user?.id, [user?.id]);
+
   const fetchData = useCallback(async (isPullToRefresh = false) => {
-    if (!user?.id) return;
+    if (!userId) return;
+
+    // Use functional updates or check if mounted if necessary, 
+    // but here we just ensure we don't call it during render.
     if (isPullToRefresh) setIsRefreshing(true);
     else setLoading(true);
 
     try {
       const [postsCountRes, followersCountRes, followingCountRes] = await Promise.all([
-        supabase.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id),
-        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', user.id)
+        supabase.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', userId),
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', userId),
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId)
       ]);
 
       setStats({
@@ -49,7 +53,7 @@ export default function ProfileHeader({ user }: ProfileHeaderProps) {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [user?.id]);
+  }, [userId]);
 
   useEffect(() => {
     fetchData();
@@ -61,9 +65,9 @@ export default function ProfileHeader({ user }: ProfileHeaderProps) {
 
   const { setRefreshStats } = useProfileRefresh();
 
+  // Stability: setRefreshStats should only be called once or when refreshStats changes
   useEffect(() => {
-    // We pass the function directly since setRefreshStats in context is a wrapper
-    setRefreshStats(refreshStats);
+    setRefreshStats(() => refreshStats);
   }, [refreshStats, setRefreshStats]);
 
 
@@ -182,4 +186,3 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   }
 });
-

@@ -41,8 +41,10 @@ export async function requestNotificationPermission() {
   try {
     token = (await Notifications.getDevicePushTokenAsync()).data;
     console.log("DEBUG: Token de Firebase obtenido con éxito:", token);
-  } catch (error) {
-    console.error("DEBUG: Error al obtener el token:", error);
+  } catch (error: any) {
+    // Si falla por falta de entitlements en real device, capturamos el error para que no crashee la app
+    console.warn("DEBUG: No se pudo obtener el token de notificación (posiblemente faltan los permisos 'aps-environment' en Xcode):", error.message);
+    return null;
   }
 
   return token;

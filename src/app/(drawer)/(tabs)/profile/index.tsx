@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Post } from "@/Types/Posts";
 import { supabase } from "@/lib/supbase/supabase";
 import useAuth from "@/hooks/useAuth";
-import { useProfileRefresh } from "./_context";
+import { useProfileRefresh } from "../../../../Controller/_context";
 
 
 
@@ -32,7 +32,7 @@ export default function Profile() {
             if (postsError) throw postsError;
             setPosts(postsData || []);
 
-            if(postsData.length > 0){
+            if (postsData.length > 0) {
                 const { data: userData, error: userError } = await supabase
                     .from('users')
                     .select('*')
@@ -82,9 +82,9 @@ export default function Profile() {
                 renderItem={renderPostItem}
                 keyExtractor={(item) => item.id}
                 refreshControl={
-                    <RefreshControl 
-                        refreshing={refreshing} 
-                        onRefresh={onRefresh} 
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
                         tintColor={isDark ? '#fff' : '#000'}
                     />
                 }
