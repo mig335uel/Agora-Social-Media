@@ -12,7 +12,7 @@ export interface Post {
     reposts_count: number;
     shares_count: number;
     created_at: string;
-    user: Usuario;
+    user?: Usuario;
 }
 
 export interface likes{

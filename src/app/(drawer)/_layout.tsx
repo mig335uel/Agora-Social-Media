@@ -6,6 +6,7 @@ import { Octicons } from '@expo/vector-icons';
 export default function DrawerLayout() {
   return (
     <Drawer
+     drawerContent={(props) => <CustomDrawerContent {...props} />} 
       screenOptions={{
         headerShown: false,
         drawerType: 'slide',
@@ -13,20 +14,11 @@ export default function DrawerLayout() {
         overlayColor: 'rgba(0,0,0,0.35)',
       }}
     >
+
       <Drawer.Screen
         name="(tabs)"
         options={{
-          title: 'Inicio',
-          drawerItemStyle: { display: 'none' },
-        }}
-      />
-      <Drawer.Screen
-        name="(tabs)/profile"
-        options={{
-          title: 'Perfil',
-          drawerIcon: ({ color, size }) => (
-            <Octicons name="person" size={size} color={color} />
-          ),
+          drawerItemStyle:{display:'none'} 
          
         }}
       />

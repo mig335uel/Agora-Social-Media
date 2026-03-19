@@ -2,15 +2,12 @@ import { Tabs } from 'expo-router';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome, Octicons } from '@expo/vector-icons';
 import { Platform, StyleSheet, useColorScheme, View, Text, Button, TouchableOpacity, Pressable } from 'react-native';
 import { GlassContainer, GlassView } from 'expo-glass-effect';
-import { NativeTabs } from 'expo-router/build/native-tabs';
+import { NativeTabTrigger, NativeTabs } from 'expo-router/build/native-tabs';
 import "/global.css";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeTabsBottomAccessory } from 'expo-router/build/native-tabs/common/elements';
 import { signOut } from '@/Services/authService';
 import { BlurView } from 'expo-blur';
-
-
-
 
 
 export default function TabLayout() {
@@ -30,41 +27,49 @@ export default function TabLayout() {
       <Tabs
 
         screenOptions={{
+
           tabBarStyle: {
-            backgroundColor: isDark ? '#000' : '#fff',
+            position: 'absolute',
+            backgroundColor: isDark
+              ? 'rgba(0, 0, 0, 0.5)'
+              : 'rgba(255, 255, 255, 0.5)',
 
             shadowColor: isDark ? '#fff' : '#000',
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.2,
-            shadowRadius: 2,
             backfaceVisibility: 'hidden',
-            borderStyle: 'solid',
+            borderStyle: 'dotted',
             borderTopColor: isDark ? '#fff' : '#000',
-
+            bottom: 20,           // Margen inferior
+            left: 20,             // Margen izquierdo
+            right: 20,            // Margen derecho
+            height: 60,           // Altura fija
+            borderRadius: 30,     // Bordes muy redondeados
+            borderTopWidth: 0,
+            marginHorizontal: 10,
+            elevation: 0,         // Quitar sombra en Android
+            overflow: 'hidden',
           },
+          tabBarItemStyle: {
+            height: 60,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingTop: 12, // Push icon down to center it visually without label
+          },
+          tabBarIconStyle: {
+            justifyContent: 'center',
+            alignItems: 'center',
+          },
+
+          tabBarBackground: () => (
+            <BlurView
+              intensity={100}
+              tint={isDark ? 'dark' : 'light'}
+              blurReductionFactor={50}
+              style={StyleSheet.absoluteFill}
+            />
+          ),
 
           tabBarShowLabel: false,
           headerShown: false,
-          tabBarVisibilityAnimationConfig: {
-            hide: {
-
-              animation: 'spring',
-              config: {
-                damping: 13,
-                stiffness: 144,
-                mass: 1,
-              }
-            },
-            show: {
-              animation: 'spring',
-              config: {
-                damping: 13,
-                stiffness: 144,
-                mass: 1,
-              }
-            }
-
-          }
 
         }}
       >
@@ -79,16 +84,20 @@ export default function TabLayout() {
         <Tabs.Screen name="index" options={{
           href: null, // Ocultamos el index si vamos a usar /feed
         }} />
-       
-        
-         <Tabs.Screen name="search" options={{
+
+
+
+        <Tabs.Screen name="search" options={{
           title: "Buscar",
           tabBarIcon: ({ color, size }) => (
             <Octicons name="search" size={size} color={color} />
           ),
         }} />
         <Tabs.Screen name="profile" options={{
-          href:null
+          title: "Perfil",
+          tabBarIcon: ({ color, size }) => (
+            <Octicons name="person-fill" size={size} color={color} />
+          ),
         }} />
       </Tabs>
     );
@@ -96,7 +105,7 @@ export default function TabLayout() {
 
   return (
     <>
-      <NativeTabs backgroundColor={isDark ? '#141414' : '#fff'} 
+      <NativeTabs backgroundColor={isDark ? '#141414' : '#fff'}
 
       >
         <NativeTabs.Trigger
@@ -105,13 +114,22 @@ export default function TabLayout() {
           <NativeTabs.Trigger.Label>Inicio</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
         </NativeTabs.Trigger>
-        
-        
         <NativeTabs.Trigger
-          name="search" role="search">
-          <NativeTabs.Trigger.Label>Buscar</NativeTabs.Trigger.Label>
+          name="search">
+          <NativeTabs.Trigger.Label>Explorar</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
         </NativeTabs.Trigger>
+
+        <NativeTabs.Trigger
+          name="profile">
+          <NativeTabs.Trigger.Label>Cuenta</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon sf="person.fill" md="person" />
+        </NativeTabs.Trigger>
+
+
+
+
+
       </NativeTabs>
     </>
   );

@@ -47,7 +47,7 @@ export default function TopBarNavigation() {
         );
     }
         return (
-            <SafeAreaView style={{ flex: 1 }} className={`${isDark ? 'bg-black' : 'bg-white'}`}>
+            <SafeAreaView style={{ flex: 1 }} className={`${isDark ? 'bg-black' : 'bg-white'}`} edges={['top']}>
                 <AppBar title="Agora" />
                 <MaterialTopTabs
                     screenOptions={{

@@ -1,9 +1,13 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, useColorScheme, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, useColorScheme, Alert, TouchableNativeFeedback } from 'react-native';
 import { DrawerContentScrollView, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { BlurView } from 'expo-blur';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { signOut } from '@/Services/authService';
+import { Octicons } from '@expo/vector-icons';
+import { TouchableOpacity } from 'react-native';
+import ProfileLayout from '@/app/(drawer)/(tabs)/profile/_layout';
+import { PureNativeButton } from 'react-native-gesture-handler';
 
 function DrawerButton({ label, onPress }: { label: string; onPress: () => void }) {
   const scheme = useColorScheme();
@@ -26,7 +30,6 @@ function DrawerButton({ label, onPress }: { label: string; onPress: () => void }
 export default function CustomDrawerContent(props: DrawerContentComponentProps) {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
-
   const handleGoHome = () => {
     props.navigation.closeDrawer();
     router.push('/'); // cae en /(drawer)/(tabs) por tu estructura
@@ -60,19 +63,27 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
       </View>
 
       <View>
-        <DrawerButton label="Inicio" onPress={handleGoHome} />
-        <DrawerButton
-          label="Ajustes (placeholder)"
+        <TouchableOpacity
           onPress={() => {
+            router.push("/(tabs)/profile")
             props.navigation.closeDrawer();
-            // cuando crees la ruta, por ejemplo /(drawer)/(tabs)/settings:
-            // router.push('/settings');
           }}
-        />
-      </View>
+          
+          className='flex-row p-3 gap-3 border rounded-full px-5 shadow-current drop-shadow-sm'
 
+          style={[styles.ButtonProfile, isDark ? { borderColor: '#fff' } : { borderColor: '#000' } ]}
+        >
+          <Octicons name="person-fill" size={24} color={isDark ? '#fff' : '#000'} />
+          <Text className='font-bold text-xl' style={{ color: isDark ? '#fff' : '#000' }}>Perfil</Text>
+        </TouchableOpacity>
+
+      </View>
+      
       <View style={styles.section}>
-        <DrawerButton label="Cerrar sesión" onPress={handleSignOut} />
+          <TouchableNativeFeedback className={`border border-white rounded-full ${isDark ? 'bg-white' : 'bg-black'}`}>
+            <Text className={`font-bold text-xl ${isDark ? 'text-white' : 'text-black'}`}>Hola</Text>
+
+          </TouchableNativeFeedback>
       </View>
     </DrawerContentScrollView>
   );
@@ -111,8 +122,17 @@ const styles = StyleSheet.create({
     gap: 10,
     borderWidth: 1,
     borderRadius: 100,
-
-    justifyContent: 'center'
+  },
+  iconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  iconRowText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
   button: {
     borderRadius: 14,
@@ -123,5 +143,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
+
+  ButtonProfile: {
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
+
+  }
 });
 
