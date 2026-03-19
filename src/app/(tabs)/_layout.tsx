@@ -1,11 +1,13 @@
 import { Tabs } from 'expo-router';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome, Octicons } from '@expo/vector-icons';
-import { Platform, StyleSheet, useColorScheme, View, Text, Button, TouchableOpacity } from 'react-native';
+import { Platform, StyleSheet, useColorScheme, View, Text, Button, TouchableOpacity, Pressable } from 'react-native';
 import { GlassContainer, GlassView } from 'expo-glass-effect';
 import { NativeTabs } from 'expo-router/build/native-tabs';
 import "/global.css";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeTabsBottomAccessory } from 'expo-router/build/native-tabs/common/elements';
+import { signOut } from '@/Services/authService';
+import { BlurView } from 'expo-blur';
 
 
 
