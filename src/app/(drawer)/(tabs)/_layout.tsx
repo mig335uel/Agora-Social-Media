@@ -87,7 +87,9 @@ export default function TabLayout() {
             <Octicons name="search" size={size} color={color} />
           ),
         }} />
-        
+        <Tabs.Screen name="profile" options={{
+          href:null
+        }} />
       </Tabs>
     );
   }
@@ -103,8 +105,10 @@ export default function TabLayout() {
           <NativeTabs.Trigger.Label>Inicio</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
         </NativeTabs.Trigger>
+        
+        
         <NativeTabs.Trigger
-          name="search">
+          name="search" role="search">
           <NativeTabs.Trigger.Label>Buscar</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
         </NativeTabs.Trigger>

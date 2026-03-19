@@ -1,0 +1,35 @@
+import React from 'react';
+import { Drawer } from 'expo-router/drawer';
+import CustomDrawerContent from '@/Components/CustomDrawerContent';
+import { Octicons } from '@expo/vector-icons';
+
+export default function DrawerLayout() {
+  return (
+    <Drawer
+      screenOptions={{
+        headerShown: false,
+        drawerType: 'slide',
+        swipeEdgeWidth: 40,
+        overlayColor: 'rgba(0,0,0,0.35)',
+      }}
+    >
+      <Drawer.Screen
+        name="(tabs)"
+        options={{
+          title: 'Inicio',
+          drawerItemStyle: { display: 'none' },
+        }}
+      />
+      <Drawer.Screen
+        name="(tabs)/profile"
+        options={{
+          title: 'Perfil',
+          drawerIcon: ({ color, size }) => (
+            <Octicons name="person" size={size} color={color} />
+          ),
+         
+        }}
+      />
+    </Drawer>
+  );
+}

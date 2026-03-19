@@ -10,7 +10,11 @@ import { Stack } from 'expo-router';
 
 
 
-type TrendWithTags = Trending_topics & { hashtags: string[] };
+type TrendFromQuery = Omit<Trending_topics, 'trending_hashtags'> & {
+    trending_hashtags?: { hashtag: string }[];
+};
+
+type TrendWithTags = TrendFromQuery & { hashtags: string[] };
 
 export default function search() {
 
@@ -37,6 +41,7 @@ export default function search() {
                 .from('trending_topics')
                 .select(`
                     id,
+                    created_at,
                     topic_name,
                     category,
                     region,
@@ -57,7 +62,7 @@ export default function search() {
             }
 
             // Normalizamos la respuesta a un array plano con hashtags extraídos
-            const unified = data.map((trend: Trending_topics) => {
+            const unified: TrendWithTags[] = data.map((trend) => {
                 const nestedHashtags = (trend as any).trending_hashtags || [];
                 return {
                     ...trend,

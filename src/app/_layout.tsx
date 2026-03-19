@@ -27,12 +27,12 @@ export default function RootLayout() {
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === '(tabs)';
+    const inAuthGroup = segments[0] === '(drawer)';
 
     if (!session && inAuthGroup) {
       // Si no hay sesión y quiere entrar a la red social -> Al Login
       router.replace('/login');
-    } else if (session && segments[0] !== '(tabs)') {
+    } else if (session && segments[0] !== '(drawer)') {
       // Si hay sesión y está en login -> Al Muro Principal
       router.replace('/');
     }
@@ -49,7 +49,7 @@ export default function RootLayout() {
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: isDark ? '#141414' : '#fff' } }}>
       <Stack.Screen name="login"/>
-      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="(drawer)" />
     </Stack>
   );
 }
