@@ -3,8 +3,7 @@ import { supabase } from "../lib/supbase/supabase";
 export interface RankedPost {
   id: string;
   content: string;
-  media_url: string | null;
-  media_type: string;
+  media?: { media_url: string }[];
   created_at: string;
   likes_count: number;
   reposts_count: number;

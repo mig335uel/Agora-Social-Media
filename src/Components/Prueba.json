@@ -8,8 +8,11 @@
             "shares_count": 800000,
             "reposts_count": 800000,
             "parent_post_id": null,
-            "media_url": "https://s.rfi.fr/media/display/3c614bdc-1f1e-11f1-a199-005056bfb2b6/w:1024/p:16x9/Part-GTY-2266032688-1-1-2.jpg",
-            "media_type": "image",
+            "media": [
+                {
+                    "media_url": "https://s.rfi.fr/media/display/3c614bdc-1f1e-11f1-a199-005056bfb2b6/w:1024/p:16x9/Part-GTY-2266032688-1-1-2.jpg"
+                }
+            ],
             "created_at": "2022-12-18T20:00:00Z",
             "user": {
                 "id": "messi-1",
@@ -33,8 +36,11 @@
             "shares_count": 300000,
             "reposts_count": 300000,
             "parent_post_id": null,
-            "media_url": "https://unavatar.io/twitter/taylorswift13",
-            "media_type": "image",
+            "media": [
+                {
+                    "media_url": "https://unavatar.io/twitter/taylorswift13"
+                }
+            ],
             "created_at": "2022-12-18T20:00:00Z",
             "user": {
                 "id": "taylor-2",
@@ -58,8 +64,11 @@
             "shares_count": 500000,
             "reposts_count": 500000,
             "parent_post_id": null,
-            "media_url": "https://e01-elmundo.uecdn.es/assets/multimedia/imagenes/2021/06/24/16245558914634.jpg",
-            "media_type": "image",
+            "media": [
+                {
+                    "media_url": "https://e01-elmundo.uecdn.es/assets/multimedia/imagenes/2021/06/24/16245558914634.jpg"
+                }
+            ],
             "created_at": "2022-12-18T20:00:00Z",
             "user": {
                 "id": "cr7-3",
@@ -82,8 +91,7 @@
             "parent_post_id": null,
             "reposts_count": 12000,
             "replies_count": 15000,
-            "media_url": null,
-            "media_type": null,
+            "media": [],
             "shares_count": 12000,
             "created_at": "2022-12-18T20:00:00Z",
             "user": {
@@ -104,8 +112,11 @@
             "id": "5",
             "content": "MOTOMAMI tour ha sido lo mejor de mi vida!! Gracias a todos por el amor. 🦋🏍️ #Rosalia #Motomami",
             "parent_post_id": null,
-            "media_url": "https://unavatar.io/twitter/rosalia",
-            "media_type": "image",
+            "media": [
+                {
+                    "media_url": "https://unavatar.io/twitter/rosalia"
+                }
+            ],
             "likes_count": 950000,
             "replies_count": 25000,
             "shares_count": 80000,

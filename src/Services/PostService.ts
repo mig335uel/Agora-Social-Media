@@ -3,7 +3,7 @@ import { supabase } from "../lib/supbase/supabase";
 /**
  * Servicio para gestionar la creación de publicaciones y temas relacionados.
  */
-export async function createPost(content: string, mediaUrl: string | null = null, mediaType: string = 'image') {
+export async function createPost(content: string, mediaUrls: string[] = []) {
   try {
     // 1. Obtener el usuario autenticado
     const { data: { user } } = await supabase.auth.getUser();
@@ -15,14 +15,28 @@ export async function createPost(content: string, mediaUrl: string | null = null
       .insert({
         user_id: user.id,
         content: content,
-        media_url: mediaUrl,
-        media_type: mediaType,
         parent_post_id: null, // De momento no soportamos hilos
       })
       .select()
       .single();
 
     if (postError) throw postError;
+
+    // 2.1 Insertar media si existe
+    if (mediaUrls.length > 0) {
+      const mediaInserts = mediaUrls.map(url => ({
+        post_id: post.id,
+        media_url: url
+      }));
+
+      const { error: mediaError } = await supabase
+        .from('media_feature')
+        .insert(mediaInserts);
+      
+      if (mediaError) {
+        console.error("Error guardando media:", mediaError.message);
+      }
+    }
 
     // 3. Extraer hashtags del contenido HTML
     // Buscamos el patrón #texto dentro del contenido

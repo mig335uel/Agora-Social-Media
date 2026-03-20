@@ -5,14 +5,19 @@ export interface Post {
     
     content: string;
     parent_post_id?: string | null;
-    media_url: string | null;
-    media_type: string | null;
+
     likes_count: number;
     replies_count: number;
     reposts_count: number;
     shares_count: number;
     created_at: string;
     user?: Usuario;
+    media?: media_feature[];
+}
+
+export interface media_feature{
+    media_url: string | null;
+    post_id: string;
 }
 
 export interface likes{

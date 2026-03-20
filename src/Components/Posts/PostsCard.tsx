@@ -2,6 +2,7 @@ import { Post } from "@/Types/Posts";
 import { GlassContainer } from "expo-glass-effect";
 import { FlatList, View, Text, StyleSheet, Image, useColorScheme, Platform, TouchableOpacity } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
+import MediaGrid from "./MediaGrid";
 
 // ─── Utilidad: formatea números grandes (56000000 → 56M) ────────────────────
 const formatCount = (n: number): string => {
@@ -97,14 +98,8 @@ export default function PostCard({ posts, ListHeaderComponent }: { posts: Post[]
                     {renderStyledContent(item.content)}
                 </Text>
 
-                {/* ── Imagen adjunta ── */}
-                {item.media_url && (
-                    <Image
-                        source={{ uri: item.media_url }}
-                        style={styles.media}
-                        resizeMode="cover"
-                    />
-                )}
+                {/* ── Grilla de imágenes ── */}
+                {item.media && <MediaGrid media={item.media} />}
 
                 {/* ── Separador ── */}
                 <View style={[styles.separator, { backgroundColor: separatorColor }]} />

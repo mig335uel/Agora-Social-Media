@@ -32,17 +32,16 @@ export default function PostDetail() {
                 
                 if (postError) throw postError;
 
-                // 2. Obtener el usuario del post (si no es el logueado)
-                if (user?.id === postData.user_id) {
-                    postData.user = user;
-                } else {
-                    const { data: userData } = await supabase
-                        .from('users')
-                        .select('*')
-                        .eq('id', postData.user_id)
-                        .single();
-                    postData.user = userData;
-                }
+                // 2. Obtener el usuario y media del post
+                const [userRes, mediaRes] = await Promise.all([
+                  user?.id === postData.user_id 
+                    ? Promise.resolve({ data: user }) 
+                    : supabase.from('users').select('*').eq('id', postData.user_id).single(),
+                  supabase.from('media_feature').select('*').eq('post_id', id)
+                ]);
+
+                postData.user = userRes.data;
+                postData.media = mediaRes.data || [];
                 
                 setPrincipalPost(postData);
 
@@ -56,12 +55,11 @@ export default function PostDetail() {
                 if (repliesError) throw repliesError;
 
                 const repliesWithUsers = await Promise.all((replies || []).map(async (reply) => {
-                    const { data: rUser } = await supabase
-                        .from('users')
-                        .select('*')
-                        .eq('id', reply.user_id)
-                        .single();
-                    return { ...reply, user: rUser };
+                    const [rUser, rMedia] = await Promise.all([
+                      supabase.from('users').select('*').eq('id', reply.user_id).single(),
+                      supabase.from('media_feature').select('*').eq('post_id', reply.id)
+                    ]);
+                    return { ...reply, user: rUser.data, media: rMedia.data || [] };
                 }));
 
                 setReplyPosts(repliesWithUsers);

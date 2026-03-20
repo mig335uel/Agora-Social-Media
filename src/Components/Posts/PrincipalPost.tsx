@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Post } from '@/Types/Posts';
+import MediaGrid from './MediaGrid';
 
 interface PrincipalPostProps {
   post: Post;
@@ -80,10 +81,8 @@ export default function PrincipalPost({ post }: PrincipalPostProps) {
           {renderStyledContent(post.content)}
         </Text>
         
-        {post.media_url && (
-          <View style={styles.mediaContainer}>
-            <Image source={{ uri: post.media_url }} style={styles.media} resizeMode="cover" />
-          </View>
+        {post.media && post.media.length > 0 && (
+          <MediaGrid media={post.media} />
         )}
       </View>
 

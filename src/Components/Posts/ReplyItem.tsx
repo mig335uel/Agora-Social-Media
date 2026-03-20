@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, useColorScheme, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Post } from '@/Types/Posts';
+import MediaGrid from './MediaGrid';
 
 // Utilidades (reutilizadas de PostCard para consistencia)
 const formatCount = (n: number): string => {
@@ -80,8 +81,8 @@ export default function ReplyItem({ post, isLast = false }: ReplyItemProps) {
           {renderStyledContent(post.content)}
         </Text>
 
-        {post.media_url && (
-          <Image source={{ uri: post.media_url }} style={styles.media} resizeMode="cover" />
+        {post.media && post.media.length > 0 && (
+          <MediaGrid media={post.media} />
         )}
 
         {/* Acciones simplificadas */}
