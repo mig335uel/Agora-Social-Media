@@ -20,7 +20,7 @@ const timeAgo = (dateStr: string): string => {
     return `${Math.floor(hrs / 24)}d`;
 };
 
-export default function PostCard({ posts }: { posts: Post[] }) {
+export default function PostCard({ posts, ListHeaderComponent }: { posts: Post[], ListHeaderComponent?: React.ReactElement }) {
     const scheme = useColorScheme();
     const isDark = scheme === 'dark';
 
@@ -68,7 +68,7 @@ export default function PostCard({ posts }: { posts: Post[] }) {
                     {/* Avatar con fallback de inicial */}
                     <View style={styles.avatarWrapper}>
                         <Image
-                            source={{ uri: item.user.profile_picture_url }}
+                            source={{ uri: item.user?.profile_picture_url }}
                             style={styles.avatar}
                         />
                     </View>
@@ -77,9 +77,9 @@ export default function PostCard({ posts }: { posts: Post[] }) {
                     <View style={styles.headerInfo}>
                         <View style={styles.headerRow}>
                             <Text style={[styles.displayName, { color: textColor }]} numberOfLines={1}>
-                                {item.user.display_name}
+                                {item.user?.display_name}
                             </Text>
-                            {item.user.is_verified && (
+                            {item.user?.is_verified && (
                                 <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" />
                             )}
                             <Text style={[styles.timeAgo, { color: subColor }]}>
@@ -87,7 +87,7 @@ export default function PostCard({ posts }: { posts: Post[] }) {
                             </Text>
                         </View>
                         <Text style={[styles.username, { color: subColor }]}>
-                            @{item.user.username}
+                            @{item.user?.username}
                         </Text>
                     </View>
                 </View>
@@ -128,6 +128,7 @@ export default function PostCard({ posts }: { posts: Post[] }) {
         contentContainerStyle: { paddingVertical: 12, paddingHorizontal: 12, paddingBottom: ((Platform.OS === 'ios') ? 0: 80) },
         showsVerticalScrollIndicator: false,
         ItemSeparatorComponent: () => <View style={{ height: 8 }} />,
+        ListHeaderComponent: ListHeaderComponent,
     };
 
     if (Platform.OS === 'ios') {
