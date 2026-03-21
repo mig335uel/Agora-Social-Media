@@ -80,6 +80,12 @@ export default function TabLayout() {
           href: null, // Ocultamos el index si vamos a usar /feed
         }} />
 
+        <Tabs.Screen name="newpost" options={{
+          title: "Nuevo Post",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="add-circle" size={size} color={color} />
+          ),
+        }} />
 
 
         <Tabs.Screen name="search" options={{
