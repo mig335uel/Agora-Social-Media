@@ -30,28 +30,38 @@ export default function Follows() {
 
             // 2. Traer los posts de esas personas
             if (followingIds.length > 0) {
+
                 const { data: posts, error: postsError } = await supabase
                     .from('posts')
-                    .select('*, profiles(*)') // O 'users(*)' según se llame tu tabla de perfiles
+                    .select(`
+                            *,
+                            users:posts_user_id_fkey!inner (*)
+                    `)
                     .in('user_id', followingIds)
                     .order('created_at', { ascending: false });
 
-        
+                console.log(posts);
 
                 if (postsError) {
                     console.error("Error fetching followed posts:", postsError);
                 } else {
-                    setFollowingPost(posts);
+                    const formattedPosts = posts.map(p => ({
+                        ...p,
+                        user: p.users
+                    }));
+
+                    setFollowingPost(formattedPosts);
                     // Aquí setearías el estado de tus posts: setFollowedPosts(posts);
                 }
             }
-        };
+        }
+
 
         fetchFollowedPosts();
     }, [user]);
 
     return (
-        <View className={`flex-1 justify-center items-center ${isDark ? 'bg-black': 'bg-white'}`}>
+        <View className={`flex-1 justify-center items-center ${isDark ? 'bg-black' : 'bg-white'}`}>
             {followingPost.length > 0 ? (
                 <PostCard posts={followingPost} />
             ) : (

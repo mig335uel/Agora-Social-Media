@@ -9,6 +9,7 @@ import { EditorDeTexto } from '../EditorDeTexto';
 import { ProcessedImage } from '@/Services/ImageService';
 import { createPost, getTrendingTopics, toggleLike, repostPost, recordShare } from '@/Services/PostService';
 import { searchUsers } from '@/Services/UserService';
+import { router } from 'expo-router';
 
 interface PrincipalPostProps {
   post: Post;
@@ -18,8 +19,8 @@ interface PrincipalPostProps {
 // Utilidades (puedes moverlas a un utils.ts después)
 const formatFullDate = (dateStr: string) => {
   const date = new Date(dateStr);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' · ' + 
-         date.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' · ' +
+    date.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
 export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
@@ -52,7 +53,7 @@ export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
   useEffect(() => {
     setLocalPost(post);
   }, [post]);
- 
+
   const handlePublishReply = async (content: string, images: ProcessedImage[]) => {
     try {
       await createPost(content, images, post.id);
@@ -118,7 +119,10 @@ export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
   return (
     <View style={styles.container}>
       {/* Header: Autor con degradado premium */}
+
+
       <View style={styles.header}>
+
         <View style={styles.avatarContainer}>
           <LinearGradient
             colors={['#3b82f6', '#fbbf24']}
@@ -132,25 +136,30 @@ export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
             />
           </LinearGradient>
         </View>
-        <View style={styles.headerInfo}>
+        <TouchableOpacity 
+          style={styles.headerInfo} 
+          onPress={() => router.push(`/profile/${postToRender.user?.id}`)}
+          activeOpacity={0.7}
+        >
           <View style={styles.nameRow}>
             <Text style={[styles.displayName, { color: textColor }]}>
               {postToRender.user?.display_name || (postToRender as any).display_name} {(postToRender.user?.is_verified || (postToRender as any).is_verified) === true ? <Ionicons name="checkmark-circle" size={16} color="#3b82f6" /> : null}
             </Text>
             <Text style={[styles.username, { color: subColor }]}>@{postToRender.user?.username || (postToRender as any).username}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.moreBtn}>
           <Ionicons name="ellipsis-horizontal" size={20} color={subColor} />
         </TouchableOpacity>
       </View>
+
 
       {/* Cuerpo del Post */}
       <View style={styles.body}>
         <Text style={[styles.content, { color: textColor }]}>
           {renderStyledContent(postToRender.content)}
         </Text>
-        
+
         {postToRender.media && postToRender.media.length > 0 && (
           <MediaGrid media={postToRender.media} />
         )}
@@ -171,6 +180,11 @@ export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
           style={styles.statsBlur}
         >
           <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: textColor }]}>{postToRender.replies_count || 0}</Text>
+            <Text style={[styles.statLabel, { color: subColor }]}>COMENTARIOS</Text>
+          </View>
+          <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
+          <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: textColor }]}>{postToRender.reposts_count}</Text>
             <Text style={[styles.statLabel, { color: subColor }]}>REPOSTS</Text>
           </View>
@@ -189,25 +203,25 @@ export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
 
       {/* Botones de Acción Globales */}
       <View style={styles.actionsContainer}>
-        <ActionIcon 
-            name={postToRender.is_replied ? "chatbubble" : "chatbubble-outline"} 
-            color={postToRender.is_replied ? (isDark ? '#3b82f6' : '#1d4ed8') : subColor} 
-            onPress={() => setIsReplyModalVisible(true)} 
+        <ActionIcon
+          name={postToRender.is_replied ? "chatbubble" : "chatbubble-outline"}
+          color={postToRender.is_replied ? (isDark ? '#3b82f6' : '#1d4ed8') : subColor}
+          onPress={() => setIsReplyModalVisible(true)}
         />
-        <ActionIcon 
-            name={postToRender.is_reposted ? "repeat" : "repeat-outline"} 
-            color={postToRender.is_reposted ? "#00BA7C" : subColor} 
-            onPress={handleRepost} 
+        <ActionIcon
+          name={postToRender.is_reposted ? "repeat" : "repeat-outline"}
+          color={postToRender.is_reposted ? "#00BA7C" : subColor}
+          onPress={handleRepost}
         />
-        <ActionIcon 
-            name={postToRender.is_liked ? "heart" : "heart-outline"} 
-            color={postToRender.is_liked ? "#F91880" : subColor} 
-            onPress={handleLike} 
+        <ActionIcon
+          name={postToRender.is_liked ? "heart" : "heart-outline"}
+          color={postToRender.is_liked ? "#F91880" : subColor}
+          onPress={handleLike}
         />
         <ActionIcon name="bookmark-outline" color={subColor} />
         <ActionIcon name="share-outline" color={subColor} onPress={handleShare} />
       </View>
- 
+
       {/* Modal de Respuesta (Estilo Bottom Sheet) */}
       <Modal
         visible={isReplyModalVisible}
@@ -217,12 +231,12 @@ export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
       >
         <View style={styles.modalOverlay}>
           {/* Backdrop para cerrar al tocar fuera */}
-          <TouchableOpacity 
-            style={styles.modalBackdrop} 
-            activeOpacity={1} 
-            onPress={() => setIsReplyModalVisible(false)} 
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setIsReplyModalVisible(false)}
           />
-          
+
           <View style={[styles.modalContent, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
             {/* Handle visual típico de bottom sheet */}
             <View style={styles.modalHandle} />
@@ -235,10 +249,10 @@ export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
                 <Text style={{ fontWeight: 'bold', fontSize: 16, color: textColor }}>Responder</Text>
               </View>
             </View>
-            
+
             <View style={{ flex: 1 }}>
-              <EditorDeTexto 
-                value={replyContent} 
+              <EditorDeTexto
+                value={replyContent}
                 onChange={setReplyContent}
                 isDark={isDark}
                 placeholder={`Responder a @${postToRender.user?.username || (postToRender as any).username}...`}
@@ -287,10 +301,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  headerInfo: {
-    flex: 1,
-    flexDirection: 'row'
-  },
+   headerInfo: {
+     flex: 1,
+     justifyContent: 'center',
+   },
   nameRow: {
     flexDirection: 'column',
     alignItems: 'flex-start',

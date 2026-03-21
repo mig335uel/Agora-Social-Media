@@ -31,44 +31,54 @@ Se han creado funciones en PL/pgSQL para centralizar la lógica de negocio en la
 
 ---
 
-## 3. Frontend: Actualizaciones Optimistas (Fast UI)
+## 3. Frontend: Refactorización de Componentes y Fast UI
 
-Para eliminar la espera y las recargas completas de pantalla, se implementó un sistema de estado local en los componentes:
+Para mejorar la mantenibilidad y la experiencia de usuario (Zero-Latency UI), se ha reestructurado la forma en que se renderizan las publicaciones:
 
-### Componentes: `PostsCard.tsx`, `PrincipalPost.tsx`, `ReplyItem.tsx`
-- **Estado Local**: Se añadió `const [localPost, setLocalPost] = useState(post)`.
-- **Acción Instantánea**: Al pulsar Like o Repost, el componente actualiza su propio estado **antes** de enviar la petición al servidor.
-  - El corazón se vuelve rojo al instante.
-  - El contador sube/baja de inmediato.
-- **Sincronización Silenciosa**: La llamada al servicio ocurre en segundo plano. Ya no se llama a `onRefresh()` (que recargaba toda la lista), haciendo que la navegación sea fluida.
+### 3.1. División en `PostCard` y `PostsCard`
+- **`PostCard.tsx` (Nuevo)**: Se extrajo la lógica de una única publicación a este componente atómico. Esto permite que cada post maneje su propio estado interno y modales de respuesta de forma aislada.
+- **`PostsCard.tsx` (Modificado)**: Ahora actúa únicamente como un contenedor de lista (FlatList) que utiliza el nuevo `PostCard`. Esto soluciona errores de tipado en TypeScript y mejora el rendimiento al no duplicar lógica de renderizado.
 
----
-
-## 4. Resumen de Cambios Pendientes (Git Status)
-
-Estos son los archivos modificados que están listos para ser añadidos al repositorio (`git add`):
-
-### Funcionalidad Core
-- **`src/Services/PostService.ts`**: Cambio a arquitectura basada en RPC.
-- **`src/Services/FeedService.ts`**: Optimización de carga de usuarios y media.
-
-### Interfaz de Usuario (Optimistic UI)
-- **`src/Components/Posts/PostsCard.tsx`**: Lista principal con feedback instantáneo.
-- **`src/Components/Posts/PrincipalPost.tsx`**: Vista detalle con feedback instantáneo.
-- **`src/Components/Posts/ReplyItem.tsx`**: Comentarios con feedback instantáneo.
-
-### Modelos y Rutas
-- **`src/Types/Posts.ts`**: Actualización de interfaces para soportar objetos de usuario completos.
-- **`src/app/(drawer)/post/[id].tsx`**: Lógica de navegación y refresco del detalle.
-- **`src/app/(drawer)/_layout.tsx`** y **`src/app/(drawer)/(tabs)/profile/*`**: Ajustes de diseño y navegación.
-
-### Archivos SQL (Nuevos)
-- **`src/Sql/interactions_rpc.sql`**: **¡CRÍTICO!** Debe ejecutarse en Supabase antes de subir el código.
-- **`src/Sql/fix_comments_count.sql`**: Corrección para el bug de conteo de comentarios.
+### 3.2. Actualizaciones Optimistas e Interacciones
+- **Estado Local**: Se añadió `const [localPost, setLocalPost] = useState(post)` en los componentes de detalle.
+- **Acción Instantánea**: Al pulsar Like o Repost, el componente actualiza su propio estado **antes** de confirmar con el servidor.
+- **Contador de Comentarios**: Se ha habilitado la visualización y actualización instantánea del conteo de respuestas (`replies_count`) tras publicar un comentario.
 
 ---
 
-## Próximos Pasos Sugeridos
-1. Ejecutar `git add .` para preparar todos los archivos.
-2. Ejecutar `git commit -m "feat: implement optimistic updates and RPC interactions for likes/reposts"`
-3. Ejecutar `git push`.
+## 4. Perfil Dinámico y Mejoras de Navegación
+
+### 4.1. Perfil de Otros Usuarios (`/perfil/[id]`)
+- **Adaptación de `ProfileHeader.tsx`**: Ahora detecta automáticamente si el usuario que se está visualizando es el usuario autenticado.
+- **Botón Dinámico**: Muestra "Editar Perfil" si eres tú, o "Seguir/Dejar de seguir" si es otro usuario.
+- **Sincronización de Estadísticas**: Se integró con `ProfileRefreshContext` para que los números de seguidores/seguidos se actualicen sin refrescar la página completa tras un cambio.
+
+### 4.2. Correcciones en la AppBar de Perfil
+- **Navegación Intuitiva**: Cuando visitas el perfil de otra persona, el icono de ajustes (tuerca) se sustituye por una **flecha de retroceso** (`chevron-back`) que permite volver atrás fácilmente.
+- **Seguridad**: Se oculta el botón de "Cerrar sesión" cuando no estás en tu propio perfil.
+
+---
+
+## 5. Correcciones Técnicas (Bugs Solucionados)
+
+- **Creación de Respuestas**: Se corrigió un fallo donde el contenido y las imágenes no se pasaban correctamente desde el editor al servicio de creación de posts.
+- **Navegación al Perfil**: Se añadieron enlaces (`TouchableOpacity`) en las fotos de perfil y nombres de usuario dentro de los feeds para permitir navegar a los perfiles de otros usuarios.
+- **Layout de Cabecera**: Se ajustó el estilo en `PrincipalPost.tsx` para que el botón de "tres puntos" (opciones) se mantenga alineado a la derecha cuando el nombre del autor ocupa espacio.
+- **Consulta de Seguidores**: Se arregló un error de sintaxis en el servicio de Supabase para el feed de seguidos (`follows.tsx`), permitiendo la carga correcta de posts de usuarios seguidos.
+
+---
+
+## Resumen de Archivos Clave Modificados
+
+- **Componentes**: `PostCard.tsx`, `PostsCard.tsx`, `PrincipalPost.tsx`, `ReplyItem.tsx`, `AppBar.tsx`, `ProfileHeader.tsx`.
+- **Servicios**: `PostService.ts`, `FeedService.ts`, `UserService.ts`.
+- **Pantallas**: `perfil/[id].tsx`, `(tabs)/profile/*`, `post/[id].tsx`, `(tabs)/feed/follows.tsx`.
+
+---
+
+## Próximos Pasos Recomendados
+
+1. **Despliegue**: Asegurarse de ejecutar los scripts SQL (`src/Sql/*.sql`) en Supabase para tener las funciones RPC listas.
+2. **Commit Final**: `git add . && git commit -m "refactor: component structure, profile navigation, and optimistic UI fixes"`
+3. **Push**: `git push`
+

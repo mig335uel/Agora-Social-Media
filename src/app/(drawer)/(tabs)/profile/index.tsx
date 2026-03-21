@@ -80,7 +80,7 @@ export default function Profile() {
     const HeaderComponent = () => (
         <View style={{ backgroundColor: isDark ? '#000' : '#fff' }}>
             <ProfileAppBar user={user || undefined} />
-            <ProfileHeader user={user || undefined} />
+            <ProfileHeader user={user || undefined} isMe={true} />
         </View>
     );
 

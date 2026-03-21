@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, useColorScheme, Platform } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, useColorScheme, Platform, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -8,14 +8,23 @@ import { supabase } from '@/lib/supbase/supabase';
 import { useProfileRefresh } from '@/Controller/_context';
 
 
+import { toggleFollow } from '@/Services/UserService';
+import useAuth from '@/hooks/useAuth';
+
 interface ProfileHeaderProps {
   user?: Usuario;
-
+  isMe?: boolean;
+  isFollowing?: boolean;
+  onFollowChange?: (following: boolean) => void;
 }
 
-export default function ProfileHeader({ user }: ProfileHeaderProps) {
+export default function ProfileHeader({ user, isMe, isFollowing, onFollowChange }: ProfileHeaderProps) {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
+  const currentUser = useAuth();
+  const userId = useMemo(() => user?.id, [user?.id]);
+  const effectiveIsMe = isMe ?? (currentUser?.id === userId);
+
   const [stats, setStats] = useState({
     posts: 0,
     followers: 0,
@@ -23,15 +32,13 @@ export default function ProfileHeader({ user }: ProfileHeaderProps) {
   });
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
-  // Stability: extract ID to avoid dependency on the whole user object
-  const userId = useMemo(() => user?.id, [user?.id]);
+
 
   const fetchData = useCallback(async (isPullToRefresh = false) => {
     if (!userId) return;
 
-    // Use functional updates or check if mounted if necessary, 
-    // but here we just ensure we don't call it during render.
     if (isPullToRefresh) setIsRefreshing(true);
     else setLoading(true);
 
@@ -58,6 +65,26 @@ export default function ProfileHeader({ user }: ProfileHeaderProps) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleToggleFollow = async () => {
+    if (!currentUser || !userId || effectiveIsMe || followLoading) return;
+
+    setFollowLoading(true);
+    try {
+      const nowFollowing = await toggleFollow(currentUser.id, userId);
+      if (onFollowChange) onFollowChange(nowFollowing);
+      
+      // Update local followers count optionally
+      setStats(prev => ({
+        ...prev,
+        followers: prev.followers + (nowFollowing ? 1 : -1)
+      }));
+    } catch (error) {
+      console.error("Error toggling follow:", error);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const refreshStats = useCallback(async () => {
     await fetchData(true);
@@ -125,19 +152,53 @@ export default function ProfileHeader({ user }: ProfileHeaderProps) {
 
         {/* Action Buttons - Floating Style */}
         <View className="flex-row gap-4 mt-6">
-          <TouchableOpacity
-            className="flex-row items-center gap-2 px-6 py-3 bg-black dark:bg-white rounded-2xl"
-            activeOpacity={0.8}
-          >
-            <Ionicons name="create-outline" size={18} color={isDark ? '#000' : '#fff'} />
-            <Text className="text-white dark:text-black font-bold">editar perfil</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className="p-3 bg-gray-100 dark:bg-gray-800 rounded-2xl"
-            activeOpacity={0.8}
-          >
-            <Ionicons name="settings-outline" size={20} color={isDark ? '#fff' : '#000'} />
-          </TouchableOpacity>
+          {effectiveIsMe ? (
+            <>
+              <TouchableOpacity
+                className="flex-row items-center gap-2 px-6 py-3 bg-black dark:bg-white rounded-2xl"
+                activeOpacity={0.8}
+              >
+                <Ionicons name="create-outline" size={18} color={isDark ? '#000' : '#fff'} />
+                <Text className="text-white dark:text-black font-bold">editar perfil</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="p-3 bg-gray-100 dark:bg-gray-800 rounded-2xl"
+                activeOpacity={0.8}
+              >
+                <Ionicons name="settings-outline" size={20} color={isDark ? '#fff' : '#000'} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                className={`flex-row items-center gap-2 px-10 py-3 rounded-2xl ${isFollowing ? 'bg-gray-200 dark:bg-gray-800' : 'bg-black dark:bg-white'}`}
+                activeOpacity={0.8}
+                onPress={handleToggleFollow}
+                disabled={followLoading}
+              >
+                {followLoading ? (
+                  <ActivityIndicator size="small" color={isFollowing ? (isDark ? '#fff' : '#000') : (isDark ? '#000' : '#fff')} />
+                ) : (
+                  <>
+                    <Ionicons 
+                      name={isFollowing ? "person-remove-outline" : "person-add-outline"} 
+                      size={18} 
+                      color={isFollowing ? (isDark ? '#fff' : '#000') : (isDark ? '#000' : '#fff')} 
+                    />
+                    <Text className={`font-bold ${isFollowing ? 'text-black dark:text-white' : 'text-white dark:text-black'}`}>
+                      {isFollowing ? 'dejar de seguir' : 'seguir'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="p-3 bg-gray-100 dark:bg-gray-800 rounded-2xl"
+                activeOpacity={0.8}
+              >
+                <Ionicons name="mail-outline" size={20} color={isDark ? '#fff' : '#000'} />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         {/* Stats Section - Card Layout with Blur */}

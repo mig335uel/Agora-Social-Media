@@ -21,8 +21,8 @@ export default function ProfileLayout() {
             <View style={{ backgroundColor: isDark ? '#000' : '#fff' }}>
                 <View>
 
-                    <ProfileAppBar user={user || undefined} />
-                    <ProfileHeader user={user || undefined} />
+                    <ProfileAppBar user={user || undefined} isMe={true} />
+                    <ProfileHeader user={user || undefined} isMe={true} />
                 </View>
             </View>
         );

@@ -22,3 +22,74 @@ export async function searchUsers(query: string): Promise<Usuario[]> {
     return [];
   }
 }
+/**
+ * Cambia el estado de seguimiento entre dos usuarios.
+ * @param followerId ID del usuario que sigue
+ * @param followingId ID del usuario a seguir
+ * @returns boolean indicando si ahora lo sigue (true) o no (false)
+ */
+export async function toggleFollow(followerId: string, followingId: string): Promise<boolean> {
+  if (followerId === followingId) return false;
+
+  try {
+    // Verificar si ya lo sigue - Usamos select sin .single() para evitar errores si no existe
+    const { data: existing, error: checkError } = await supabase
+      .from('follows')
+      .select('*')
+      .eq('follower_id', followerId)
+      .eq('following_id', followingId);
+
+    if (checkError) throw checkError;
+
+    if (existing && existing.length > 0) {
+      // Dejar de seguir - Borramos todas las posibles duplas (limpieza por si acaso)
+      const { error: deleteError } = await supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', followerId)
+        .eq('following_id', followingId);
+      
+      if (deleteError) throw deleteError;
+      return false;
+    } else {
+      // Seguir
+      const { error: insertError } = await supabase
+        .from('follows')
+        .insert({ 
+          follower_id: followerId, 
+          following_id: followingId 
+        });
+      
+      // Si por una race condition ya se insertó, lo tratamos como "éxito" (ya lo sigue)
+      if (insertError) {
+        if (insertError.code === '23505') return true;
+        throw insertError;
+      }
+      return true;
+    }
+  } catch (error) {
+    console.error("Error en toggleFollow:", error);
+    throw error;
+  }
+}
+
+/**
+ * Verifica si un usuario sigue a otro.
+ */
+export async function checkFollowStatus(followerId: string, followingId: string): Promise<boolean> {
+  if (!followerId || !followingId || followerId === followingId) return false;
+
+  try {
+    const { data, error } = await supabase
+      .from('follows')
+      .select('id')
+      .eq('follower_id', followerId)
+      .eq('following_id', followingId);
+
+    if (error) throw error;
+    return data && data.length > 0;
+  } catch (error) {
+    console.error("Error en checkFollowStatus:", error);
+    return false;
+  }
+}
