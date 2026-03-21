@@ -4,6 +4,7 @@ import { supabase } from '../lib/supbase/supabase';
 import { View, ActivityIndicator, Appearance } from 'react-native';
 import { useColorScheme } from 'nativewind';
 import { useState } from 'react';
+import { StatusBar } from 'expo-status-bar';
 import { Session } from '@supabase/supabase-js';
 import "../../global.css";
 export default function RootLayout() {
@@ -15,21 +16,9 @@ export default function RootLayout() {
   const isDark = colorScheme === 'dark';
 
   useEffect(() => {
-    // Tema inicial al abrir la app
-    const colorTheme = Appearance.getColorScheme();
-    if (colorTheme) {
-      setColorScheme(colorTheme as "light" | "dark" | "system");
-    }
-
-    // Escuchador en tiempo real (CRÍTICO para Android)
-    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      if (colorScheme) {
-        setColorScheme(colorScheme as "light" | "dark" | "system");
-      }
-    });
-
-    // Limpieza del escuchador cuando se desmonta
-    return () => subscription.remove();
+    // 2. Le decimos a NativeWind que siga fielmente al sistema.
+    // Al pasarle 'system', él mismo gestiona los listeners nativos sin bloquearse.
+    setColorScheme('system');
   }, [setColorScheme]);
   useEffect(() => {
     // Escuchar cambios de sesión en tiempo real
@@ -66,9 +55,12 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: isDark ? '#141414' : '#fff' } }}>
-      <Stack.Screen name="login" />
-      <Stack.Screen name="(drawer)" />
-    </Stack>
+    <>
+      <StatusBar style={isDark ? "light" : "dark"} />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: isDark ? '#141414' : '#fff' } }}>
+        <Stack.Screen name="login" />
+        <Stack.Screen name="(drawer)" />
+      </Stack>
+    </>
   );
 }
