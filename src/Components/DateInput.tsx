@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Platform, useColorScheme, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, StyleSheet } from 'react-native';
+import { useColorScheme } from 'nativewind';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -10,8 +11,8 @@ interface Props {
 
 export default function BirthDateSelector({ value, onChange }: Props) {
   const [show, setShow] = useState(false);
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
   
   // Convertimos el string que viene del estado a objeto Date para el picker
   const dateValue = value ? new Date(value) : new Date();

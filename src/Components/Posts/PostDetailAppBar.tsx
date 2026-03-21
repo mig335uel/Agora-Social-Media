@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Image } from 'react-native';
+import { useColorScheme } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
@@ -10,8 +11,8 @@ interface PostDetailAppBarProps {
 
 export default function PostDetailAppBar({ title = "Publicación", showBack = true }: PostDetailAppBarProps) {
   const router = useRouter();
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   const textColor = isDark ? '#ffffff' : '#000000';
   const bgColor = isDark ? '#000000' : '#ffffff';

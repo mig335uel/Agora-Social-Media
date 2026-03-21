@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, StyleSheet, useColorScheme, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ActivityIndicator } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Slot, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,7 +16,8 @@ import { checkFollowStatus } from "@/Services/UserService";
 export default function PerfilLayout() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const currentUser = useAuth();
-    const isDark = useColorScheme() === 'dark';
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === 'dark';
     
     const [profileUser, setProfileUser] = useState<Usuario | null>(null);
     const [isFollowing, setIsFollowing] = useState(false);

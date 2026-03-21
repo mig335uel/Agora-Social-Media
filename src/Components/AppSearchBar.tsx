@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useColorScheme, View, Text, TouchableOpacity, Platform, TextInput,Image} from "react-native";
+import { View, Text, TouchableOpacity, Platform, TextInput,Image} from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import useAuth from "../hooks/useAuth";
 
@@ -14,8 +15,8 @@ type AppSearchBarProps = {
 };
 
 export default function AppSearchBar({ query, onSearch }: AppSearchBarProps) {
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   const usuario = useAuth();
   return (

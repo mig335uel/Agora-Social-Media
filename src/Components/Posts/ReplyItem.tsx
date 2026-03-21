@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, useColorScheme, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Platform } from 'react-native';
+import { useColorScheme } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
 import { Post } from '@/Types/Posts';
 import MediaGrid from './MediaGrid';
@@ -27,8 +28,8 @@ interface ReplyItemProps {
   onRefresh?: () => void;
 }
 export default function ReplyItem({ post, isLast = false, onRefresh }: ReplyItemProps) {
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   const textColor = isDark ? '#ffffff' : '#0f0f0f';
   const subColor = isDark ? '#8b8b8b' : '#6b6b6b';

@@ -9,15 +9,15 @@ import { router } from "expo-router";
 import LoginForms from "../Components/LoginForm";
 
 import React, { useState } from 'react';
-import { useColorScheme } from "react-native";
+import { useColorScheme } from "nativewind";
 // Imagino que tienes un RegisterForm en tus componentes
 import RegisterForm from '../Components/register';
 
 export default function LoginScreen() {
     // Estado para saber qué formulario mostrar
     const [showRegister, setShowRegister] = useState<boolean>(false);
-    const scheme = useColorScheme();
-    const isDark = scheme === 'dark';
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
     if(showRegister){
         return (

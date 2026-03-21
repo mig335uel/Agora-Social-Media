@@ -1,6 +1,7 @@
 import { Post } from "@/Types/Posts";
 import { GlassContainer } from "expo-glass-effect";
-import { FlatList, View, StyleSheet, useColorScheme, Platform, ActionSheetIOS, Alert, AlertButton } from "react-native";
+import { FlatList, View, StyleSheet, Platform, ActionSheetIOS, Alert, AlertButton } from "react-native";
+import { useColorScheme } from "nativewind";
 import useAuth from "@/hooks/useAuth";
 import { deletePost, toggleLike, repostPost, recordShare, createPost } from "@/Services/PostService";
 import { router } from "expo-router";
@@ -21,8 +22,8 @@ export default function PostCard({
     refreshing?: boolean,
     FlatListComponent?: any
 }) {
-    const scheme = useColorScheme();
-    const isDark = scheme === 'dark';
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === 'dark';
     const currentUser = useAuth();
     const [localPosts, setLocalPosts] = useState<Post[]>(posts);
 

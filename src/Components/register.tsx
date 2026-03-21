@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, useColorScheme, StatusBar } from "react-native";
+import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, StatusBar } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from 'expo-linear-gradient';
 import { RegisterForm } from "../Types/LoginForm";
@@ -45,8 +46,8 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
         }
     }
 
-    const scheme = useColorScheme();
-    const isDark = scheme === 'dark';
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
     return (
         

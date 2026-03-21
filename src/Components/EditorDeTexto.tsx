@@ -230,6 +230,7 @@ export const EditorDeTexto = ({
             selectionColor={isDark ? '#1DA1F255' : '#1DA1F233'}
             textAlignVertical="top"
             underlineColorAndroid="transparent"
+            
             autoCorrect={false}
             spellCheck={false}
           />
@@ -309,7 +310,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     padding: 10,
+    margin: 0, // Añadir explícitamente
     minHeight: 120,
+    includeFontPadding: false, // CRÍTICO PARA ANDROID: Iguala el Text y el TextInput
+    textAlignVertical: 'top',  // CRÍTICO PARA ANDROID
   },
   highlightLayer: {
     position: 'absolute',

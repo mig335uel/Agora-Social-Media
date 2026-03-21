@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, useColorScheme, Keyboard } from "react-native";
+import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Keyboard } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from 'expo-linear-gradient';
 import { LoginForm } from "../Types/LoginForm";
@@ -14,8 +15,8 @@ import { TouchableWithoutFeedback } from "react-native";
 
 export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegister: () => void }) {
     const [loginForm, setLoginForm] = useState<LoginForm>({ email: "", password: "" });
-    const scheme = useColorScheme();
-    const isDark = scheme === 'dark';
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
 
 

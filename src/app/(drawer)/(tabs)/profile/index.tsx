@@ -85,25 +85,13 @@ export default function Profile() {
     );
 
     // Versión iOS: Usa la FlatList de la librería (la cabecera la pone elLayout)
-    if (Platform.OS === 'ios') {
-        return (
-            
-            <PostCard
-                posts={posts}
-                onRefresh={onRefresh}
-                refreshing={refreshing}
-                FlatListComponent={Tabs.FlatList}
-            />
-        );
-    }
-
-    // Versión Android: Implementación nativa con cabecera integrada
     return (
+
         <PostCard
             posts={posts}
             onRefresh={onRefresh}
             refreshing={refreshing}
-            ListHeaderComponent={<HeaderComponent />}
+            FlatListComponent={Tabs.FlatList}
         />
     );
 }

@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useColorScheme, View, Text, TouchableOpacity, Platform, Image } from "react-native";
+import { View, Text, TouchableOpacity, Platform, Image } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import useAuth from "../hooks/useAuth";
 
@@ -10,8 +11,8 @@ import UserAvatar from "./UserAvatar";
 
 export default function AppBar({ title }: { title: string }) {
 
-    const scheme = useColorScheme();
-    const isDark = scheme === 'dark';
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
     const usuario = useAuth();
     return (

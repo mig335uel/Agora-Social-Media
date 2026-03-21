@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { supabase } from '../lib/supbase/supabase'; 
-import { View, ActivityIndicator } from 'react-native';
+import { supabase } from '../lib/supbase/supabase';
+import { View, ActivityIndicator, Appearance } from 'react-native';
 import { useColorScheme } from 'nativewind';
 import { useState } from 'react';
 import { Session } from '@supabase/supabase-js';
@@ -11,8 +11,26 @@ export default function RootLayout() {
   const [loading, setLoading] = useState(true);
   const segments = useSegments();
   const router = useRouter();
-  const { colorScheme } = useColorScheme();
+  const { colorScheme, setColorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
+
+  useEffect(() => {
+    // Tema inicial al abrir la app
+    const colorTheme = Appearance.getColorScheme();
+    if (colorTheme) {
+      setColorScheme(colorTheme as "light" | "dark" | "system");
+    }
+
+    // Escuchador en tiempo real (CRÍTICO para Android)
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      if (colorScheme) {
+        setColorScheme(colorScheme as "light" | "dark" | "system");
+      }
+    });
+
+    // Limpieza del escuchador cuando se desmonta
+    return () => subscription.remove();
+  }, [setColorScheme]);
   useEffect(() => {
     // Escuchar cambios de sesión en tiempo real
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -49,7 +67,7 @@ export default function RootLayout() {
 
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: isDark ? '#141414' : '#fff' } }}>
-      <Stack.Screen name="login"/>
+      <Stack.Screen name="login" />
       <Stack.Screen name="(drawer)" />
     </Stack>
   );

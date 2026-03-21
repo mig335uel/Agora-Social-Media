@@ -5,7 +5,7 @@ import { uploadAgoraImage } from '../Services/ImageService';
 import { searchUsers } from '../Services/UserService';
 import { getTrendingTopics } from '../Services/PostService';
 import { Usuario } from '../Types/Users';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from 'nativewind';
 
 interface Props {
   onContentChange: (html: string) => void;
@@ -13,8 +13,8 @@ interface Props {
 
 export const AgoraEditor = ({ onContentChange }: Props) => {
   const richText = useRef<RichEditor>(null);
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
   // Estados para sugerencias
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -132,9 +132,8 @@ export const AgoraEditor = ({ onContentChange }: Props) => {
         ref={richText}
         placeholder="¿Qué está pasando en tu perímetro?..."
         onChange={handleChange}
-        style={styles.editor}
         initialFocus={true}
-        containerStyle={{ backgroundColor: isDark ? 'black' : 'white' }}
+        style={[styles.editor, { backgroundColor: isDark ? 'black' : 'white' }]}
       />
 
       <RichToolbar
