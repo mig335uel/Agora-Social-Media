@@ -4,6 +4,10 @@ import { Post } from "@/Types/Posts";
 import { supabase } from "@/lib/supbase/supabase";
 import useAuth from "@/hooks/useAuth";
 import { useProfileRefresh } from "../../../../Controller/_context";
+import MediaGrid from "@/Components/Posts/MediaGrid";
+import PostCard from "@/Components/Posts/PostsCard";
+import ProfileHeader from "@/Components/MyProfileScreen/ProfileHeader";
+import { Tabs } from "react-native-collapsible-tab-view";
 
 
 
@@ -30,16 +34,28 @@ export default function Profile() {
 
 
             if (postsError) throw postsError;
-            setPosts(postsData || []);
+            if (postsData && postsData.length > 0) {
+                // 1. Obtener todos los IDs de los posts para traer su media de una vez
+                const postIds = postsData.map(p => p.id);
 
-            if (postsData.length > 0) {
-                const { data: userData, error: userError } = await supabase
-                    .from('users')
+                // 2. Traer la media de todos los posts en una sola consulta
+                const { data: mediaData, error: mediaError } = await supabase
+                    .from('media_feature')
                     .select('*')
-                    .eq('id', postsData[0].user_id);
+                    .in('post_id', postIds);
 
-                if (userError) throw userError;
-                setPosts(postsData.map((post) => ({ ...post, user: userData[0] })));
+                if (mediaError) throw mediaError;
+
+                // 3. Mapear cada post con su usuario y su media correspondiente
+                const fullPosts = postsData.map(post => ({
+                    ...post,
+                    user: user, // Asignamos el usuario actual (dueño del perfil)
+                    media: mediaData?.filter(m => m.post_id === post.id) || []
+                }));
+
+                setPosts(fullPosts);
+            } else {
+                setPosts([]);
             }
         } catch (error) {
             console.error('Error fetching posts:', error);
@@ -63,41 +79,10 @@ export default function Profile() {
     }, [fetchPosts, refreshStats]);
 
 
-    const renderPostItem = ({ item }: { item: Post }) => (
-
-        <View className="p-4 border-b border-gray-50 dark:border-gray-900">
-            <Text className="text-black dark:text-white">{item.content}</Text>
-            {item.media_url && (
-                <View className="mt-2 rounded-xl overflow-hidden bg-gray-200 aspect-video">
-                    {/* Image component would go here */}
-                </View>
-            )}
-        </View>
-    );
 
     return (
         <View className={`flex-1 ${isDark ? 'bg-black' : 'bg-white'}`}>
-            <FlatList
-                data={posts}
-                renderItem={renderPostItem}
-                keyExtractor={(item) => item.id}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        tintColor={isDark ? '#fff' : '#000'}
-                    />
-                }
-                ListEmptyComponent={
-
-                    <View className="items-center justify-center py-10">
-                        <Text className="text-gray-500">
-                            {loading ? 'Loading posts...' : 'No posts found'}
-                        </Text>
-                    </View>
-                }
-                contentContainerStyle={{ paddingBottom: 20 }}
-            />
+            <PostCard posts={posts} onRefresh={onRefresh} refreshing={refreshing} FlatListComponent={Tabs.FlatList} />
         </View>
     );
 }

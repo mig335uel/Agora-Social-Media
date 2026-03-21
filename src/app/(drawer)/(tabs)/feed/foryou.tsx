@@ -1,8 +1,9 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, RefreshControl, Image, ActivityIndicator, useColorScheme, Keyboard } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { signOut } from '@/Services/authService';
 import CreatePostScreen from '@/Components/createPosts';
 import { getForYouFeed, RankedPost } from '@/Services/FeedService';
@@ -17,7 +18,7 @@ import { Post } from '@/Types/Posts';
 
 
 export default function ForYou() {
-    // const [posts, setPosts] = useState<RankedPost[]>([]);
+    const [posts, setPosts] = useState<RankedPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     // Tracking de dwell time
@@ -26,23 +27,27 @@ export default function ForYou() {
     const lastSyncTime = useRef(Date.now());
     const scheme = useColorScheme();
     const isDark = scheme === 'dark';
-    const pruebaPost: Post[] = posts;
 
-    // const fetchFeed = async () => {
-    //     try {
-    //         const feed = await getForYouFeed();
-    //         setPosts(feed);
-    //     } catch (error) {
-    //         console.error("Error fetching feed:", error);
-    //     } finally {
-    //         setLoading(false);
-    //         setRefreshing(false);
-    //     }
-    // };
+    
+    const fetchFeed = useCallback(async () => {
+        try {
+            const feed = await getForYouFeed();
+            setPosts(feed);
+        } catch (error) {
+            console.error("Error fetching feed:", error);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchFeed();
+        }, [])
+    );
 
     useEffect(() => {
-        // fetchFeed();
-
         // Timer para acumular dwell time cada segundo
         const timer = setInterval(() => {
             visibleItems.current.forEach(postId => {
@@ -74,11 +79,12 @@ export default function ForYou() {
         }
     };
 
-    const onRefresh = () => {
+    const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        // fetchFeed();
-        syncInteractions(); // Aprovechamos para limpiar buffer
-    };
+        await Promise.all([fetchFeed(), syncInteractions()]); // Aprovecham
+        setRefreshing(false);
+        // os para limpiar buffer
+    }, [fetchFeed, syncInteractions]);
 
     const logout = async () => {
         try {
@@ -104,9 +110,29 @@ export default function ForYou() {
 
     return (
         <View style={{ flex: 1 }} className={`h-full ${isDark ? 'bg-black' : 'bg-white'}`}>
-
-            <PostCard posts={pruebaPost} />
-
+            {loading ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color="#1DA1F2" />
+                </View>
+            ) : posts.length === 0 ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <Ionicons name="chatbubbles-outline" size={80} color={isDark ? '#333' : '#eee'} />
+                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: isDark ? '#fff' : '#000', marginTop: 10 }}>
+                        No hay publicaciones aún
+                    </Text>
+                    <Text style={{ textAlign: 'center', color: isDark ? '#999' : '#666', marginTop: 5 }}>
+                        Sé el primero en compartir algo con la comunidad o espera a que otros publiquen.
+                    </Text>
+                    <TouchableOpacity 
+                        style={{ marginTop: 20, backgroundColor: '#1DA1F2', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 }}
+                        onPress={() => router.push('/(drawer)/post/create')}
+                    >
+                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Crear Publicación</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <PostCard posts={posts} onRefresh={onRefresh} refreshing={refreshing} />
+            )}
         </View>
     );
 }

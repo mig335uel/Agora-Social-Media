@@ -1,10 +1,14 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, useColorScheme, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Image, useColorScheme, TouchableOpacity, ScrollView, Platform, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Post } from '@/Types/Posts';
 import MediaGrid from './MediaGrid';
+import { EditorDeTexto } from '../EditorDeTexto';
+import { ProcessedImage } from '@/Services/ImageService';
+import { createPost, getTrendingTopics } from '@/Services/PostService';
+import { searchUsers } from '@/Services/UserService';
 
 interface PrincipalPostProps {
   post: Post;
@@ -38,6 +42,20 @@ export default function PrincipalPost({ post }: PrincipalPostProps) {
       }
       return <Text key={index}>{part}</Text>;
     });
+  };
+
+  const [isReplyModalVisible, setIsReplyModalVisible] = useState(false);
+  const [replyContent, setReplyContent] = useState('');
+ 
+  const handlePublishReply = async (content: string, images: ProcessedImage[]) => {
+    try {
+      await createPost(content, images, post.id);
+      setIsReplyModalVisible(false);
+      setReplyContent('');
+      // Podríamos añadir una notificación de éxito aquí
+    } catch (error) {
+      console.error("Error al responder:", error);
+    }
   };
 
   return (
@@ -111,7 +129,7 @@ export default function PrincipalPost({ post }: PrincipalPostProps) {
           </View>
           <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: textColor }]}>{post.shares_count}</Text>
+            <Text style={[styles.statValue, { color: textColor }]}>{post.shares_count || 0}</Text>
             <Text style={[styles.statLabel, { color: subColor }]}>COMPARTIDOS</Text>
           </View>
         </BlurView>
@@ -119,19 +137,63 @@ export default function PrincipalPost({ post }: PrincipalPostProps) {
 
       {/* Botones de Acción Globales */}
       <View style={styles.actionsContainer}>
-        <ActionIcon name="chatbubble-outline" color={subColor} />
+        <ActionIcon name="chatbubble-outline" color={subColor} onPress={() => setIsReplyModalVisible(true)} />
         <ActionIcon name="repeat-outline" color="#00BA7C" inactive color2={subColor} />
         <ActionIcon name="heart-outline" color="#F91880" inactive color2={subColor} />
         <ActionIcon name="bookmark-outline" color={subColor} />
         <ActionIcon name="share-outline" color={subColor} />
       </View>
+ 
+      {/* Modal de Respuesta (Estilo Bottom Sheet) */}
+      <Modal
+        visible={isReplyModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsReplyModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          {/* Backdrop para cerrar al tocar fuera */}
+          <TouchableOpacity 
+            style={styles.modalBackdrop} 
+            activeOpacity={1} 
+            onPress={() => setIsReplyModalVisible(false)} 
+          />
+          
+          <View style={[styles.modalContent, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
+            {/* Handle visual típico de bottom sheet */}
+            <View style={styles.modalHandle} />
+
+            <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: borderColor, flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => setIsReplyModalVisible(false)}>
+                <Text style={{ color: '#3b82f6', fontSize: 16 }}>Cancelar</Text>
+              </TouchableOpacity>
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={{ fontWeight: 'bold', fontSize: 16, color: textColor }}>Responder</Text>
+              </View>
+            </View>
+            
+            <View style={{ flex: 1 }}>
+              <EditorDeTexto 
+                value={replyContent} 
+                onChange={setReplyContent}
+                isDark={isDark}
+                placeholder={`Responder a @${post.user?.username}...`}
+                onSearchMention={searchUsers}
+                onSearchHashtag={getTrendingTopics}
+                onPublish={handlePublishReply}
+                appBar={false}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-function ActionIcon({ name, color, color2, inactive = false }: any) {
+function ActionIcon({ name, color, color2, inactive = false, onPress }: any) {
   return (
-    <TouchableOpacity style={styles.actionBtn} activeOpacity={0.6}>
+    <TouchableOpacity style={styles.actionBtn} activeOpacity={0.6} onPress={onPress}>
       <Ionicons name={name} size={24} color={inactive ? color2 : color} />
     </TouchableOpacity>
   );
@@ -246,5 +308,32 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     padding: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  modalContent: {
+    height: '80%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+  },
+  modalHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#ccc',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 4,
   },
 });

@@ -18,31 +18,32 @@ import { Post } from '@/Types/Posts';
 import TopBarNavigation from './feed/_layout';
 
 export default function Home() {
-    // const [posts, setPosts] = useState<RankedPost[]>([]);
+    const [posts, setPosts] = useState<RankedPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const user = useAuth();
     // Tracking de dwell time
     const visibleItems = useRef<Set<string>>(new Set());
     const dwellBuffer = useRef<{ [postId: string]: number }>({});
     const lastSyncTime = useRef(Date.now());
     const scheme = useColorScheme();
     const isDark = scheme === 'dark';
-    const pruebaPost: Post[] = posts;
+    // const pruebaPost: Post[] = posts;
 
-    // const fetchFeed = async () => {
-    //     try {
-    //         const feed = await getForYouFeed();
-    //         setPosts(feed);
-    //     } catch (error) {
-    //         console.error("Error fetching feed:", error);
-    //     } finally {
-    //         setLoading(false);
-    //         setRefreshing(false);
-    //     }
-    // };
+    const fetchFeed = async () => {
+        try {
+            const feed = await getForYouFeed();
+            setPosts(feed);
+        } catch (error) {
+            console.error("Error fetching feed:", error);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
 
     useEffect(() => {
-        // fetchFeed();
+        fetchFeed();
 
         // Timer para acumular dwell time cada segundo
         const timer = setInterval(() => {
@@ -60,7 +61,7 @@ export default function Home() {
             clearInterval(timer);
             syncInteractions(); // Sincronización final
         };
-    }, []);
+    }, [user?.id]);
 
     const syncInteractions = async () => {
         const payload: InteractionPayload[] = Object.keys(dwellBuffer.current).map(postId => ({

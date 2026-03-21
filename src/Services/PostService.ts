@@ -1,40 +1,58 @@
 import { supabase } from "../lib/supbase/supabase";
+import { ProcessedImage, uploadPostImage } from "./ImageService";
 
 /**
  * Servicio para gestionar la creación de publicaciones y temas relacionados.
  */
-export async function createPost(content: string, mediaUrls: string[] = []) {
+export async function createPost(content: string, localImages: ProcessedImage[] = [], parentPostId: string | null = null) {
   try {
-    // 1. Obtener el usuario autenticado
+    // 1. Obtener el usuario autenticado para saber quién publica
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Usuario no autenticado");
-
+ 
     // 2. Insertar el post principal
+    // Nota: El UUID se genera en la DB mediante gen_random_uuid()
     const { data: post, error: postError } = await supabase
       .from('posts')
       .insert({
         user_id: user.id,
         content: content,
-        parent_post_id: null, // De momento no soportamos hilos
+        parent_post_id: parentPostId, // Ahora soportamos hilos
       })
       .select()
       .single();
 
     if (postError) throw postError;
 
-    // 2.1 Insertar media si existe
-    if (mediaUrls.length > 0) {
-      const mediaInserts = mediaUrls.map(url => ({
-        post_id: post.id,
-        media_url: url
-      }));
-
-      const { error: mediaError } = await supabase
-        .from('media_feature')
-        .insert(mediaInserts);
+    // 2.1 Subir imágenes y vincularlas (Flujo Diferido)
+    // Subimos las fotos usando el post.id que acabamos de obtener
+    if (localImages.length > 0) {
+      const mediaUrls: string[] = [];
       
-      if (mediaError) {
-        console.error("Error guardando media:", mediaError.message);
+      // Iteramos sobre las imágenes locales guardadas en el componente
+      for (const localImg of localImages) {
+        // Subimos cada una a su carpeta correspondiente (UUID del post)
+        const publicUrl = await uploadPostImage(post.id, localImg);
+        if (publicUrl) {
+          mediaUrls.push(publicUrl);
+        }
+      }
+
+      // Si se subieron correctamente, las vinculamos en la tabla media_feature
+      if (mediaUrls.length > 0) {
+        const mediaInserts = mediaUrls.map(url => ({
+          post_id: post.id,
+          user_id: user.id,
+          image: url
+        }));
+
+        const { error: mediaError } = await supabase
+          .from('media_feature')
+          .insert(mediaInserts);
+        
+        if (mediaError) {
+          console.error("Error vinculando media en base de datos:", mediaError.message);
+        }
       }
     }
 
@@ -57,11 +75,46 @@ export async function createPost(content: string, mediaUrls: string[] = []) {
         console.error("Error guardando hashtags:", topicError.message);
         // No lanzamos error para no fallar la publicación si solo fallan los hashtags
       }
+
+      const mentions = extractMentions(content);
+      if (mentions.length > 0) {
+        const mentionInserts = mentions.map(mention => ({
+          post_id: post.id,
+          user_id: user.id,
+          mention: mention.toLowerCase()
+        }));
+
+        const { error: mentionError } = await supabase
+          .from('post_mentions')
+          .insert(mentionInserts);
+        
+        if (mentionError) {
+          console.error("Error guardando menciones:", mentionError.message);
+        }
+      }
     }
 
     return post;
   } catch (error) {
     console.error("Error en createPost:", error);
+    throw error;
+  }
+}
+
+/**
+ * Elimina una publicación por su ID.
+ */
+export async function deletePost(postId: string) {
+  try {
+    const { error } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', postId);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Error eliminando post:", error);
     throw error;
   }
 }
@@ -89,10 +142,22 @@ export async function getTrendingTopics(query: string = ''): Promise<string[]> {
 
     const { data, error } = await request;
     if (error) throw error;
-
+ 
     if (!data) return [];
-
-    return data.map(item => item.topic_name);
+ 
+    // Extraemos todos los hashtags únicos de los trending topics encontrados
+    const hashtags: string[] = [];
+    data.forEach(item => {
+      const nested = (item as any).trending_hashtags;
+      if (nested && Array.isArray(nested) && nested.length > 0) {
+        nested.forEach((h: any) => hashtags.push(h.hashtag));
+      } else {
+        // Fallback: si no tiene hashtags vinculados, usamos el nombre del tópico sin espacios
+        hashtags.push(item.topic_name.replace(/\s+/g, ''));
+      }
+    });
+ 
+    return Array.from(new Set(hashtags));
   } catch (error) {
     console.error("Error obteniendo trending topics:", error);
     return [];
@@ -111,5 +176,17 @@ function extractHashtags(text: string): string[] {
   if (!matches) return [];
   
   // Eliminamos el símbolo # y quitamos duplicados
+  return Array.from(new Set(matches.map(m => m.substring(1))));
+}
+
+
+function extractMentions(text: string): string[] {
+  const plainText = text.replace(/<[^>]*>?/gm, ' ');
+  const mentionRegex = /@(\w+)/g;
+  const matches = plainText.match(mentionRegex);
+  
+  if (!matches) return [];
+  
+  // Eliminamos el símbolo @ y quitamos duplicados
   return Array.from(new Set(matches.map(m => m.substring(1))));
 }

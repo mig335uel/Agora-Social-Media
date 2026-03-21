@@ -106,16 +106,20 @@ export default function TabLayout() {
           <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
         </NativeTabs.Trigger>
 
-        <NativeTabs.Trigger name="search">
+        <NativeTabs.Trigger name="search" role="search">
           <NativeTabs.Trigger.Label>Explorar</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="newpost">
+          <NativeTabs.Trigger.Label>Publicar</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon sf="plus.circle.fill" md="add" />
         </NativeTabs.Trigger>
 
         <NativeTabs.Trigger name="profile">
           <NativeTabs.Trigger.Label>Cuenta</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="person.fill" md="person" />
         </NativeTabs.Trigger>
-      </NativeTabs>
+      </NativeTabs >
     </>
   );
 }

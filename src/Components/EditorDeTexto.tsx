@@ -1,0 +1,388 @@
+import React, { useState, useRef } from 'react';
+import { 
+  View, 
+  TextInput, 
+  FlatList, 
+  Text, 
+  TouchableOpacity, 
+  StyleSheet, 
+  NativeSyntheticEvent, 
+  TextInputSelectionChangeEventData,
+  Image,
+  ActivityIndicator
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { pickAndProcessImage, ProcessedImage } from '../Services/ImageService';
+import PostDetailAppBar from './Posts/PostDetailAppBar';
+import AppBar from './AppBar';
+
+interface EditorDeTextoProps {
+  value: string;
+  onChange: (text: string) => void;
+  onSearchMention: (query: string) => Promise<any[]>;
+  onSearchHashtag: (query: string) => Promise<any[]>;
+  onPublish: (content: string, images: ProcessedImage[]) => Promise<void>;
+  placeholder?: string;
+  isDark?: boolean;
+  hashtagMandatory?: boolean;
+  appBar?: boolean ;
+}
+
+export const EditorDeTexto = ({ 
+  value, 
+  onChange, 
+  onSearchMention, 
+  onSearchHashtag,
+  onPublish,
+  placeholder = "¿Qué está pasando?",
+  isDark = false,
+  hashtagMandatory = false,
+  appBar = true
+}: EditorDeTextoProps) => {
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [triggerType, setTriggerType] = useState<'@' | '#' | null>(null);
+  const [query, setQuery] = useState('');
+  const [images, setImages] = useState<ProcessedImage[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  
+  const inputRef = useRef<TextInput>(null);
+
+  /**
+   * Rastrea la posición del cursor cada vez que cambia (al escribir o tocar).
+   * Es esencial para saber dónde insertar las menciones.
+   */
+  const handleSelectionChange = (event: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
+    setSelection(event.nativeEvent.selection);
+  };
+
+  /**
+   * Se ejecuta cada vez que el texto cambia.
+   * Busca si la última palabra escrita antes del cursor empieza por @ o #.
+   */
+  const handleChangeText = async (text: string) => {
+    onChange(text);
+
+    // Detectar qué hay justo antes del cursor
+    const cursorPosition = selection.start;
+    const textBeforeCursor = text.slice(0, cursorPosition);
+    
+    // Regex para encontrar "@usuario" o "#hashtag" al final de lo escrito
+    const lastWordMatch = textBeforeCursor.match(/[@#](\w*)$/);
+
+    if (lastWordMatch) {
+      const trigger = textBeforeCursor[lastWordMatch.index!];
+      const currentQuery = lastWordMatch[1];
+      
+      setTriggerType(trigger as '@' | '#');
+      setQuery(currentQuery);
+
+      // Llamada a las funciones de búsqueda pasadas por props
+      let results = [];
+      if (trigger === '@') {
+        results = await onSearchMention(currentQuery);
+      } else {
+        results = await onSearchHashtag(currentQuery);
+      }
+
+      setSuggestions(results);
+      setShowSuggestions(results.length > 0);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  /**
+   * Inserta la sugerencia seleccionada en el texto.
+   * Realiza un "corte" del string original para reemplazar solo la parte de la búsqueda.
+   */
+  const handleSelectSuggestion = (suggestion: any) => {
+    const cursorPosition = selection.start;
+    const textBeforeCursor = value.slice(0, cursorPosition);
+    const textAfterCursor = value.slice(cursorPosition);
+
+    // Buscamos el inicio del trigger (@ o #) para saber desde dónde borrar
+    const lastTriggerIndex = textBeforeCursor.lastIndexOf(triggerType!);
+    const newTextBefore = value.slice(0, lastTriggerIndex);
+    
+    // El nombre a insertar (depende de si es usuario o hashtag)
+    const insertion = `${triggerType}${suggestion.username || suggestion.name || suggestion} `;
+    const newValue = newTextBefore + insertion + textAfterCursor;
+
+    onChange(newValue);
+    setShowSuggestions(false);
+    
+    // Devolvemos el foco al teclado tras la inserción
+    setTimeout(() => {
+        inputRef.current?.focus();
+    }, 100);
+  };
+
+  const handleAddImage = async () => {
+    setIsUploading(true);
+    try {
+      const processed = await pickAndProcessImage();
+      if (processed) {
+        setImages([...images, processed]);
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    // Validación de hashtag obligatorio
+    const hashtagRegex = /#[\wñáéíóú]+/g;
+    const hasHashtags = hashtagRegex.test(value);
+
+    if (hashtagMandatory && !hasHashtags) {
+        // Solo bloqueamos si es obligatorio
+        return;
+    }
+
+    if ((!value.trim() && images.length === 0) || isPublishing) return;
+    setIsPublishing(true);
+    try {
+      await onPublish(value, images);
+      // Opcional: limpiar después de publicar si el padre no lo hace
+    } catch (error) {
+      console.error("Error publishing:", error);
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages(images.filter((_, i) => i !== index));
+  };
+
+  /**
+   * Procesa el texto para pintar de color las menciones y hashtags.
+   */
+  const renderHighlightedText = (text: string) => {
+    if (!text) return null;
+    const regex = /([@#][\wñáéíóú]+)/g;
+    const parts = text.split(regex);
+    return parts.map((part, index) => {
+      if (part.match(regex)) {
+        return (
+          <Text key={index} style={{ color: '#1DA1F2', fontWeight: 'bold' }}>
+            {part}
+          </Text>
+        );
+      }
+      return <Text key={index}>{part}</Text>;
+    });
+  };
+
+  // Renderizado con Highlighting (Overlay)
+  return (
+    <>
+    {appBar && <PostDetailAppBar />}
+    <View style={{marginBottom: 20}}/>
+    <View style={styles.container}>
+      {showSuggestions && (
+        <View style={[styles.suggestionsBox, isDark && styles.darkBox]}>
+          <FlatList
+            data={suggestions}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
+                onPress={() => handleSelectSuggestion(item)}
+                style={styles.suggestionItem}
+              >
+                <Text style={{ color: isDark ? 'white' : 'black' }}>
+                  {triggerType}{item.username || item.name || item}
+                </Text>
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      )}
+
+      <View style={styles.inputWrapper}>
+        {/* Capa de fondo con el texto coloreado */}
+        <View 
+          style={[styles.highlightLayer, isDark && styles.darkBox]} 
+          pointerEvents="none"
+        >
+          <Text style={[styles.inputBase, isDark && styles.darkInput]}>
+            {renderHighlightedText(value)}
+            {/* Truco para el salto de línea al final */}
+            {value.endsWith('\n') ? '\n ' : ''}
+          </Text>
+        </View>
+
+        {/* TextInput transparente encima */}
+        <TextInput
+          ref={inputRef}
+          multiline
+          value={value}
+          onChangeText={handleChangeText}
+          onSelectionChange={handleSelectionChange}
+          placeholder={placeholder}
+          placeholderTextColor={isDark ? '#666' : '#999'}
+          style={[styles.inputBase, styles.textInput, { color: 'transparent' }]}
+          textAlignVertical="top"
+        />
+      </View>
+
+      {/* Vista previa de imágenes */}
+      {images.length > 0 && (
+        <View style={styles.imagesContainer}>
+          <FlatList
+            data={images}
+            horizontal
+            keyExtractor={(item) => item.uri}
+            renderItem={({ item, index }) => (
+              <View style={styles.imageWrapper}>
+                <Image source={{ uri: item.uri }} style={styles.imageThumbnail} />
+                <TouchableOpacity 
+                  style={styles.removeImageBtn} 
+                  onPress={() => removeImage(index)}
+                >
+                  <Ionicons name="close-circle" size={20} color="red" />
+                </TouchableOpacity>
+              </View>
+            )}
+          />
+        </View>
+      )}
+
+      {/* Barra de herramientas */}
+      <View style={[styles.toolbar, isDark && styles.darkToolbar]}>
+        <View style={styles.leftTools}>
+          <TouchableOpacity onPress={handleAddImage} disabled={isUploading}>
+            {isUploading ? (
+              <ActivityIndicator size="small" color="#1DA1F2" />
+            ) : (
+              <Ionicons name="image-outline" size={24} color="#1DA1F2" />
+            )}
+          </TouchableOpacity>
+          
+          {/* Aviso de hashtag obligatorio si está activado y el texto no está vacío */}
+          {hashtagMandatory && value.trim().length > 0 && !/#[\wñáéíóú]+/g.test(value) && (
+            <Text style={{ color: '#ff4444', fontSize: 12, marginLeft: 10 }}>
+              Falta un #hashtag obligatorio
+            </Text>
+          )}
+        </View>
+
+        <TouchableOpacity 
+          onPress={handlePublish}
+          disabled={isPublishing || (!value.trim() && images.length === 0) || (hashtagMandatory && !/#[\wñáéíóú]+/g.test(value))}
+          style={[
+            styles.publishBtn, 
+            (isPublishing || (!value.trim() && images.length === 0) || (hashtagMandatory && !/#[\wñáéíóú]+/g.test(value))) && styles.disabledBtn
+          ]}
+        >
+          {isPublishing ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Text style={styles.publishBtnText}>Publicar</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+    </>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    width: '100%',
+    flex: 1,
+  },
+  inputWrapper: {
+    position: 'relative',
+    minHeight: 120,
+  },
+  inputBase: {
+    fontSize: 16,
+    lineHeight: 22,
+    padding: 10,
+    minHeight: 120,
+  },
+  highlightLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  textInput: {
+    zIndex: 1,
+    backgroundColor: 'transparent',
+  },
+  darkInput: {
+    color: 'white',
+  },
+  suggestionsBox: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    backgroundColor: 'white',
+    maxHeight: 150,
+  },
+  darkBox: {
+    backgroundColor: '#333',
+    borderColor: '#444',
+  },
+  suggestionItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  imagesContainer: {
+    flexDirection: 'row',
+    padding: 10,
+  },
+  imageWrapper: {
+    marginRight: 10,
+    position: 'relative',
+  },
+  imageThumbnail: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+  },
+  removeImageBtn: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: 'white',
+    borderRadius: 10,
+  },
+  toolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  darkToolbar: {
+    borderTopColor: '#333',
+  },
+  leftTools: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  publishBtn: {
+    backgroundColor: '#1DA1F2',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  disabledBtn: {
+    opacity: 0.5,
+  },
+  publishBtnText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+});

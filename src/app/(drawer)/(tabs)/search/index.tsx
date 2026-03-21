@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useContext } from 'react';
+import React, { useEffect, useState, useMemo, useContext, useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, useColorScheme, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { SearchContext } from './_layout';
 import { Trending_topics } from '@/Types/Trendings';
@@ -33,13 +33,11 @@ export default function SearchScreen() {
       return topic.includes(q) || tags.includes(q);
     });
   }, [searchQuery, trending]);
-
-  useEffect(() => {
-    const fetchTrending = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('trending_topics')
-        .select(`
+  const fetchTrending = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('trending_topics')
+      .select(`
                     id,
                     created_at,
                     topic_name,
@@ -49,23 +47,23 @@ export default function SearchScreen() {
                     expires_at,
                     trending_hashtags ( hashtag )
                 `)
-        .order('volume_score', { ascending: false });
+      .order('volume_score', { ascending: false });
 
-      if (error) {
-        console.error('Error cargando trending:', error);
-      } else if (data) {
-        const unified: TrendWithTags[] = data.map((trend) => {
-          const nestedHashtags = (trend as any).trending_hashtags || [];
-          return {
-            ...trend,
-            hashtags: nestedHashtags.map((h: { hashtag: string }) => h.hashtag),
-          } as TrendWithTags;
-        });
-        setTrending(unified);
-      }
-      setLoading(false);
-    };
-
+    if (error) {
+      console.error('Error cargando trending:', error);
+    } else if (data) {
+      const unified: TrendWithTags[] = data.map((trend) => {
+        const nestedHashtags = (trend as any).trending_hashtags || [];
+        return {
+          ...trend,
+          hashtags: nestedHashtags.map((h: { hashtag: string }) => h.hashtag),
+        } as TrendWithTags;
+      });
+      setTrending(unified);
+    }
+    setLoading(false);
+  };
+  useEffect(() => {
     fetchTrending();
   }, []);
 
@@ -81,6 +79,10 @@ export default function SearchScreen() {
     { id: '5', name: 'Ciencia', icon: 'flask-outline', color: ['#f59e0b', '#d97706'] },
     { id: '6', name: 'Cultura', icon: 'library-outline', color: ['#ec4899', '#be185d'] },
   ];
+  const onRefresh = useCallback(() => {
+    fetchTrending();
+  }, []);
+
 
   const renderHeader = () => (
     <View className="px-5 pt-4">
@@ -162,6 +164,8 @@ export default function SearchScreen() {
         data={searchQuery ? filteredTrends : otherTrends}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={renderHeader}
+        onRefresh={onRefresh}
+        refreshing={loading}
         renderItem={({ item }) => (
           <TouchableOpacity
             activeOpacity={0.7}
@@ -182,10 +186,10 @@ export default function SearchScreen() {
                   </Text>
                 </View>
                 <View className="items-end">
-                   <Text className="text-sm font-black text-blue-500">
+                  <Text className="text-sm font-black text-blue-500">
                     {item.volume_score}
-                   </Text>
-                   <Text className="text-[8px] font-bold text-gray-500 uppercase">Impacto</Text>
+                  </Text>
+                  <Text className="text-[8px] font-bold text-gray-500 uppercase">Impacto</Text>
                 </View>
               </View>
 
@@ -195,7 +199,7 @@ export default function SearchScreen() {
                     key={index}
                     className="bg-gray-100 dark:bg-white/5 px-3 py-1.5 rounded-full mr-2 mb-2"
                   >
-                    <Text className="text-xs font-bold text-gray-600 dark:text-gray-300">{hashtag}</Text>
+                    <Text className="text-xs font-bold text-gray-600 dark:text-gray-300">#{hashtag}</Text>
                   </View>
                 ))}
               </View>

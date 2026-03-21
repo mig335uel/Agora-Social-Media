@@ -12,8 +12,9 @@ import {
 } from 'react-native';
 import { createPost, getTrendingTopics } from '@/Services/PostService';
 import { searchUsers } from '@/Services/UserService';
+import { ProcessedImage } from '@/Services/ImageService';
 // import { MentionInput, Triggers } from 'react-native-controlled-mentions';
-import { AgoraEditor } from './AgoraEditor';
+import { EditorDeTexto } from './EditorDeTexto';
 
 // ─── Tipos de triggers que usamos ────────────────────────────────────────────
 type TriggerName = 'mention' | 'hashtag';
@@ -126,7 +127,17 @@ export default function CreatePostScreen() {
         />
 
         <View style={[styles.editorWrapper]}>
-          <AgoraEditor onContentChange={setContent} />;
+          <EditorDeTexto 
+            value={content}
+            onChange={setContent}
+            onSearchMention={fetchUsers}
+            onSearchHashtag={fetchHashtags}
+            onPublish={async (text, imgs) => {
+              await createPost(text, imgs);
+              setContent('');
+            }}
+            isDark={isDark}
+          />
         </View>
 
         <View style={[styles.footer, { borderTopColor: isDark ? '#333' : '#ccc' }]}>

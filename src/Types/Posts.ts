@@ -4,8 +4,8 @@ export interface Post {
     id: string;
     
     content: string;
+    user_id: string;
     parent_post_id?: string | null;
-
     likes_count: number;
     replies_count: number;
     reposts_count: number;
@@ -16,8 +16,10 @@ export interface Post {
 }
 
 export interface media_feature{
-    media_url: string | null;
+    image: string | null;
     post_id: string;
+    user_id: string;
+    created_at: string;
 }
 
 export interface likes{

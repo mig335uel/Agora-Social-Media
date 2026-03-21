@@ -3,7 +3,19 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { supabase } from '../lib/supbase/supabase';
 import { decode } from 'base64-arraybuffer';
 
-export const uploadAgoraImage = async () => {
+/**
+ * Interfaz para representar una imagen ya procesada localmente y lista para subir.
+ */
+export interface ProcessedImage {
+  uri: string;
+  base64: string;
+}
+
+/**
+ * Abre la librería de imágenes, permite al usuario elegir una y la procesa a formato WebP.
+ * No sube la imagen a ningún servidor, solo devuelve los datos locales.
+ */
+export const pickAndProcessImage = async (): Promise<ProcessedImage | null> => {
   const pickerResult = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
     allowsEditing: true,
@@ -12,26 +24,35 @@ export const uploadAgoraImage = async () => {
 
   if (pickerResult.canceled || !pickerResult.assets[0].uri) return null;
 
-  // 1. Transformación a WebP (Ahorro de espacio y velocidad)
   const webpImage = await ImageManipulator.manipulateAsync(
     pickerResult.assets[0].uri,
-    [{ resize: { width: 1200 } }], // Un ancho estándar para posts
-    { 
-      compress: 0.8, 
-      format: ImageManipulator.SaveFormat.WEBP, 
-      base64: true 
+    [{ resize: { width: 1200 } }],
+    {
+      compress: 0.8,
+      format: ImageManipulator.SaveFormat.WEBP,
+      base64: true
     }
   );
 
   if (!webpImage.base64) return null;
 
-  const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
-  const filePath = `${fileName}`; // Se guarda en la raíz del bucket 'post_media'
+  return {
+    uri: webpImage.uri,
+    base64: webpImage.base64
+  };
+};
 
-  // 2. Subida al bucket 'post_media'
-  const { data, error } = await supabase.storage
-    .from('post_media') // 👈 Nombre exacto de tu captura
-    .upload(filePath, decode(webpImage.base64), {
+/**
+ * Sube una imagen procesada a una carpeta específica dentro del bucket 'post_media'.
+ * La carpeta llevará el nombre del ID del post para organizar el almacenamiento.
+ */
+export const uploadPostImage = async (postId: string, image: ProcessedImage): Promise<string | null> => {
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
+  const filePath = `${postId}/${fileName}`; // Organizado por ID de post (carpeta única por post)
+
+  const { error } = await supabase.storage
+    .from('post_media')
+    .upload(filePath, decode(image.base64), {
       contentType: 'image/webp',
       cacheControl: '3600',
       upsert: false
@@ -42,10 +63,18 @@ export const uploadAgoraImage = async () => {
     return null;
   }
 
-  // 3. Generar URL Pública
-  const { data: { publicUrl } } = supabase.storage
-    .from('post_media')
-    .getPublicUrl(filePath);
+  const { data: PublicUrlData } = await supabase.storage.from('post_media').getPublicUrl(filePath);
+  const publicUrl = PublicUrlData?.publicUrl ?? null;
+
 
   return publicUrl;
+};
+
+// Mantenemos esta para compatibilidad o la refactorizamos
+export const uploadAgoraImage = async () => {
+  const processed = await pickAndProcessImage();
+  if (!processed) return null;
+
+  // Si no hay postId, lo subimos a una carpeta 'temp' o raíz
+  return uploadPostImage('general', processed);
 };
