@@ -9,9 +9,7 @@ export async function createPost(content: string, localImages: ProcessedImage[] 
     // 1. Obtener el usuario autenticado para saber quién publica
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Usuario no autenticado");
- 
     // 2. Insertar el post principal
-    // Nota: El UUID se genera en la DB mediante gen_random_uuid()
     const { data: post, error: postError } = await supabase
       .from('posts')
       .insert({
@@ -24,11 +22,27 @@ export async function createPost(content: string, localImages: ProcessedImage[] 
 
     if (postError) throw postError;
 
+    // 2.1 Si es una respuesta, incrementamos el conteo del padre
+    if (parentPostId) {
+      const { data: parentData } = await supabase
+        .from('posts')
+        .select('replies_count')
+        .eq('id', parentPostId)
+        .single();
+      
+      if (parentData) {
+        await supabase
+          .from('posts')
+          .update({ replies_count: (parentData.replies_count || 0) + 1 })
+          .eq('id', parentPostId);
+      }
+    }
+
     // 2.1 Subir imágenes y vincularlas (Flujo Diferido)
     // Subimos las fotos usando el post.id que acabamos de obtener
     if (localImages.length > 0) {
       const mediaUrls: string[] = [];
-      
+
       // Iteramos sobre las imágenes locales guardadas en el componente
       for (const localImg of localImages) {
         // Subimos cada una a su carpeta correspondiente (UUID del post)
@@ -49,7 +63,7 @@ export async function createPost(content: string, localImages: ProcessedImage[] 
         const { error: mediaError } = await supabase
           .from('media_feature')
           .insert(mediaInserts);
-        
+
         if (mediaError) {
           console.error("Error vinculando media en base de datos:", mediaError.message);
         }
@@ -59,7 +73,7 @@ export async function createPost(content: string, localImages: ProcessedImage[] 
     // 3. Extraer hashtags del contenido HTML
     // Buscamos el patrón #texto dentro del contenido
     const hashtags = extractHashtags(content);
-    
+
     // 4. Registrar hashtags globalmente e insertar en post_topics
     if (hashtags.length > 0) {
       // 4.1 Registro Global (Asegurar que existen en el sistema de tendencias/búsqueda)
@@ -118,7 +132,7 @@ export async function createPost(content: string, localImages: ProcessedImage[] 
       const { error: mentionError } = await supabase
         .from('post_mentions')
         .insert(mentionInserts);
-      
+
       if (mentionError) {
         console.error("Error guardando menciones:", mentionError.message);
       }
@@ -172,9 +186,9 @@ export async function getTrendingTopics(query: string = ''): Promise<string[]> {
 
     const { data, error } = await request;
     if (error) throw error;
- 
+
     if (!data) return [];
- 
+
     // Extraemos todos los hashtags únicos de los trending topics encontrados
     const hashtags: string[] = [];
     data.forEach(item => {
@@ -186,7 +200,7 @@ export async function getTrendingTopics(query: string = ''): Promise<string[]> {
         hashtags.push(item.topic_name.replace(/\s+/g, ''));
       }
     });
- 
+
     return Array.from(new Set(hashtags));
   } catch (error) {
     console.error("Error obteniendo trending topics:", error);
@@ -202,9 +216,9 @@ function extractHashtags(text: string): string[] {
   const plainText = text.replace(/<[^>]*>?/gm, ' ');
   const hashtagRegex = /#(\w+)/g;
   const matches = plainText.match(hashtagRegex);
-  
+
   if (!matches) return [];
-  
+
   // Eliminamos el símbolo # y quitamos duplicados
   return Array.from(new Set(matches.map(m => m.substring(1))));
 }
@@ -214,9 +228,49 @@ function extractMentions(text: string): string[] {
   const plainText = text.replace(/<[^>]*>?/gm, ' ');
   const mentionRegex = /@(\w+)/g;
   const matches = plainText.match(mentionRegex);
-  
+
   if (!matches) return [];
-  
+
   // Eliminamos el símbolo @ y quitamos duplicados
   return Array.from(new Set(matches.map(m => m.substring(1))));
+}
+
+/**
+ * Da o quita like a una publicación.
+ */
+export async function toggleLike(postId: string): Promise<{ liked: boolean }> {
+  try {
+    const { data, error } = await supabase.rpc('toggle_like', { p_post_id: postId });
+    if (error) throw error;
+    return { liked: data.liked };
+  } catch (error) {
+    console.error("Error en toggleLike:", error);
+    throw error;
+  }
+}
+
+/**
+ * Repostea o quita el repost de una publicación.
+ */
+export async function repostPost(postId: string): Promise<{ reposted: boolean }> {
+  try {
+    const { data, error } = await supabase.rpc('toggle_repost', { p_post_id: postId });
+    if (error) throw error;
+    return { reposted: data.reposted };
+  } catch (error) {
+    console.error("Error en repostPost:", error);
+    throw error;
+  }
+}
+
+/**
+ * Registra que se ha compartido una publicación.
+ */
+export async function recordShare(postId: string) {
+  try {
+    const { error } = await supabase.rpc('record_post_share', { p_post_id: postId });
+    if (error) throw error;
+  } catch (error) {
+    console.error("Error en recordShare:", error);
+  }
 }

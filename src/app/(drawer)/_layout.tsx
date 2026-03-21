@@ -23,6 +23,13 @@ export default function DrawerLayout() {
          
         }}
       />
+      <Drawer.Screen
+        name="post"
+        options={{
+          drawerItemStyle:{display:'none'} 
+         
+        }}
+      />
     </Drawer>
   );
 }

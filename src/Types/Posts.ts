@@ -13,6 +13,11 @@ export interface Post {
     created_at: string;
     user?: Usuario;
     media?: media_feature[];
+
+    // User interaction flags
+    is_liked?: boolean;
+    is_reposted?: boolean;
+    is_replied?: boolean;
 }
 
 export interface media_feature{

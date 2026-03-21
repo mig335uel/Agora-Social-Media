@@ -19,8 +19,11 @@ export default function ProfileLayout() {
     const renderHeader = useCallback(() => {
         return (
             <View style={{ backgroundColor: isDark ? '#000' : '#fff' }}>
-                <ProfileAppBar user={user || undefined} />
-                <ProfileHeader user={user || undefined} />
+                <View>
+
+                    <ProfileAppBar user={user || undefined} />
+                    <ProfileHeader user={user || undefined} />
+                </View>
             </View>
         );
     }, [isDark, user]);
@@ -32,10 +35,10 @@ export default function ProfileLayout() {
                 backgroundColor: isDark ? '#000' : '#fff',
                 elevation: 0,
                 shadowColor: 'transparent',
-                borderBottomColor: isDark ? '#333' : '#eee',
+
             }}
             contentContainerStyle={{ justifyContent: 'center' }}
-            tabStyle={{ height: 48, paddingBottom: 12 }}
+            tabStyle={{ height: 48, margin: 12 }}
             indicatorStyle={{
                 backgroundColor: isDark ? '#fff' : '#000',
                 height: 2,
@@ -55,11 +58,13 @@ export default function ProfileLayout() {
                 >
                     <Tabs.Tab
                         name="index"
+
                         label={() => (
                             <View style={{ paddingBottom: 10 }}>
                                 <Ionicons name="grid" size={20} color={isDark ? '#fff' : '#000'} />
                             </View>
                         )}
+
                     >
                         <Slot />
                     </Tabs.Tab>

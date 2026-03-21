@@ -87,6 +87,7 @@ export default function Profile() {
     // Versión iOS: Usa la FlatList de la librería (la cabecera la pone elLayout)
     if (Platform.OS === 'ios') {
         return (
+            
             <PostCard
                 posts={posts}
                 onRefresh={onRefresh}

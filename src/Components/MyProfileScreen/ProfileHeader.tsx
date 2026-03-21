@@ -82,7 +82,7 @@ export default function ProfileHeader({ user }: ProfileHeaderProps) {
         />
       </View>
 
-      <View className="mt-8 items-center">
+      <View className="mt-4 items-center">
         {/* Avatar - Rounded Square/Squircle for a different look */}
         <View style={styles.avatarWrapper} className="shadow-2xl">
           <LinearGradient

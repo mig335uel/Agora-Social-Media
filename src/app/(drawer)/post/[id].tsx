@@ -1,7 +1,7 @@
 import useAuth from "@/hooks/useAuth";
 import { useLocalSearchParams } from "expo-router";
 import { Post } from "@/Types/Posts";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supbase/supabase";
 import { View, FlatList, ActivityIndicator, useColorScheme, Text, StyleSheet } from "react-native";
 import PostDetailAppBar from "@/Components/Posts/PostDetailAppBar";
@@ -19,59 +19,83 @@ export default function PostDetail() {
     const [replyPosts, setReplyPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     
-    useEffect(() => {
-        const fetchPost = async () => {
-            setLoading(true);
-            try {
-                // 1. Obtener el post principal
-                const { data: postData, error: postError } = await supabase
-                    .from('posts')
-                    .select('*')
-                    .eq('id', id)
-                    .single();
-                
-                if (postError) throw postError;
+    const fetchPost = useCallback(async () => {
+        setLoading(true);
+        try {
+            const { data: postData, error: postError } = await supabase
+                .from('posts')
+                .select('*')
+                .eq('id', String(id))
+                .single();
+            
+            if (postError) throw postError;
 
-                // 2. Obtener el usuario y media del post
-                const [userRes, mediaRes] = await Promise.all([
-                  user?.id === postData.user_id 
-                    ? Promise.resolve({ data: user }) 
-                    : supabase.from('users').select('*').eq('id', postData.user_id).single(),
-                  supabase.from('media_feature').select('*').eq('post_id', id)
+            // 2. Obtener el usuario y media del post
+            const [userRes, mediaRes] = await Promise.all([
+              user?.id === postData.user_id 
+                ? Promise.resolve({ data: user }) 
+                : supabase.from('users').select('*').eq('id', postData.user_id).single(),
+              supabase.from('media_feature').select('*').eq('post_id', id)
+            ]);
+
+            postData.user = userRes.data;
+            postData.media = mediaRes.data || [];
+            
+            setPrincipalPost(postData);
+
+            // 3. Obtener respuestas
+            const { data: replies, error: repliesError } = await supabase
+                .from('posts')
+                .select('*')
+                .eq('parent_post_id', id)
+                .order('created_at', { ascending: true });
+            
+            if (repliesError) throw repliesError;
+
+            const repliesWithUsers = await Promise.all((replies || []).map(async (reply) => {
+                const [rUser, rMedia] = await Promise.all([
+                  supabase.from('users').select('*').eq('id', reply.user_id).single(),
+                  supabase.from('media_feature').select('*').eq('post_id', reply.id)
+                ]);
+                return { ...reply, user: rUser.data, media: rMedia.data || [] };
+            }));
+
+            // 4. Obtener interacciones del usuario (Likes, Reposts, Replies)
+            if (user?.id) {
+                const allPostIds = [postData.id, ...repliesWithUsers.map(r => r.id)];
+                const [likesRes, repostsRes, userRepliesRes] = await Promise.all([
+                    supabase.from('likes').select('post_id').eq('user_id', user.id).in('post_id', allPostIds),
+                    supabase.from('reposts').select('post_id').eq('user_id', user.id).in('post_id', allPostIds),
+                    supabase.from('posts').select('parent_post_id').eq('user_id', user.id).in('parent_post_id', allPostIds)
                 ]);
 
-                postData.user = userRes.data;
-                postData.media = mediaRes.data || [];
-                
-                setPrincipalPost(postData);
+                const likedIds = new Set(likesRes.data?.map(l => l.post_id));
+                const repostedIds = new Set(repostsRes.data?.map(r => r.post_id));
+                const repliedIds = new Set(userRepliesRes.data?.map(r => r.parent_post_id));
 
-                // 3. Obtener respuestas
-                const { data: replies, error: repliesError } = await supabase
-                    .from('posts')
-                    .select('*')
-                    .eq('parent_post_id', id)
-                    .order('created_at', { ascending: true });
-                
-                if (repliesError) throw repliesError;
+                postData.is_liked = likedIds.has(postData.id);
+                postData.is_reposted = repostedIds.has(postData.id);
+                postData.is_replied = repliedIds.has(postData.id);
 
-                const repliesWithUsers = await Promise.all((replies || []).map(async (reply) => {
-                    const [rUser, rMedia] = await Promise.all([
-                      supabase.from('users').select('*').eq('id', reply.user_id).single(),
-                      supabase.from('media_feature').select('*').eq('post_id', reply.id)
-                    ]);
-                    return { ...reply, user: rUser.data, media: rMedia.data || [] };
-                }));
-
-                setReplyPosts(repliesWithUsers);
-            } catch (error) {
-                console.error('Error fetching post detail:', error);
-            } finally {
-                setLoading(false);
+                repliesWithUsers.forEach(r => {
+                    r.is_liked = likedIds.has(r.id);
+                    r.is_reposted = repostedIds.has(r.id);
+                    r.is_replied = repliedIds.has(r.id);
+                });
             }
-        };
-        
-        if (id) fetchPost();
+            
+            setPrincipalPost(postData);
+            setReplyPosts(repliesWithUsers);
+        } catch (error) {
+            console.error('Error fetching post detail:', error);
+        } finally {
+            setLoading(false);
+        }
     }, [id, user]);
+    
+    useEffect(() => {
+        if (id) fetchPost();
+    }, [id, fetchPost]);
 
     if (loading) {
         return (
@@ -91,11 +115,15 @@ export default function PostDetail() {
               data={replyPosts}
               keyExtractor={(item) => item.id}
               renderItem={({ item, index }) => (
-                <ReplyItem post={item} isLast={index === replyPosts.length - 1} />
+                <ReplyItem 
+                    post={item} 
+                    isLast={index === replyPosts.length - 1} 
+                    onRefresh={fetchPost} 
+                />
               )}
               ListHeaderComponent={
                 <>
-                  {principalPost && <PrincipalPost post={principalPost} />}
+                  {principalPost && <PrincipalPost post={principalPost} onRefresh={fetchPost} />}
                   <View style={[styles.replyDivider, { backgroundColor: isDark ? '#1a1a1a' : '#f0f0f0' }]}>
                     <Text style={[styles.replyTitle, { color: isDark ? '#666' : '#999' }]}>RESPUESTAS</Text>
                   </View>

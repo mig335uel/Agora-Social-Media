@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, useColorScheme, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Post } from '@/Types/Posts';
 import MediaGrid from './MediaGrid';
+import { toggleLike, repostPost, recordShare } from '@/Services/PostService';
 
 // Utilidades (reutilizadas de PostCard para consistencia)
 const formatCount = (n: number): string => {
@@ -23,15 +24,69 @@ const timeAgo = (dateStr: string): string => {
 interface ReplyItemProps {
   post: Post;
   isLast?: boolean;
+  onRefresh?: () => void;
 }
-
-export default function ReplyItem({ post, isLast = false }: ReplyItemProps) {
+export default function ReplyItem({ post, isLast = false, onRefresh }: ReplyItemProps) {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
   const textColor = isDark ? '#ffffff' : '#0f0f0f';
   const subColor = isDark ? '#8b8b8b' : '#6b6b6b';
   const borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+
+  const [localPost, setLocalPost] = useState<Post>(post);
+
+  useEffect(() => {
+    setLocalPost(post);
+  }, [post]);
+
+  const handleLike = async () => {
+    // Optimistic Update
+    const liked = !localPost.is_liked;
+    setLocalPost({
+      ...localPost,
+      is_liked: liked,
+      likes_count: Math.max(0, (localPost.likes_count || 0) + (liked ? 1 : -1))
+    });
+
+    try {
+      await toggleLike(localPost.id);
+    } catch (error) {
+      console.error("Error al dar like:", error);
+      if (onRefresh) onRefresh();
+    }
+  };
+
+  const handleRepost = async () => {
+    // Optimistic Update
+    const reposted = !localPost.is_reposted;
+    setLocalPost({
+      ...localPost,
+      is_reposted: reposted,
+      reposts_count: Math.max(0, (localPost.reposts_count || 0) + (reposted ? 1 : -1))
+    });
+
+    try {
+      await repostPost(localPost.id);
+    } catch (error) {
+      console.error("Error al repostear:", error);
+      if (onRefresh) onRefresh();
+    }
+  };
+
+  const handleShare = async () => {
+    // Optimistic Update
+    setLocalPost({
+      ...localPost,
+      shares_count: (localPost.shares_count || 0) + 1
+    });
+
+    try {
+      await recordShare(localPost.id);
+    } catch (error) {
+      console.error("Error al compartir:", error);
+    }
+  };
 
   const renderStyledContent = (content: string) => {
     const regex = /([@#][\wñáéíóú]+)/g;
@@ -50,7 +105,7 @@ export default function ReplyItem({ post, isLast = false }: ReplyItemProps) {
       <View style={styles.avatarColumn}>
         <View style={styles.avatarWrapper}>
           <Image
-            source={{ uri: post.user?.profile_picture_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png" }}
+            source={{ uri: localPost.user?.profile_picture_url || (localPost as any).profile_picture_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png" }}
             style={styles.avatar}
           />
         </View>
@@ -62,13 +117,13 @@ export default function ReplyItem({ post, isLast = false }: ReplyItemProps) {
         <View style={styles.header}>
           <View style={styles.headerInfo}>
             <Text style={[styles.displayName, { color: textColor }]} numberOfLines={1}>
-              {post.user?.display_name}
+              {localPost.user?.display_name || (localPost as any).display_name}
             </Text>
-            {post.user?.is_verified && (
+            {(localPost.user?.is_verified || (localPost as any).is_verified) && (
               <Ionicons name="checkmark-circle" size={14} color="#1DA1F2" style={{ marginLeft: 2 }} />
             )}
             <Text style={[styles.subText, { color: subColor }]} numberOfLines={1}>
-              @{post.user?.username} · {timeAgo(post.created_at)}
+              @{localPost.user?.username || (localPost as any).username} · {timeAgo(localPost.created_at)}
             </Text>
           </View>
           <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -78,28 +133,46 @@ export default function ReplyItem({ post, isLast = false }: ReplyItemProps) {
 
         {/* Cuerpo de la respuesta */}
         <Text style={[styles.contentText, { color: textColor }]}>
-          {renderStyledContent(post.content)}
+          {renderStyledContent(localPost.content)}
         </Text>
 
-        {post.media && post.media.length > 0 && (
-          <MediaGrid media={post.media} />
+        {localPost.media && localPost.media.length > 0 && (
+          <MediaGrid media={localPost.media} />
         )}
 
         {/* Acciones simplificadas */}
         <View style={styles.actions}>
-          <ActionItem name="chatbubble-outline" count={post.replies_count} color={subColor} />
-          <ActionItem name="repeat-outline" count={post.reposts_count} color={subColor} />
-          <ActionItem name="heart-outline" count={post.likes_count} color={subColor} />
-          <ActionItem name="share-outline" color={subColor} />
+          <ActionItem 
+            name={localPost.is_replied ? "chatbubble" : "chatbubble-outline"} 
+            count={localPost.replies_count} 
+            color={localPost.is_replied ? (isDark ? '#3b82f6' : '#1d4ed8') : subColor} 
+          />
+          <ActionItem 
+            name={localPost.is_reposted ? "repeat" : "repeat-outline"} 
+            count={localPost.reposts_count} 
+            color={localPost.is_reposted ? "#00BA7C" : subColor} 
+            onPress={handleRepost}
+          />
+          <ActionItem 
+            name={localPost.is_liked ? "heart" : "heart-outline"} 
+            count={localPost.likes_count} 
+            color={localPost.is_liked ? "#F91880" : subColor} 
+            onPress={handleLike}
+          />
+          <ActionItem 
+            name="share-outline" 
+            color={subColor} 
+            onPress={handleShare}
+          />
         </View>
       </View>
     </View>
   );
 }
 
-function ActionItem({ name, count, color }: any) {
+function ActionItem({ name, count, color, onPress }: any) {
   return (
-    <TouchableOpacity style={styles.actionItem} activeOpacity={0.6}>
+    <TouchableOpacity style={styles.actionItem} activeOpacity={0.6} onPress={onPress}>
       <Ionicons name={name} size={16} color={color} />
       {count !== undefined && (
         <Text style={[styles.actionCount, { color }]}>{formatCount(count)}</Text>
