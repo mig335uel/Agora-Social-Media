@@ -5,6 +5,7 @@ import { Octicons } from '@expo/vector-icons';
 
 export default function DrawerLayout() {
   return (
+    
     <Drawer
      drawerContent={(props) => <CustomDrawerContent {...props} />} 
       screenOptions={{

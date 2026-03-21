@@ -28,7 +28,8 @@ export async function getForYouFeed(limit: number = 20, offset: number = 0): Pro
     // Obtenemos el usuario actual para la personalización del feed
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { data, error } = await supabase.rpc('combine_feed_and_viral', {
+    // 1. Obtener posts algorítmicos desde RPC
+    const { data: rpcData, error: rpcError } = await supabase.rpc('combine_feed_and_viral', {
       p_user_id: user?.id || null,
       p_limit: limit,
       p_offset: offset,
@@ -36,11 +37,9 @@ export async function getForYouFeed(limit: number = 20, offset: number = 0): Pro
       p_viral_weight: 0.25
     });
 
-    // dentro de getForYouFeed, tras recibir data
-    if (error) { console.log(error); throw error; }
+    if (rpcError) { console.error('Error RPC:', rpcError); throw rpcError; }
 
-    const rows = (data || []) as any[];
-
+    const rows = (rpcData || []) as any[];
     const mapped: RankedPost[] = rows.map((r) => ({
       id: String(r.id),
       content: r.content ?? '',
@@ -60,8 +59,59 @@ export async function getForYouFeed(limit: number = 20, offset: number = 0): Pro
       viral_score: Number(r.viral_score ?? 0),
       combined_score: Number(r.combined_score ?? 0),
     }));
-    return mapped;
 
+    // 2. Obtener posts recientes del propio usuario directamente
+    const { data: userData, error: userError } = await supabase
+      .from('posts')
+      .select('*')
+      .eq('user_id', user?.id)
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    if (userError) { console.error('Error User Posts:', userError); }
+
+    let finalFeed = [...mapped];
+
+    if (userData && userData.length > 0) {
+      // Necesitamos el perfil del usuario actual para los campos display_name, etc.
+      const { data: profile } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+
+      const userPosts: RankedPost[] = userData.map(p => ({
+        id: String(p.id),
+        content: p.content || '',
+        media: p.media,
+        created_at: String(p.created_at),
+        likes_count: Number(p.likes_count || 0),
+        reposts_count: Number(p.reposts_count || 0),
+        replies_count: Number(p.replies_count || 0),
+        shares_count: Number(p.shares_count || 0),
+        user_id: String(p.user_id),
+        username: profile?.username || '',
+        display_name: profile?.display_name || '',
+        profile_picture_url: profile?.profile_picture_url || null,
+        rank_score: 1.0,
+        viral_score: 0,
+        combined_score: 1.0
+      }));
+
+      // Combinar y eliminar duplicados por ID
+      const combined = [...userPosts, ...mapped];
+      const uniqueIds = new Set();
+      finalFeed = combined.filter(post => {
+        if (uniqueIds.has(post.id)) return false;
+        uniqueIds.add(post.id);
+        return true;
+      });
+
+      // Ordenar por fecha descending (más reciente primero)
+      finalFeed.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+
+    return finalFeed;
 
   } catch (error) {
     console.error("Error al obtener el feed algorithmic (viral):", error);

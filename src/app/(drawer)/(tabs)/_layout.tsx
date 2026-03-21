@@ -20,7 +20,7 @@ export default function TabLayout() {
   if (Platform.OS === 'android') {
     return (
       <Tabs
-
+        
         screenOptions={{
 
           tabBarStyle: {

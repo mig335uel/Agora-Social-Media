@@ -1,15 +1,14 @@
-import { View, Text, useColorScheme, FlatList, RefreshControl } from "react-native";
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { View, useColorScheme, Platform } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Post } from "@/Types/Posts";
 import { supabase } from "@/lib/supbase/supabase";
 import useAuth from "@/hooks/useAuth";
 import { useProfileRefresh } from "../../../../Controller/_context";
-import MediaGrid from "@/Components/Posts/MediaGrid";
 import PostCard from "@/Components/Posts/PostsCard";
+import ProfileAppBar from "@/Components/MyProfileScreen/AppBar";
 import ProfileHeader from "@/Components/MyProfileScreen/ProfileHeader";
 import { Tabs } from "react-native-collapsible-tab-view";
-
-
 
 
 export default function Profile() {
@@ -78,11 +77,32 @@ export default function Profile() {
         setRefreshing(false);
     }, [fetchPosts, refreshStats]);
 
-
-
-    return (
-        <View className={`flex-1 ${isDark ? 'bg-black' : 'bg-white'}`}>
-            <PostCard posts={posts} onRefresh={onRefresh} refreshing={refreshing} FlatListComponent={Tabs.FlatList} />
+    const HeaderComponent = () => (
+        <View style={{ backgroundColor: isDark ? '#000' : '#fff' }}>
+            <ProfileAppBar user={user || undefined} />
+            <ProfileHeader user={user || undefined} />
         </View>
+    );
+
+    // Versión iOS: Usa la FlatList de la librería (la cabecera la pone elLayout)
+    if (Platform.OS === 'ios') {
+        return (
+            <PostCard
+                posts={posts}
+                onRefresh={onRefresh}
+                refreshing={refreshing}
+                FlatListComponent={Tabs.FlatList}
+            />
+        );
+    }
+
+    // Versión Android: Implementación nativa con cabecera integrada
+    return (
+        <PostCard
+            posts={posts}
+            onRefresh={onRefresh}
+            refreshing={refreshing}
+            ListHeaderComponent={<HeaderComponent />}
+        />
     );
 }

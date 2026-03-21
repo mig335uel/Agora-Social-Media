@@ -1,12 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { 
-  View, 
-  TextInput, 
-  FlatList, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  NativeSyntheticEvent, 
+import {
+  View,
+  TextInput,
+  FlatList,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  NativeSyntheticEvent,
   TextInputSelectionChangeEventData,
   Image,
   ActivityIndicator
@@ -25,13 +25,13 @@ interface EditorDeTextoProps {
   placeholder?: string;
   isDark?: boolean;
   hashtagMandatory?: boolean;
-  appBar?: boolean ;
+  appBar?: boolean;
 }
 
-export const EditorDeTexto = ({ 
-  value, 
-  onChange, 
-  onSearchMention, 
+export const EditorDeTexto = ({
+  value,
+  onChange,
+  onSearchMention,
   onSearchHashtag,
   onPublish,
   placeholder = "¿Qué está pasando?",
@@ -47,7 +47,7 @@ export const EditorDeTexto = ({
   const [images, setImages] = useState<ProcessedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  
+
   const inputRef = useRef<TextInput>(null);
 
   /**
@@ -68,14 +68,14 @@ export const EditorDeTexto = ({
     // Detectar qué hay justo antes del cursor
     const cursorPosition = selection.start;
     const textBeforeCursor = text.slice(0, cursorPosition);
-    
+
     // Regex para encontrar "@usuario" o "#hashtag" al final de lo escrito
     const lastWordMatch = textBeforeCursor.match(/[@#](\w*)$/);
 
     if (lastWordMatch) {
       const trigger = textBeforeCursor[lastWordMatch.index!];
       const currentQuery = lastWordMatch[1];
-      
+
       setTriggerType(trigger as '@' | '#');
       setQuery(currentQuery);
 
@@ -106,17 +106,17 @@ export const EditorDeTexto = ({
     // Buscamos el inicio del trigger (@ o #) para saber desde dónde borrar
     const lastTriggerIndex = textBeforeCursor.lastIndexOf(triggerType!);
     const newTextBefore = value.slice(0, lastTriggerIndex);
-    
+
     // El nombre a insertar (depende de si es usuario o hashtag)
     const insertion = `${triggerType}${suggestion.username || suggestion.name || suggestion} `;
     const newValue = newTextBefore + insertion + textAfterCursor;
 
     onChange(newValue);
     setShowSuggestions(false);
-    
+
     // Devolvemos el foco al teclado tras la inserción
     setTimeout(() => {
-        inputRef.current?.focus();
+      inputRef.current?.focus();
     }, 100);
   };
 
@@ -140,8 +140,8 @@ export const EditorDeTexto = ({
     const hasHashtags = hashtagRegex.test(value);
 
     if (hashtagMandatory && !hasHashtags) {
-        // Solo bloqueamos si es obligatorio
-        return;
+      // Solo bloqueamos si es obligatorio
+      return;
     }
 
     if ((!value.trim() && images.length === 0) || isPublishing) return;
@@ -170,7 +170,7 @@ export const EditorDeTexto = ({
     return parts.map((part, index) => {
       if (part.match(regex)) {
         return (
-          <Text key={index} style={{ color: '#1DA1F2', fontWeight: 'bold' }}>
+          <Text key={index} style={{ color: '#1DA1F2' }}>
             {part}
           </Text>
         );
@@ -182,112 +182,116 @@ export const EditorDeTexto = ({
   // Renderizado con Highlighting (Overlay)
   return (
     <>
-    {appBar && <PostDetailAppBar />}
-    <View style={{marginBottom: 20}}/>
-    <View style={styles.container}>
-      {showSuggestions && (
-        <View style={[styles.suggestionsBox, isDark && styles.darkBox]}>
-          <FlatList
-            data={suggestions}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item }) => (
-              <TouchableOpacity 
-                onPress={() => handleSelectSuggestion(item)}
-                style={styles.suggestionItem}
-              >
-                <Text style={{ color: isDark ? 'white' : 'black' }}>
-                  {triggerType}{item.username || item.name || item}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        </View>
-      )}
-
-      <View style={styles.inputWrapper}>
-        {/* Capa de fondo con el texto coloreado */}
-        <View 
-          style={[styles.highlightLayer, isDark && styles.darkBox]} 
-          pointerEvents="none"
-        >
-          <Text style={[styles.inputBase, isDark && styles.darkInput]}>
-            {renderHighlightedText(value)}
-            {/* Truco para el salto de línea al final */}
-            {value.endsWith('\n') ? '\n ' : ''}
-          </Text>
-        </View>
-
-        {/* TextInput transparente encima */}
-        <TextInput
-          ref={inputRef}
-          multiline
-          value={value}
-          onChangeText={handleChangeText}
-          onSelectionChange={handleSelectionChange}
-          placeholder={placeholder}
-          placeholderTextColor={isDark ? '#666' : '#999'}
-          style={[styles.inputBase, styles.textInput, { color: 'transparent' }]}
-          textAlignVertical="top"
-        />
-      </View>
-
-      {/* Vista previa de imágenes */}
-      {images.length > 0 && (
-        <View style={styles.imagesContainer}>
-          <FlatList
-            data={images}
-            horizontal
-            keyExtractor={(item) => item.uri}
-            renderItem={({ item, index }) => (
-              <View style={styles.imageWrapper}>
-                <Image source={{ uri: item.uri }} style={styles.imageThumbnail} />
-                <TouchableOpacity 
-                  style={styles.removeImageBtn} 
-                  onPress={() => removeImage(index)}
+      {appBar && <PostDetailAppBar />}
+      <View style={{ marginBottom: 20 }} />
+      <View style={styles.container}>
+        {showSuggestions && (
+          <View style={[styles.suggestionsBox, isDark && styles.darkBox]}>
+            <FlatList
+              data={suggestions}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => handleSelectSuggestion(item)}
+                  style={styles.suggestionItem}
                 >
-                  <Ionicons name="close-circle" size={20} color="red" />
+                  <Text style={{ color: isDark ? 'white' : 'black' }}>
+                    {triggerType}{item.username || item.name || item}
+                  </Text>
                 </TouchableOpacity>
-              </View>
-            )}
+              )}
+            />
+          </View>
+        )}
+
+        <View style={styles.inputWrapper}>
+          {/* Capa de fondo con el texto coloreado */}
+          <View
+            style={styles.highlightLayer}
+            pointerEvents="none"
+          >
+            <Text style={[styles.inputBase, isDark && styles.darkInput]}>
+              {renderHighlightedText(value)}
+              {/* Truco para el salto de línea al final */}
+              {value.endsWith('\n') ? '\n ' : ''}
+            </Text>
+          </View>
+
+          {/* TextInput transparente encima */}
+          <TextInput
+            ref={inputRef}
+            multiline
+            value={value}
+            onChangeText={handleChangeText}
+            onSelectionChange={handleSelectionChange}
+            placeholder={placeholder}
+            placeholderTextColor={isDark ? '#555' : '#999'}
+            style={[styles.inputBase, styles.textInput, { color: 'rgba(0,0,0,0)' }]}
+            selectionColor={isDark ? '#1DA1F255' : '#1DA1F233'}
+            textAlignVertical="top"
+            underlineColorAndroid="transparent"
+            autoCorrect={false}
+            spellCheck={false}
           />
         </View>
-      )}
 
-      {/* Barra de herramientas */}
-      <View style={[styles.toolbar, isDark && styles.darkToolbar]}>
-        <View style={styles.leftTools}>
-          <TouchableOpacity onPress={handleAddImage} disabled={isUploading}>
-            {isUploading ? (
-              <ActivityIndicator size="small" color="#1DA1F2" />
+        {/* Vista previa de imágenes */}
+        {images.length > 0 && (
+          <View style={styles.imagesContainer}>
+            <FlatList
+              data={images}
+              horizontal
+              keyExtractor={(item) => item.uri}
+              renderItem={({ item, index }) => (
+                <View style={styles.imageWrapper}>
+                  <Image source={{ uri: item.uri }} style={styles.imageThumbnail} />
+                  <TouchableOpacity
+                    style={styles.removeImageBtn}
+                    onPress={() => removeImage(index)}
+                  >
+                    <Ionicons name="close-circle" size={20} color="red" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            />
+          </View>
+        )}
+
+        {/* Barra de herramientas */}
+        <View style={[styles.toolbar, isDark && styles.darkToolbar]}>
+          <View style={styles.leftTools}>
+            <TouchableOpacity onPress={handleAddImage} disabled={isUploading}>
+              {isUploading ? (
+                <ActivityIndicator size="small" color="#1DA1F2" />
+              ) : (
+                <Ionicons name="image-outline" size={24} color="#1DA1F2" />
+              )}
+            </TouchableOpacity>
+
+            {/* Aviso de hashtag obligatorio si está activado y el texto no está vacío */}
+            {hashtagMandatory && value.trim().length > 0 && !/#[\wñáéíóú]+/g.test(value) && (
+              <Text style={{ color: '#ff4444', fontSize: 12, marginLeft: 10 }}>
+                Falta un #hashtag obligatorio
+              </Text>
+            )}
+          </View>
+
+          <TouchableOpacity
+            onPress={handlePublish}
+            disabled={isPublishing || (!value.trim() && images.length === 0) || (hashtagMandatory && !/#[\wñáéíóú]+/g.test(value))}
+            style={[
+              styles.publishBtn,
+              (isPublishing || (!value.trim() && images.length === 0) || (hashtagMandatory && !/#[\wñáéíóú]+/g.test(value))) && styles.disabledBtn
+            ]}
+          >
+            {isPublishing ? (
+              <ActivityIndicator size="small" color="white" />
             ) : (
-              <Ionicons name="image-outline" size={24} color="#1DA1F2" />
+              <Text style={styles.publishBtnText}>Publicar</Text>
             )}
           </TouchableOpacity>
-          
-          {/* Aviso de hashtag obligatorio si está activado y el texto no está vacío */}
-          {hashtagMandatory && value.trim().length > 0 && !/#[\wñáéíóú]+/g.test(value) && (
-            <Text style={{ color: '#ff4444', fontSize: 12, marginLeft: 10 }}>
-              Falta un #hashtag obligatorio
-            </Text>
-          )}
         </View>
-
-        <TouchableOpacity 
-          onPress={handlePublish}
-          disabled={isPublishing || (!value.trim() && images.length === 0) || (hashtagMandatory && !/#[\wñáéíóú]+/g.test(value))}
-          style={[
-            styles.publishBtn, 
-            (isPublishing || (!value.trim() && images.length === 0) || (hashtagMandatory && !/#[\wñáéíóú]+/g.test(value))) && styles.disabledBtn
-          ]}
-        >
-          {isPublishing ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : (
-            <Text style={styles.publishBtnText}>Publicar</Text>
-          )}
-        </TouchableOpacity>
       </View>
-    </View>
     </>
   );
 };

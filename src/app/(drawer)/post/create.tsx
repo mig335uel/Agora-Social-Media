@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, SafeAreaView } from 'react-native';
+import { View } from 'react-native';
 import useAuth from "@/hooks/useAuth";
 import { useColorScheme } from "react-native";
 import { EditorDeTexto } from "@/Components/EditorDeTexto";
 import { createPost, getTrendingTopics } from "@/Services/PostService";
 import { searchUsers } from "@/Services/UserService";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function CreatePostScreen() {
     const user = useAuth();
@@ -25,8 +26,20 @@ export default function CreatePostScreen() {
     };
 
     return (
+
         <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? 'black' : 'white' }}>
-            
+            <View style={{ flex: 1, padding: 10, backgroundColor: isDark ? 'black' : 'white' }}>
+                <EditorDeTexto
+                    value={content}
+                    onChange={setContent}
+                    onSearchMention={searchUsers} // Para buscar usuarios (@)
+                    onSearchHashtag={getTrendingTopics} // Para buscar tendencias (#)
+                    onPublish={handlePublish} // La lógica de guardado
+                    isDark={isDark}
+                    placeholder="¿Qué está pasando?"
+                />
+            </View>
+
         </SafeAreaView>
     );
 }

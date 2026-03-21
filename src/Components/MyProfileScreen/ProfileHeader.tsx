@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, useColorScheme, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -141,26 +141,45 @@ export default function ProfileHeader({ user }: ProfileHeaderProps) {
         </View>
 
         {/* Stats Section - Card Layout with Blur */}
-        <BlurView
-          intensity={isDark ? 20 : 40}
-          tint={isDark ? 'dark' : 'light'}
-          className="mx-4 mt-8 flex-row rounded-3xl overflow-hidden border border-gray-200/50 dark:border-white/10"
-        >
-          <View className="flex-1 p-4 items-center">
-            <Text className="text-xl font-black text-black dark:text-white">{stats.posts}</Text>
-            <Text className="text-[10px] font-bold text-gray-500 uppercase">publicaciones</Text>
+        {Platform.OS === 'ios' ? (
+          <BlurView
+            intensity={isDark ? 20 : 40}
+            tint={isDark ? 'dark' : 'light'}
+            className="mx-4 mt-8 flex-row rounded-3xl overflow-hidden border border-gray-200/50 dark:border-white/10"
+          >
+            <View className="flex-1 p-4 items-center">
+              <Text className="text-xl font-black text-black dark:text-white">{stats.posts}</Text>
+              <Text className="text-[10px] font-bold text-gray-500 uppercase">publicaciones</Text>
+            </View>
+            <View className="w-[1px] bg-gray-200/50 dark:bg-white/10 my-4" />
+            <View className="flex-1 p-4 items-center">
+              <Text className="text-xl font-black text-black dark:text-white">{stats.followers}</Text>
+              <Text className="text-[10px] font-bold text-gray-500 uppercase">seguidores</Text>
+            </View>
+            <View className="w-[1px] bg-gray-200/50 dark:bg-white/10 my-4" />
+            <View className="flex-1 p-4 items-center">
+              <Text className="text-xl font-black text-black dark:text-white">{stats.following}</Text>
+              <Text className="text-[10px] font-bold text-gray-500 uppercase">seguidos</Text>
+            </View>
+          </BlurView>
+        ) : (
+          <View className="mx-4 mt-8 flex-row rounded-3xl overflow-hidden border border-gray-200/50 dark:border-white/10">
+            <View className="flex-1 p-4 items-center">
+              <Text className="text-xl font-black text-black dark:text-white">{stats.posts}</Text>
+              <Text className="text-[10px] font-bold text-gray-500 uppercase">publicaciones</Text>
+            </View>
+            <View className="w-[1px] bg-gray-200/50 dark:bg-white/10 my-4" />
+            <View className="flex-1 p-4 items-center">
+              <Text className="text-xl font-black text-black dark:text-white">{stats.followers}</Text>
+              <Text className="text-[10px] font-bold text-gray-500 uppercase">seguidores</Text>
+            </View>
+            <View className="w-[1px] bg-gray-200/50 dark:bg-white/10 my-4" />
+            <View className="flex-1 p-4 items-center">
+              <Text className="text-xl font-black text-black dark:text-white">{stats.following}</Text>
+              <Text className="text-[10px] font-bold text-gray-500 uppercase">seguidos</Text>
+            </View>
           </View>
-          <View className="w-[1px] bg-gray-200/50 dark:bg-white/10 my-4" />
-          <View className="flex-1 p-4 items-center">
-            <Text className="text-xl font-black text-black dark:text-white">{stats.followers}</Text>
-            <Text className="text-[10px] font-bold text-gray-500 uppercase">seguidores</Text>
-          </View>
-          <View className="w-[1px] bg-gray-200/50 dark:bg-white/10 my-4" />
-          <View className="flex-1 p-4 items-center">
-            <Text className="text-xl font-black text-black dark:text-white">{stats.following}</Text>
-            <Text className="text-[10px] font-bold text-gray-500 uppercase">seguidos</Text>
-          </View>
-        </BlurView>
+        )}
       </View>
     </View>
   );

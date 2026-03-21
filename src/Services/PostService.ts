@@ -60,37 +60,67 @@ export async function createPost(content: string, localImages: ProcessedImage[] 
     // Buscamos el patrón #texto dentro del contenido
     const hashtags = extractHashtags(content);
     
-    // 4. Insertar hashtags en post_topics si existen
+    // 4. Registrar hashtags globalmente e insertar en post_topics
     if (hashtags.length > 0) {
+      // 4.1 Registro Global (Asegurar que existen en el sistema de tendencias/búsqueda)
+      for (const tag of hashtags) {
+        const normalizedTag = tag.toLowerCase();
+
+        // 4.1.1 Intentar registrar el Tópico Global (si no existe)
+        // Usamos upsert sobre topic_name para que no explote si ya lo creó otro
+        const { data: topicData, error: topicError } = await supabase
+          .from('trending_topics')
+          .upsert({
+            topic_name: normalizedTag,
+            category: 'General', // Por defecto
+            region: 'Global',     // Por defecto
+            volume_score: 1,      // Empezamos con al menos 1 post
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // +7 días
+          }, { onConflict: 'topic_name' })
+          .select()
+          .single();
+
+        if (!topicError && topicData) {
+          // 4.1.2 Registrar la relación en trending_hashtags para las sugerencias
+          await supabase
+            .from('trending_hashtags')
+            .upsert({
+              trend_id: topicData.id,
+              hashtag: normalizedTag,
+              is_custom: true,
+              created_by: user.id
+            }, { onConflict: 'hashtag' });
+        }
+      }
+
+      // 4.2 Vincular el Post con cada Tópico en la tabla relacional
       const topicInserts = hashtags.map(topic => ({
         post_id: post.id,
         topic: topic.toLowerCase()
       }));
 
-      const { error: topicError } = await supabase
+      const { error: relError } = await supabase
         .from('post_topics')
         .insert(topicInserts);
 
-      if (topicError) {
-        console.error("Error guardando hashtags:", topicError.message);
-        // No lanzamos error para no fallar la publicación si solo fallan los hashtags
-      }
+      if (relError) console.error("Error vinculando hashtags al post:", relError.message);
+    }
 
-      const mentions = extractMentions(content);
-      if (mentions.length > 0) {
-        const mentionInserts = mentions.map(mention => ({
-          post_id: post.id,
-          user_id: user.id,
-          mention: mention.toLowerCase()
-        }));
+    // 5. Extraer y guardar menciones
+    const mentions = extractMentions(content);
+    if (mentions.length > 0) {
+      const mentionInserts = mentions.map(mention => ({
+        post_id: post.id,
+        user_id: user.id,
+        mention: mention.toLowerCase()
+      }));
 
-        const { error: mentionError } = await supabase
-          .from('post_mentions')
-          .insert(mentionInserts);
-        
-        if (mentionError) {
-          console.error("Error guardando menciones:", mentionError.message);
-        }
+      const { error: mentionError } = await supabase
+        .from('post_mentions')
+        .insert(mentionInserts);
+      
+      if (mentionError) {
+        console.error("Error guardando menciones:", mentionError.message);
       }
     }
 

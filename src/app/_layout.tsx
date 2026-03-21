@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { supabase } from '../lib/supbase/supabase'; 
-import { View, ActivityIndicator, useColorScheme } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
+import { useColorScheme } from 'nativewind';
 import { useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 import "../../global.css";
@@ -10,8 +11,8 @@ export default function RootLayout() {
   const [loading, setLoading] = useState(true);
   const segments = useSegments();
   const router = useRouter();
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
   useEffect(() => {
     // Escuchar cambios de sesión en tiempo real
     supabase.auth.getSession().then(({ data: { session } }) => {
