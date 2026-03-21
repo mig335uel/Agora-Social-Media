@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, SafeAreaView, Platform } from 'react-native';
-import { useColorScheme } from 'nativewind';
+import { View, Text, TouchableOpacity, Modal, FlatList, SafeAreaView, Platform, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur'; // Para el efecto Liquid Glass que querías
 
@@ -9,7 +8,7 @@ export default function SelectorAgora({ label, options, value, onSelect }: { lab
 
     // Buscamos el texto de la opción seleccionada
     const selectedOption = options.find(opt => opt.value === value);
-    const { colorScheme } = useColorScheme();
+    const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
 
     return (

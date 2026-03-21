@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
-import { useColorScheme } from 'nativewind';
+import { View, Text, Pressable, StyleSheet, Alert, useColorScheme } from 'react-native';
 import { DrawerContentScrollView, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { BlurView } from 'expo-blur';
 import { router, useNavigation } from 'expo-router';
@@ -11,7 +10,7 @@ import ProfileLayout from '@/app/(drawer)/(tabs)/profile/_layout';
 import { PureNativeButton } from 'react-native-gesture-handler';
 
 function DrawerButton({ label, onPress }: { label: string; onPress: () => void }) {
-  const { colorScheme } = useColorScheme();
+  const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
   return (
@@ -29,7 +28,7 @@ function DrawerButton({ label, onPress }: { label: string; onPress: () => void }
 }
 
 export default function CustomDrawerContent(props: DrawerContentComponentProps) {
-  const { colorScheme } = useColorScheme();
+  const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const handleGoHome = () => {
     props.navigation.closeDrawer();

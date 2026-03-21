@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, StatusBar } from "react-native";
+import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, StatusBar, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from 'expo-linear-gradient';
 import { LoginForm } from "../Types/LoginForm";
@@ -9,14 +9,13 @@ import { router } from "expo-router";
 import LoginForms from "../Components/LoginForm";
 
 import React, { useState } from 'react';
-import { useColorScheme } from "nativewind";
 // Imagino que tienes un RegisterForm en tus componentes
 import RegisterForm from '../Components/register';
 
 export default function LoginScreen() {
     // Estado para saber qué formulario mostrar
     const [showRegister, setShowRegister] = useState<boolean>(false);
-    const { colorScheme } = useColorScheme();
+    const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
 
     if(showRegister){

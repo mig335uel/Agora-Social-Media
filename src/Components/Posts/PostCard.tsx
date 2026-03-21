@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Image, Platform, TouchableOpacity, Modal } from "react-native";
-import { useColorScheme } from "nativewind";
+import { View, Text, StyleSheet, Image, Platform, TouchableOpacity, Modal, useColorScheme } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { router } from "expo-router";
 import { Post } from "@/Types/Posts";
@@ -47,7 +46,7 @@ export default function PostCard({
     onOptionsPress,
     onPress
 }: PostCardProps) {
-    const { colorScheme } = useColorScheme();
+    const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
     const [isReplyModalVisible, setIsReplyModalVisible] = useState(false);
     const [replyContent, setReplyContent] = useState('');

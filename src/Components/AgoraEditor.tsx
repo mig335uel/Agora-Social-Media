@@ -1,11 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { StyleSheet, View, FlatList, TouchableOpacity, Text, Image } from 'react-native';
+import { StyleSheet, View, FlatList, TouchableOpacity, Text, Image, useColorScheme } from 'react-native';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import { uploadAgoraImage } from '../Services/ImageService';
 import { searchUsers } from '../Services/UserService';
 import { getTrendingTopics } from '../Services/PostService';
 import { Usuario } from '../Types/Users';
-import { useColorScheme } from 'nativewind';
 
 interface Props {
   onContentChange: (html: string) => void;
@@ -13,7 +12,7 @@ interface Props {
 
 export const AgoraEditor = ({ onContentChange }: Props) => {
   const richText = useRef<RichEditor>(null);
-  const { colorScheme } = useColorScheme();
+  const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   // Estados para sugerencias
   const [suggestions, setSuggestions] = useState<any[]>([]);

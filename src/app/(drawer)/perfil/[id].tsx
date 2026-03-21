@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Image, Platform } from "react-native";
-import { useColorScheme } from "nativewind";
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Image, Platform, useColorScheme } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { Tabs } from "react-native-collapsible-tab-view";
 import { getUserPosts, RankedPost } from "@/Services/FeedService";
@@ -11,7 +10,7 @@ import PostCard from "@/Components/Posts/PostCard";
 
 export default function Perfil() {
     const { id } = useLocalSearchParams<{ id: string }>();
-    const { colorScheme } = useColorScheme();
+    const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
     const [posts, setPosts] = useState<RankedPost[]>([]);
     const [loading, setLoading] = useState(true);

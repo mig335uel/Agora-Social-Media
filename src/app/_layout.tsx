@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { supabase } from '../lib/supbase/supabase';
-import { View, ActivityIndicator, Appearance } from 'react-native';
-import { useColorScheme } from 'nativewind';
+import { View, ActivityIndicator, Appearance, useColorScheme } from 'react-native';
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Session } from '@supabase/supabase-js';
@@ -12,14 +11,9 @@ export default function RootLayout() {
   const [loading, setLoading] = useState(true);
   const segments = useSegments();
   const router = useRouter();
-  const { colorScheme, setColorScheme } = useColorScheme();
+  const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  useEffect(() => {
-    // 2. Le decimos a NativeWind que siga fielmente al sistema.
-    // Al pasarle 'system', él mismo gestiona los listeners nativos sin bloquearse.
-    setColorScheme('system');
-  }, [setColorScheme]);
   useEffect(() => {
     // Escuchar cambios de sesión en tiempo real
     supabase.auth.getSession().then(({ data: { session } }) => {

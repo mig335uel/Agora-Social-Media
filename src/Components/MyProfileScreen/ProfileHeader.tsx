@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, ActivityIndicator } from 'react-native';
-import { useColorScheme } from 'nativewind';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, ActivityIndicator, useColorScheme } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -20,7 +19,7 @@ interface ProfileHeaderProps {
 }
 
 export default function ProfileHeader({ user, isMe, isFollowing, onFollowChange }: ProfileHeaderProps) {
-  const { colorScheme } = useColorScheme();
+  const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const currentUser = useAuth();
   const userId = useMemo(() => user?.id, [user?.id]);

@@ -1,13 +1,12 @@
 import { Usuario } from "@/Types/Users";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { useColorScheme } from "nativewind";
+import { View, Text, StyleSheet, TouchableOpacity, useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { signOut } from "@/Services/authService";
 import { router } from "expo-router";
 
 
 export default function ProfileAppBar({ user, isMe = true }: { user?: Usuario, isMe?: boolean }) {
-    const { colorScheme } = useColorScheme();
+    const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
 
 

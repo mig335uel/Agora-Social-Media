@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { useColorScheme } from 'nativewind';
+import { View, Text, StyleSheet, Image, TouchableOpacity, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Usuario } from '@/Types/Users';
 
@@ -21,7 +20,7 @@ const timeAgo = (dateStr: string): string => {
 };
 
 export default function PostHeader({ user, createdAt, showFollow = false }: PostHeaderProps) {
-  const { colorScheme } = useColorScheme();
+  const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
   const textColor = isDark ? '#ffffff' : '#0f0f0f';

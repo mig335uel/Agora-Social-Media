@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Platform, Modal } from 'react-native';
-import { useColorScheme } from 'nativewind';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Platform, Modal, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -25,7 +24,7 @@ const formatFullDate = (dateStr: string) => {
 };
 
 export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
-  const { colorScheme } = useColorScheme();
+  const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
   const textColor = isDark ? '#ffffff' : '#000000';
