@@ -240,6 +240,7 @@ const styles = StyleSheet.create({
         borderWidth: StyleSheet.hairlineWidth,
         overflow: 'hidden',
         marginTop: 10,
+        width: '100%',
         paddingTop: 14,
         paddingHorizontal: 14,
         paddingBottom: 4,
