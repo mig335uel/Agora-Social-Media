@@ -40,8 +40,6 @@ export default function Follows() {
                     .in('user_id', followingIds)
                     .order('created_at', { ascending: false });
 
-                console.log(posts);
-
                 if (postsError) {
                     console.error("Error fetching followed posts:", postsError);
                 } else {
@@ -61,11 +59,11 @@ export default function Follows() {
     }, [user]);
 
     return (
-        <View className={`flex-1 justify-center items-center ${isDark ? 'bg-black' : 'bg-white'}`}>
+        <View className={`flex-1 ${isDark ? 'bg-black' : 'bg-white'}`}>
             {followingPost.length > 0 ? (
-                <PostCard posts={followingPost} />
+               <PostCard posts={followingPost} />
             ) : (
-                <Text className={`text-2xl text-center font-bold ${isDark ? 'text-white' : 'text-black'}`}>No sigues a nadie o no hay posts disponibles</Text>
+                <Text>No hay posts de personas a las que sigo</Text>
             )}
         </View>
     );

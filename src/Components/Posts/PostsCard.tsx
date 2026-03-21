@@ -198,8 +198,10 @@ export default function PostCard({
         data: localPosts,
         keyExtractor: (item: Post) => item.id,
         renderItem: renderCard,
-        contentContainerStyle: { marginTop: 2, paddingVertical: 12, paddingHorizontal: 12, paddingBottom: ((Platform.OS === 'ios') ? 0 : 80) },
+        contentContainerStyle: { marginTop: 2, paddingVertical: 12, paddingHorizontal: 12, paddingBottom: ((Platform.OS === 'ios') ? 0 : 80),  },
         showsVerticalScrollIndicator: false,
+    
+        
         ItemSeparatorComponent: () => <View style={{ height: 8 }} />,
         ListHeaderComponent: ListHeaderComponent,
         onRefresh: onRefresh,
@@ -209,7 +211,7 @@ export default function PostCard({
     if (Platform.OS === 'ios') {
         return (
             <GlassContainer style={{ flex: 1 }}>
-                <FlatListComponent {...listProps} />
+                <FlatListComponent  {...listProps}  />
             </GlassContainer>
         );
     }

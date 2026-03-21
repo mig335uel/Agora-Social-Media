@@ -236,11 +236,12 @@ function ActionButton({ iconName, count, color, onPress }: { iconName: keyof typ
 
 const styles = StyleSheet.create({
     card: {
+        
+        width: '100%', //
         borderRadius: 16,
         borderWidth: StyleSheet.hairlineWidth,
         overflow: 'hidden',
         marginTop: 10,
-        width: '100%',
         paddingTop: 14,
         paddingHorizontal: 14,
         paddingBottom: 4,
