@@ -235,6 +235,13 @@ function extractMentions(text: string): string[] {
   return Array.from(new Set(matches.map(m => m.substring(1))));
 }
 
+
+interface Notifications {
+  username: string;
+  title: string;
+  body: string;
+  post_id: string;
+}
 /**
  * Da o quita like a una publicación.
  */
@@ -243,6 +250,8 @@ export async function toggleLike(postId: string): Promise<{ liked: boolean }> {
     const { data, error } = await supabase.rpc('toggle_like', { p_post_id: postId });
     if (error) throw error;
     return { liked: data.liked };
+
+    
   } catch (error) {
     console.error("Error en toggleLike:", error);
     throw error;
