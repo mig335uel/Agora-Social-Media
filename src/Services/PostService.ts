@@ -249,7 +249,20 @@ export async function toggleLike(postId: string): Promise<{ liked: boolean }> {
   try {
     const { data, error } = await supabase.rpc('toggle_like', { p_post_id: postId });
     if (error) throw error;
+    const {data: User, error: userError} = await supabase.from('users').select('username').eq('id', ((await supabase.auth.getUser())).data.user?.id).single();
+    if (userError) throw new Error("User not found");
+
+    const payload: Notifications = {
+      username: User.username,
+      title: "Me gusta",
+      body: "Le dio like a tu publicación",
+      post_id: postId
+    };
+    
+
+    
     return { liked: data.liked };
+    
 
     
   } catch (error) {

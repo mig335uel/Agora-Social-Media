@@ -36,7 +36,7 @@ export default function CreatePostScreen() {
                     onSearchHashtag={getTrendingTopics} // Para buscar tendencias (#)
                     onPublish={handlePublish} // La lógica de guardado
                     isDark={isDark}
-                    placeholder="¿Qué está pasando?"
+                    placeholder="Comparte algo interesante..."
                 />
             </View>
 

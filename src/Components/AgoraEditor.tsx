@@ -69,10 +69,10 @@ export const AgoraEditor = ({ onContentChange }: Props) => {
 
     if (suggestionType === 'mention') {
       const user = item as Usuario;
-      htmlToInsert = `<span style="color: #1DA1F2; font-weight: bold;">@${user.username}</span>&nbsp;`;
+      htmlToInsert = `<span style="color: #2563eb; font-weight: bold;">@${user.username}</span>&nbsp;`;
     } else if (suggestionType === 'hashtag') {
       const topic = item as string;
-      htmlToInsert = `<span style="color: #1DA1F2; font-weight: bold;">#${topic}</span>&nbsp;`;
+      htmlToInsert = `<span style="color: #2563eb; font-weight: bold;">#${topic}</span>&nbsp;`;
     }
 
     // Insertamos el HTML estilizado. 
@@ -129,7 +129,7 @@ export const AgoraEditor = ({ onContentChange }: Props) => {
 
       <RichEditor
         ref={richText}
-        placeholder="¿Qué está pasando en tu perímetro?..."
+        placeholder="Comparte algo interesante en tu perímetro..."
         onChange={handleChange}
         initialFocus={true}
         style={[styles.editor, { backgroundColor: isDark ? 'black' : 'white' }]}
@@ -158,26 +158,26 @@ const styles = StyleSheet.create({
   container: { minHeight: 180, marginBottom: 10, zIndex: 10 },
   editor: { flex: 1, minHeight: 150 },
   toolbar: {
-    backgroundColor: '#fff',
-    borderTopWidth: 0.5,
-    borderTopColor: '#eee'
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
+    borderTopColor: 'transparent',
+    paddingVertical: 4,
   },
   suggestionsContainer: {
     position: 'absolute',
     bottom: 52, // Justo encima de la toolbar
-    left: 0,
-    right: 0,
+    left: 8,
+    right: 8,
     backgroundColor: '#fff',
-    borderRadius: 8,
-    elevation: 20,
+    borderRadius: 12,
+    elevation: 5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
     zIndex: 9999, // Asegurar que pase por encima de todo
     maxHeight: 180,
-    borderWidth: 1,
-    borderColor: '#eee'
+    borderWidth: 0,
   },
   suggestionItem: {
     flexDirection: 'row',
@@ -195,8 +195,8 @@ const styles = StyleSheet.create({
   hashtagIcon: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: '#1DA1F2',
+    borderRadius: 10, // slightly squarish
+    backgroundColor: '#2563eb',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,

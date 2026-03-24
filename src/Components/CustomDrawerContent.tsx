@@ -69,7 +69,7 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             props.navigation.closeDrawer();
           }}
           
-          className='flex-row p-3 gap-3 border rounded-full px-5 shadow-current drop-shadow-sm'
+          className='flex-row p-4 gap-3 border rounded-full px-5 mx-5 shadow-current drop-shadow-sm'
 
           style={[styles.ButtonProfile, isDark ? { borderColor: '#fff' } : { borderColor: '#000' } ]}
         >
@@ -82,9 +82,10 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
       <View style={styles.section}>
           <TouchableOpacity 
             activeOpacity={0.7}
-            className={`border border-white rounded-full ${isDark ? 'bg-white' : 'bg-black'}`}
+            className={`border border-white rounded-full ${isDark ? 'bg-black' : 'bg-white'} items-center p-4 active:bg-red-500`}
+            onPress={handleSignOut}
           >
-            <Text className={`font-bold text-xl ${isDark ? 'text-white' : 'text-black'}`}>Hola</Text>
+            <Text className={`font-bold text-xl ${isDark ? 'text-white' : 'text-black'}`}>Cerrar Sesión</Text>
           </TouchableOpacity>
       </View>
     </DrawerContentScrollView>

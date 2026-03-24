@@ -52,7 +52,7 @@ export default function BirthDateSelector({ value, onChange }: Props) {
           onChange={handleDateChange}
           maximumDate={new Date()} // No permite fechas futuras
           // Estilos específicos para iOS si quieres que sea un modal
-          style={Platform.OS === 'ios' ? { backgroundColor: 'white' } : {}}
+          style={Platform.OS === 'ios' ? { backgroundColor: isDark ? "#000" : "#fff" } : {}}
         />
       )}
     </View>

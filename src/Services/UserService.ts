@@ -82,7 +82,7 @@ export async function checkFollowStatus(followerId: string, followingId: string)
   try {
     const { data, error } = await supabase
       .from('follows')
-      .select('id')
+      .select('*')
       .eq('follower_id', followerId)
       .eq('following_id', followingId);
 

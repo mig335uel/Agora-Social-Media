@@ -18,11 +18,15 @@ export default function ProfileAppBar({ user, isMe = true }: { user?: Usuario, i
         router.back();
     }
 
+    const handleSetting = () => {
+        router.push('/(drawer)/settings');
+    }
+
     return (
         <View className="flex-row justify-between items-center px-6 py-4 bg-transparent mt-2">
             <TouchableOpacity 
                 className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full"
-                onPress={isMe ? undefined : handleBack}
+                onPress={isMe ? handleSetting : handleBack}
             >
                 <Ionicons 
                     name={isMe ? "settings-outline" : "chevron-back"} 

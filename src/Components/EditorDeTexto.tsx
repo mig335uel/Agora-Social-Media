@@ -34,7 +34,7 @@ export const EditorDeTexto = ({
   onSearchMention,
   onSearchHashtag,
   onPublish,
-  placeholder = "¿Qué está pasando?",
+  placeholder = "Comparte algo interesante...",
   isDark = false,
   hashtagMandatory = false,
   appBar = true
@@ -170,7 +170,7 @@ export const EditorDeTexto = ({
     return parts.map((part, index) => {
       if (part.match(regex)) {
         return (
-          <Text key={index} style={{ color: '#1DA1F2' }}>
+          <Text key={index} style={{ color: '#2563eb' }}>
             {part}
           </Text>
         );
@@ -227,7 +227,7 @@ export const EditorDeTexto = ({
             placeholder={placeholder}
             placeholderTextColor={isDark ? '#555' : '#999'}
             style={[styles.inputBase, styles.textInput, { color: 'rgba(0,0,0,0)' }]}
-            selectionColor={isDark ? '#1DA1F255' : '#1DA1F233'}
+            selectionColor={isDark ? '#2563eb55' : '#2563eb33'}
             textAlignVertical="top"
             underlineColorAndroid="transparent"
             
@@ -263,9 +263,9 @@ export const EditorDeTexto = ({
           <View style={styles.leftTools}>
             <TouchableOpacity onPress={handleAddImage} disabled={isUploading}>
               {isUploading ? (
-                <ActivityIndicator size="small" color="#1DA1F2" />
+                <ActivityIndicator size="small" color="#2563eb" />
               ) : (
-                <Ionicons name="image-outline" size={24} color="#1DA1F2" />
+                <Ionicons name="image-outline" size={24} color="#2563eb" />
               )}
             </TouchableOpacity>
 
@@ -288,7 +288,7 @@ export const EditorDeTexto = ({
             {isPublishing ? (
               <ActivityIndicator size="small" color="white" />
             ) : (
-              <Text style={styles.publishBtnText}>Publicar</Text>
+              <Text style={styles.publishBtnText}>Compartir</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -331,19 +331,25 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   suggestionsBox: {
-    borderWidth: 1,
-    borderColor: '#ccc',
+    borderWidth: 0,
+    borderRadius: 12,
+    marginTop: 8,
+    marginHorizontal: 10,
     backgroundColor: 'white',
-    maxHeight: 150,
+    maxHeight: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
   },
   darkBox: {
-    backgroundColor: '#333',
-    borderColor: '#444',
+    backgroundColor: '#1E1E1E',
   },
   suggestionItem: {
-    padding: 10,
+    padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
   },
   imagesContainer: {
     flexDirection: 'row',
@@ -354,24 +360,31 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   imageThumbnail: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
+    width: 120,
+    height: 120,
+    borderRadius: 12,
   },
   removeImageBtn: {
     position: 'absolute',
-    top: -5,
-    right: -5,
+    top: -8,
+    right: -8,
     backgroundColor: 'white',
-    borderRadius: 10,
+    borderRadius: 12,
+    padding: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   toolbar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
+    padding: 12,
+    paddingBottom: 20,
+    borderTopWidth: 0,
+    backgroundColor: 'transparent',
   },
   darkToolbar: {
     borderTopColor: '#333',
@@ -381,10 +394,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   publishBtn: {
-    backgroundColor: '#1DA1F2',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: '#2563eb', // A more modern, deeper blue than Twitter's
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 12,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   disabledBtn: {
     opacity: 0.5,

@@ -182,7 +182,7 @@ export default function ProfileHeader({ user, isMe, isFollowing, onFollowChange 
                   <>
                     <Ionicons 
                       name={isFollowing ? "person-remove-outline" : "person-add-outline"} 
-                      size={18} 
+                      size={20} 
                       color={isFollowing ? (isDark ? '#fff' : '#000') : (isDark ? '#000' : '#fff')} 
                     />
                     <Text className={`font-bold ${isFollowing ? 'text-black dark:text-white' : 'text-white dark:text-black'}`}>

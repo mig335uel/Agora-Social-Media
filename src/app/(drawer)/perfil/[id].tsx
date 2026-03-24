@@ -7,14 +7,21 @@ import { toggleLike, repostPost, recordShare } from "@/Services/PostService";
 import { Ionicons } from "@expo/vector-icons";
 import MediaGrid from "@/Components/Posts/MediaGrid";
 import PostCard from "@/Components/Posts/PostCard";
+import { supabase } from "@/lib/supbase/supabase";
+import { Usuario } from "@/Types/Users";
+import useAuth from "@/hooks/useAuth";
+import { checkFollowStatus } from "@/Services/UserService";
 
 export default function Perfil() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const colorScheme = useColorScheme();
+    const currentUser = useAuth();
+    const [user, setUser] = useState<Usuario | null>(null);
     const isDark = colorScheme === 'dark';
     const [posts, setPosts] = useState<RankedPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [isFollowing, setIsFollowing] = useState(false);
 
     const fetchPosts = useCallback(async (isRefresh = false) => {
         if (!id) return;
@@ -22,18 +29,45 @@ export default function Perfil() {
         else setLoading(true);
 
         try {
-            const data = await getUserPosts(id);
-            setPosts(data);
+            const { data: fetchedUser } = await supabase.from('users').select('*').eq('id', id).single();
+            setUser(fetchedUser);
+
+            let following = false;
+            if (currentUser && currentUser.id !== id) {
+                following = await checkFollowStatus(currentUser.id, id);
+                setIsFollowing(following);
+            } else if (currentUser && currentUser.id === id) {
+                setIsFollowing(true);
+                following = true;
+            }
+
+            const canView = !fetchedUser?.is_private || following || (currentUser && currentUser.id === id);
+
+            if (canView) {
+                const data = await getUserPosts(id);
+                setPosts(data);
+            } else {
+                setPosts([]);
+            }
         } catch (error) {
             console.error("Error fetching user posts:", error);
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [id]);
+    }, [id, currentUser?.id]);
 
     useEffect(() => {
+        const isFollow = async () => {
+            if (currentUser && currentUser.id !== id) {
+                const my = useAuth();
+                const following = await checkFollowStatus(my!.id, id);
+                setIsFollowing(following);
+            }
+        }
+        isFollow();
         fetchPosts();
+
     }, [fetchPosts]);
 
     const handleLike = async (postId: string) => {
@@ -97,6 +131,7 @@ export default function Perfil() {
         }
     };
 
+
     const renderItem = ({ item }: { item: RankedPost }) => {
         return (
             <PostCard
@@ -115,6 +150,17 @@ export default function Perfil() {
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#000' : '#fff' }}>
                 <ActivityIndicator color="#1DA1F2" />
             </View>
+        );
+    }
+
+    if (user?.is_private && !isFollowing && currentUser?.id !== id) {
+        return (
+            <Tabs.ScrollView contentContainerStyle={styles.privateContainer}>
+                <Ionicons name="lock-closed-outline" size={64} color={isDark ? '#fff' : '#000'} />
+                <Text style={[styles.privateText, { color: isDark ? '#fff' : '#000' }]}>
+                    Este perfil es privado
+                </Text>
+            </Tabs.ScrollView>
         );
     }
 
@@ -143,5 +189,16 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 16,
         fontWeight: '500',
+    },
+    privateContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingTop: '30%',
+    },
+    privateText: {
+        marginTop: 16,
+        fontSize: 18,
+        fontWeight: 'bold',
     }
 });
