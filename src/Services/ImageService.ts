@@ -78,3 +78,29 @@ export const uploadAgoraImage = async () => {
   // Si no hay postId, lo subimos a una carpeta 'temp' o raíz
   return uploadPostImage('general', processed);
 };
+
+/**
+ * Sube una imagen de avatar procesada al bucket 'avatars'.
+ * La organiza dentro de una carpeta con el ID del usuario.
+ */
+export const uploadAvatarImage = async (userId: string, image: ProcessedImage): Promise<string | null> => {
+  // Usamos timestamp para forzar actualización de caché (ya que el nombre cambia)
+  const fileName = `${Date.now()}-avatar.webp`;
+  const filePath = `${userId}/${fileName}`;
+
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, decode(image.base64), {
+      contentType: 'image/webp',
+      cacheControl: '3600',
+      upsert: true // Si un avatar anterior con el mismo nombre existiese, lo pisa (aunque Date.now lo evita)
+    });
+
+  if (error) {
+    console.error("Error al subir a avatars:", error.message);
+    return null;
+  }
+
+  const { data: PublicUrlData } = await supabase.storage.from('avatars').getPublicUrl(filePath);
+  return PublicUrlData?.publicUrl ?? null;
+};

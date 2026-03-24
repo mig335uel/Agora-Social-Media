@@ -205,35 +205,27 @@ export const EditorDeTexto = ({
         )}
 
         <View style={styles.inputWrapper}>
-          {/* Capa de fondo con el texto coloreado */}
-          <View
-            style={styles.highlightLayer}
-            pointerEvents="none"
-          >
-            <Text style={[styles.inputBase, isDark && styles.darkInput]}>
-              {renderHighlightedText(value)}
-              {/* Truco para el salto de línea al final */}
-              {value.endsWith('\n') ? '\n ' : ''}
-            </Text>
-          </View>
-
-          {/* TextInput transparente encima */}
+          {/* Un solo TextInput con soporte nativo de Rich Text (elimina la sombra fantasma) */}
           <TextInput
             ref={inputRef}
             multiline
-            value={value}
+            // Usamos children en lugar de value para que Android pinte los colores directamente
             onChangeText={handleChangeText}
             onSelectionChange={handleSelectionChange}
-            placeholder={placeholder}
+            placeholder={value.length === 0 ? placeholder : ''}
             placeholderTextColor={isDark ? '#555' : '#999'}
-            style={[styles.inputBase, styles.textInput, { color: 'rgba(0,0,0,0)' }]}
+            style={[styles.inputBase, styles.textInput, { color: isDark ? 'white' : 'black' }]}
             selectionColor={isDark ? '#2563eb55' : '#2563eb33'}
             textAlignVertical="top"
             underlineColorAndroid="transparent"
-            
             autoCorrect={false}
             spellCheck={false}
-          />
+          >
+            <Text style={{ color: isDark ? 'white' : 'black' }}>
+              {renderHighlightedText(value)}
+              {value.endsWith('\n') ? '\n ' : ''}
+            </Text>
+          </TextInput>
         </View>
 
         {/* Vista previa de imágenes */}

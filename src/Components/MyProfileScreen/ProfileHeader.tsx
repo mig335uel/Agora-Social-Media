@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, ActivityIndi
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { router } from 'expo-router';
 import { Usuario } from '@/Types/Users';
 import { supabase } from '@/lib/supbase/supabase';
 import { useProfileRefresh } from '@/Controller/_context';
@@ -155,6 +156,9 @@ export default function ProfileHeader({ user, isMe, isFollowing, onFollowChange 
           {effectiveIsMe ? (
             <>
               <TouchableOpacity
+                onPress={() => {
+                  if (user?.id) router.push(`/editar/${user.id}`);
+                }}
                 className="flex-row items-center gap-2 px-6 py-3 bg-black dark:bg-white rounded-2xl"
                 activeOpacity={0.8}
               >

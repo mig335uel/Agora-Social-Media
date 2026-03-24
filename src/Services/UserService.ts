@@ -93,3 +93,24 @@ export async function checkFollowStatus(followerId: string, followingId: string)
     return false;
   }
 }
+
+/**
+ * Actualiza el perfil de un usuario.
+ * Permite actualizar solo los campos enviados en el objeto 'updates'.
+ */
+export async function updateUserProfile(userId: string, updates: Partial<Usuario>): Promise<Usuario | null> {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    throw error;
+  }
+}

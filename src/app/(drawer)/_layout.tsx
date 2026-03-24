@@ -30,6 +30,13 @@ export default function DrawerLayout() {
          
         }}
       />
+      <Drawer.Screen
+        name="editar"
+        options={{
+          drawerItemStyle:{display:'none'} 
+         
+        }}
+      />
     </Drawer>
   );
 }
