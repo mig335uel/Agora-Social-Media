@@ -40,9 +40,6 @@ object AgoraKeyManager {
                             )
                             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                            // Opcional pero recomendado: requerir autenticación del usuario
-                            // (biometría)
-                            // .setUserAuthenticationRequired(true)
                             .build()
             keyGenerator.init(spec)
             keyGenerator.generateKey()
@@ -54,7 +51,6 @@ object AgoraKeyManager {
         val alias = "AgoraIdentityKey"
         val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
 
-        // Si no existe, el TEE la crea (Hardware-bound)
         if (!keyStore.containsAlias(alias)) {
             val kpg =
                     KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore")
@@ -68,7 +64,6 @@ object AgoraKeyManager {
             kpg.generateKeyPair()
         }
 
-        // Sacamos los bytes y los pasamos a Base64 limpio para el Header
         val publicKey = keyStore.getCertificate(alias).publicKey
         return Base64.encodeToString(publicKey.encoded, Base64.NO_WRAP)
     }
@@ -76,19 +71,14 @@ object AgoraKeyManager {
     suspend fun inicializarBunker(context: Context) =
             withContext(Dispatchers.IO) {
                 try {
-                    // --- PRE-CHECK: ¿Ya tenemos la clave guardada? ---
                     val claveExistente = extraerClaveDelBunker(context)
                     if (!claveExistente.isNullOrEmpty()) {
                         Log.i("Bunker", "La llave ya está blindada en el TEE. Saltando verificación de red.")
                         return@withContext
                     }
 
-                    // 1. GENERAR / SACAR LA CLAVE PÚBLICA DEL TEE
-                    // Esta es la que el servidor usará como "molde" para cifrar
                     val publicKeyString = generarYObtenerClavePublica()
-
-                    // 2. OBTENER EL TOKEN DE PLAY INTEGRITY
-                    val projectNumber = 948102256648L // <- Proyecto Agora
+                    val projectNumber = 948102256648L 
                     val integrityToken = obtenerTokenIntegridad(context, projectNumber)
 
                     if (integrityToken == null) {
@@ -96,7 +86,6 @@ object AgoraKeyManager {
                         return@withContext
                     }
 
-                    // 3. LA LLAMADA AL SERVIDOR (NETLIFY)
                     val client = OkHttpClient()
                     val request =
                             Request.Builder()
@@ -112,7 +101,6 @@ object AgoraKeyManager {
                     if (response.isSuccessful) {
                         val jweCifrado = response.body?.string()
                         if (jweCifrado != null) {
-                            // 4. EL ENTIERRO
                             blindarClave(context, jweCifrado)
                             Log.i("Bunker", "¡Sistema blindado con éxito!")
                         }
@@ -124,27 +112,20 @@ object AgoraKeyManager {
                 }
             }
 
-    // EL ENTIERRO: Recibe la clave desde C++, la encripta en el TEE y la guarda
     fun blindarClave(context: Context, claveLimpia: String) {
         try {
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.ENCRYPT_MODE, getMasterKey())
-
-            val iv = cipher.iv // El hardware genera un IV único
+            val iv = cipher.iv 
             val ciphertext = cipher.doFinal(claveLimpia.toByteArray(Charsets.UTF_8))
-
-            // Guardamos el texto cifrado y el IV en Base64 en las SharedPreferences
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             prefs.edit()
                     .putString(KEY_IV, Base64.encodeToString(iv, Base64.DEFAULT))
                     .putString(KEY_CIPHERTEXT, Base64.encodeToString(ciphertext, Base64.DEFAULT))
                     .apply()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        } catch (e: Exception) { e.printStackTrace() }
     }
 
-    // LA EXTRACCIÓN: El interceptor llama a esto para obtener la clave al vuelo
     fun extraerClaveDelBunker(context: Context): String? {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val ivBase64 = prefs.getString(KEY_IV, null) ?: return null
@@ -153,11 +134,9 @@ object AgoraKeyManager {
         return try {
             val iv = Base64.decode(ivBase64, Base64.DEFAULT)
             val ciphertext = Base64.decode(ciphertextBase64, Base64.DEFAULT)
-
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             val spec = GCMParameterSpec(128, iv)
             cipher.init(Cipher.DECRYPT_MODE, getMasterKey(), spec)
-
             val decryptedBytes = cipher.doFinal(ciphertext)
             String(decryptedBytes, Charsets.UTF_8)
         } catch (e: Exception) {
@@ -167,11 +146,9 @@ object AgoraKeyManager {
     }
 
     private suspend fun obtenerTokenIntegridad(context: Context, projectNumber: Long): String? = suspendCancellableCoroutine { continuation ->
-        // Si detectamos debug, saltamos Play Integrity para facilitar desarrollo
-        // Pero el servidor seguirá bloqueándolo si no está en modo development
         try {
             val integrityManager = IntegrityManagerFactory.create(context)
-            val nonce = (1..32).map { "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".random() }.joinToString("")
+            val nonce = (1..32).map { (('A'..'Z') + ('a'..'z') + ('0'..'9')).random() }.joinToString("")
             
             val request = IntegrityTokenRequest.builder()
                 .setCloudProjectNumber(projectNumber)
@@ -179,9 +156,7 @@ object AgoraKeyManager {
                 .build()
                 
             integrityManager.requestIntegrityToken(request)
-                .addOnSuccessListener { response ->
-                    continuation.resume(response.token())
-                }
+                .addOnSuccessListener { response -> continuation.resume(response.token()) }
                 .addOnFailureListener { e ->
                     Log.e("Bunker", "Error solicitando integridad: ${e.message}")
                     continuation.resume(null)

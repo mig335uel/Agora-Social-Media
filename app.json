@@ -49,12 +49,14 @@
       ],
       "googleServicesFile": "./google-services.json",
       "predictiveBackGestureEnabled": false,
-      "package": "com.antihodio.agora"
+      "package": "com.antihodio.agora",
+      "allowBackup": false
     },
     "web": {
       "favicon": "./assets/AgorasLogo.png"
     },
     "plugins": [
+      "./plugins/withBunker.js",
       "expo-sqlite",
       "expo-router",
       "expo-notifications",
