@@ -39,7 +39,10 @@ export async function requestNotificationPermission() {
 
   // 5. Obtener el Token
   try {
-    token = (await Notifications.getDevicePushTokenAsync()).data;
+    if (Platform.OS === "android") {
+      token = (await Notifications.getDevicePushTokenAsync()).data;
+
+    }
     console.log("DEBUG: Token de Firebase obtenido con éxito:", token);
   } catch (error: any) {
     // Si falla por falta de entitlements en real device, capturamos el error para que no crashee la app
@@ -52,7 +55,7 @@ export async function requestNotificationPermission() {
 
 export async function saveDeviceToken(userId: string, token: string) {
   console.log("Intentando guardar token en Supabase para el user:", userId);
-  
+
   const { error } = await supabase
     .from('devices')
     .upsert({

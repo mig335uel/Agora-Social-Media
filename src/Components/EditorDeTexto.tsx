@@ -148,7 +148,10 @@ export const EditorDeTexto = ({
     setIsPublishing(true);
     try {
       await onPublish(value, images);
-      // Opcional: limpiar después de publicar si el padre no lo hace
+      // Limpiamos el editor después de publicar con éxito
+      onChange('');
+      setImages([]);
+      setShowSuggestions(false);
     } catch (error) {
       console.error("Error publishing:", error);
     } finally {
@@ -189,17 +192,48 @@ export const EditorDeTexto = ({
           <View style={[styles.suggestionsBox, isDark && styles.darkBox]}>
             <FlatList
               data={suggestions}
+              keyboardShouldPersistTaps="always"
               keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  onPress={() => handleSelectSuggestion(item)}
-                  style={styles.suggestionItem}
-                >
-                  <Text style={{ color: isDark ? 'white' : 'black' }}>
-                    {triggerType}{item.username || item.name || item}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                if (triggerType === '@') {
+                  const user = item as any;
+                  return (
+                    <TouchableOpacity
+                      onPress={() => handleSelectSuggestion(user)}
+                      style={[styles.suggestionItem, isDark && styles.darkSuggestionItem]}
+                    >
+                      <Image
+                        source={{ uri: user.profile_picture_url || 'https://via.placeholder.com/40' }}
+                        style={styles.suggestionAvatar}
+                      />
+                      <View style={styles.suggestionTextContainer}>
+                        <Text style={[styles.suggestionName, { color: isDark ? 'white' : 'black' }]}>
+                          {user.display_name || user.username}
+                        </Text>
+                        <Text style={styles.suggestionUsername}>@{user.username}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                } else {
+                  const topic = item as string;
+                  return (
+                    <TouchableOpacity
+                      onPress={() => handleSelectSuggestion(topic)}
+                      style={[styles.suggestionItem, isDark && styles.darkSuggestionItem]}
+                    >
+                      <View style={styles.hashtagIconBox}>
+                        <Text style={styles.hashtagIconText}>#</Text>
+                      </View>
+                      <View style={styles.suggestionTextContainer}>
+                        <Text style={[styles.suggestionName, { color: isDark ? 'white' : 'black' }]}>
+                          {topic}
+                        </Text>
+                        <Text style={styles.suggestionUsername}>Tendencia en Agora</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }
+              }}
             />
           </View>
         )}
@@ -339,9 +373,47 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E1E1E',
   },
   suggestionItem: {
+    flexDirection: 'row',
     padding: 12,
+    alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+  },
+  darkSuggestionItem: {
+    borderBottomColor: '#333',
+  },
+  suggestionAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 12,
+  },
+  suggestionTextContainer: {
+    justifyContent: 'center',
+    flex: 1,
+  },
+  suggestionName: {
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  suggestionUsername: {
+    color: '#6b7280',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  hashtagIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#2563eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  hashtagIconText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 20,
   },
   imagesContainer: {
     flexDirection: 'row',

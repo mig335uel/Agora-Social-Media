@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { supabase } from '../lib/supbase/supabase';
 import { View, ActivityIndicator, Appearance, useColorScheme } from 'react-native';
 import { useState } from 'react';
+import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { Session } from '@supabase/supabase-js';
 import "../../global.css";
@@ -39,7 +40,33 @@ export default function RootLayout() {
       router.replace('/');
     }
   }, [session, loading, segments]);
+  useEffect(() => {
+    // 2. Escuchar cuando LLEGA la notificación (App en primer plano)
+    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
+      console.log('📬 Notificación recibida en primer plano:', notification.request.content.title);
+      // Aquí podrías actualizar un contador rojo de notificaciones en tu menú, por ejemplo.
+    });
 
+    // 3. Escuchar cuando el usuario TOCA la notificación (App abierta o en segundo plano)
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      // Aquí extraemos exactamente el "data" que mandaste desde Node.js
+      const data = response.notification.request.content.data;
+      console.log('👆 Usuario tocó la notificación. Datos:', data);
+
+      // Si viene el postId, navegamos directamente a esa publicación
+      if (data && data.postId) {
+        console.log(`Navegando al post ID: ${data.postId}`);
+
+        // EJEMPLO CON EXPO ROUTER:
+        // router.push(`/agoras/post/${data.postId}`);
+
+        // EJEMPLO CON REACT NAVIGATION:
+        // navigation.navigate('PostDetail', { id: data.postId });
+      }
+    });
+
+    // 4. Limpiar los escuchadores cuando se cierra el componente (Buenas prácticas)
+  }, []);
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
