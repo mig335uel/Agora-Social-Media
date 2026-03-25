@@ -24,10 +24,7 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
         try {
             const results = await LoginAuth({ loginForm });
             if (results && results.user) {
-                const token = await requestNotificationPermission();
-                if (token) {
-                    await saveDeviceToken(results.user.id, token);
-                }
+                
                 router.replace('/');
             }
         } catch (error) {

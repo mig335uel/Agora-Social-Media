@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { supabase } from '../lib/supbase/supabase';
 import { View, ActivityIndicator, Appearance, useColorScheme } from 'react-native';
@@ -7,6 +7,16 @@ import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { Session } from '@supabase/supabase-js';
 import "../../global.css";
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -14,7 +24,8 @@ export default function RootLayout() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-
+  const notificationListener = useRef<Notifications.EventSubscription>(null);
+  const responseListener = useRef<Notifications.EventSubscription>(null);
   useEffect(() => {
     // Escuchar cambios de sesión en tiempo real
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -25,6 +36,31 @@ export default function RootLayout() {
     supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
+  }, []);
+  useEffect(() => {
+    // 2. Cuando LLEGA una notificación (App abierta en pantalla)
+    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+      console.log('📬 Notificación en pantalla:', notification.request.content.title);
+    });
+
+    // 3. Cuando el usuario TOCA la notificación (App abierta, en segundo plano o cerrada)
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      console.log('👆 Usuario tocó la notificación. Datos:', data);
+
+      // Extraemos el postId que envías desde Node.js
+      if (data && data.postId) {
+        console.log(`Navegando al post ID: ${data.postId}`);
+        // Redirigimos al post exacto dentro de tu Drawer
+        router.push(`/post/${data.postId}`);
+      }
+    });
+
+    // 4. Limpieza de memoria (Vital en React Native)
+    return () => {
+      if (notificationListener.current) notificationListener.current.remove();
+      if (responseListener.current) responseListener.current.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -40,33 +76,6 @@ export default function RootLayout() {
       router.replace('/');
     }
   }, [session, loading, segments]);
-  useEffect(() => {
-    // 2. Escuchar cuando LLEGA la notificación (App en primer plano)
-    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-      console.log('📬 Notificación recibida en primer plano:', notification.request.content.title);
-      // Aquí podrías actualizar un contador rojo de notificaciones en tu menú, por ejemplo.
-    });
-
-    // 3. Escuchar cuando el usuario TOCA la notificación (App abierta o en segundo plano)
-    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-      // Aquí extraemos exactamente el "data" que mandaste desde Node.js
-      const data = response.notification.request.content.data;
-      console.log('👆 Usuario tocó la notificación. Datos:', data);
-
-      // Si viene el postId, navegamos directamente a esa publicación
-      if (data && data.postId) {
-        console.log(`Navegando al post ID: ${data.postId}`);
-
-        // EJEMPLO CON EXPO ROUTER:
-        // router.push(`/agoras/post/${data.postId}`);
-
-        // EJEMPLO CON REACT NAVIGATION:
-        // navigation.navigate('PostDetail', { id: data.postId });
-      }
-    });
-
-    // 4. Limpiar los escuchadores cuando se cierra el componente (Buenas prácticas)
-  }, []);
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>

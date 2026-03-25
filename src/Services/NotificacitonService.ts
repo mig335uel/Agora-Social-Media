@@ -1,61 +1,49 @@
-// Añade esta función a tu archivo de servicios
-
 import * as Device from 'expo-device';
-import { Platform, Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { Platform, Alert } from 'react-native';
 import { supabase } from "../lib/supbase/supabase";
-export async function requestNotificationPermission() {
-  let token;
-  console.log("--- Iniciando requestNotificationPermission ---");
 
-  // 1. Evitar errores en simuladores
+/**
+ * Solicita permisos de notificación y obtiene el Expo Push Token.
+ */
+export async function requestNotificationPermission() {
+  console.log("--- Iniciando requestNotificationPermission (Expo SDK) ---");
+
   if (!Device.isDevice) {
     console.log('DEBUG: No es un dispositivo físico. Saltando permiso.');
     return null;
   }
 
-  // 2. Comprobar si ya tenemos permiso
+  // 1. Permisos para Android 13+ y iOS
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  console.log("DEBUG: Estado de permiso existente:", existingStatus);
   let finalStatus = existingStatus;
 
-  // 3. Si no lo tenemos, lanzamos el popup nativo del sistema
   if (existingStatus !== 'granted') {
-    console.log("DEBUG: Solicitando nuevos permisos...");
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
-    console.log("DEBUG: Nuevo estado de permiso:", finalStatus);
   }
 
-  // 4. Si el usuario rechaza
   if (finalStatus !== 'granted') {
-    console.log("DEBUG: Permiso denegado por el usuario.");
-    Alert.alert(
-      'Permiso denegado',
-      'Para recibir avisos de likes y comentarios, activa las notificaciones en ajustes.'
-    );
+    console.log("DEBUG: Permiso denegado.");
+    Alert.alert('Permiso denegado', 'Activa las notificaciones en ajustes.');
     return null;
   }
 
-  // 5. Obtener el Token
+  // 2. Obtener Token
   try {
-    if (Platform.OS === "android") {
-      token = (await Notifications.getDevicePushTokenAsync()).data;
-
-    }
-    console.log("DEBUG: Token de Firebase obtenido con éxito:", token);
+    const token = (await Notifications.getExpoPushTokenAsync()).data;
+    console.log("DEBUG: Token obtenido:", token);
+    return token;
   } catch (error: any) {
-    // Si falla por falta de entitlements en real device, capturamos el error para que no crashee la app
-    console.warn("DEBUG: No se pudo obtener el token de notificación (posiblemente faltan los permisos 'aps-environment' en Xcode):", error.message);
+    console.warn("DEBUG: No se pudo obtener el token:", error.message);
     return null;
   }
-
-  return token;
 }
 
+/**
+ * Registra el dispositivo en Supabase.
+ */
 export async function saveDeviceToken(userId: string, token: string) {
-  console.log("Intentando guardar token en Supabase para el user:", userId);
-
   const { error } = await supabase
     .from('devices')
     .upsert({
@@ -63,13 +51,10 @@ export async function saveDeviceToken(userId: string, token: string) {
       fcm_token: token,
       device_name: Device.deviceName || 'Unknown',
       platform: Platform.OS,
-      device_identifier: Device.osBuildId || 'Simulator',
+      device_identifier: Device.osBuildId || 'Unknown',
       last_seen: new Date().toISOString()
     }, { onConflict: 'user_id, fcm_token' });
 
-  if (error) {
-    console.error("Error RLS o de Database en tabla 'devices':", error.message);
-  } else {
-    console.log("✅ Token guardado correctamente en la tabla 'devices'");
-  }
+  if (error) console.error("Error guardando token:", error.message);
+  else console.log("✅ Token guardado");
 }
