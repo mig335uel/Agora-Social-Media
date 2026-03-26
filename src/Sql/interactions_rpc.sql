@@ -3,6 +3,7 @@ CREATE OR REPLACE FUNCTION public.toggle_like(p_post_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   v_user_id uuid;
@@ -31,8 +32,8 @@ BEGIN
   END IF;
 
   -- El trigger 'likes_after_insert' (si existe) se encargará de viral_score e intereses
-  -- Si no existe, podrías llamar a calculate_viral_score aquí:
-  -- PERFORM public.calculate_viral_score(p_post_id);
+  -- Si no existe, llama explícitamente:
+  PERFORM public.calculate_viral_score(p_post_id);
 
   RETURN jsonb_build_object('liked', v_liked);
 END;
@@ -43,6 +44,7 @@ CREATE OR REPLACE FUNCTION public.toggle_repost(p_post_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   v_user_id uuid;

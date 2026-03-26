@@ -223,7 +223,7 @@ export async function repostPost(postId: string): Promise<{ reposted: boolean }>
           body: `${senderData?.username || "Alguien"} ha compartido tu publicación`,
           post_id: postId,
         };
-        fetch("https://api.periodiconaranja.es/agoras/notificacion/like", {
+        fetch("https://api.periodiconaranja.es/agoras/notificacion/repost", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-platform": Platform.OS },
           body: JSON.stringify(payload)
