@@ -6,6 +6,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/AgorasFinalLogo.png",
+    "extra": {
+      "eas": {
+        "projectId": "5daba5d2-4908-419a-9034-2e3ea691e59f"
+      }
+    },
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/AgorasFinalLogo.png",

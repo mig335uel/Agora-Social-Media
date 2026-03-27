@@ -14,6 +14,16 @@ export async function requestNotificationPermission() {
     return null;
   }
 
+  // Configurar canal para Android (Requerido para Android 8.0+)
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'Default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+    });
+  }
+
   // 1. Permisos para Android 13+ y iOS
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
@@ -29,10 +39,13 @@ export async function requestNotificationPermission() {
     return null;
   }
 
-  // 2. Obtener Token
+  // 2. Obtener Token FCM (Firebase Cloud Messaging)
   try {
-    const token = (await Notifications.getExpoPushTokenAsync()).data;
-    console.log("DEBUG: Token obtenido:", token);
+    // @ts-ignore - Algunas versiones de tipos de expo-notifications no incluyen projectId, pero es válido en runtime.
+    const token = (await Notifications.getDevicePushTokenAsync({
+      projectId: "5daba5d2-4908-419a-9034-2e3ea691e59f"
+    })).data;
+    console.log("DEBUG: Token FCM obtenido:", token);
     return token;
   } catch (error: any) {
     console.warn("DEBUG: No se pudo obtener el token:", error.message);
@@ -44,23 +57,42 @@ export async function requestNotificationPermission() {
  * Registra el dispositivo en Supabase.
  */
 export async function saveDeviceToken(userId: string, token: string) {
-  const { error } = await supabase
-    .from('devices')
-    .upsert({
-      user_id: userId,
-      fcm_token: token,
-      device_name: Device.deviceName || 'Unknown',
-      platform: Platform.OS,
-      device_identifier: Device.osBuildId || 'Unknown',
-      last_seen: new Date().toISOString()
-    }, { onConflict: 'user_id, fcm_token' });
+  try {
+    // 1. LIMPIEZA AGRESIVA (Constraint-Agnostic)
+    // Borramos cualquier registro previo de este token o de este dispositivo para este usuario.
+    // Esto hace que el "insert" posterior nunca choque con una PK o Unique Constraint.
+    await supabase
+      .from('devices')
+      .delete()
+      .or(`fcm_token.eq."${token}",and(user_id.eq."${userId}",device_identifier.eq."${Device.osBuildId || 'Unknown'}")`);
 
-  if (error) console.error("Error guardando token:", error.message);
-  else console.log("✅ Token guardado");
+    // 2. INSERTAR NUEVO REGISTRO
+    const { error } = await supabase
+      .from('devices')
+      .insert({
+        user_id: userId,
+        fcm_token: token,
+        device_name: Device.deviceName || 'Unknown',
+        platform: Platform.OS,
+        device_identifier: Device.osBuildId || 'Unknown',
+        last_seen: new Date().toISOString()
+      });
+
+    if (error) {
+      console.error("❌ Error Supabase al registrar dispositivo:", error.message, error.details);
+    } else {
+      console.log("✅ Dispositivo registrado con éxito para:", userId);
+    }
+  } catch (err) {
+    console.error("❌ Error inesperado en saveDeviceToken:", err);
+  }
 }
 
 
+
 export async function getNotifcations(userId: string){
+  if (!userId || userId === "undefined") return [];
+  
   const { data, error } = await supabase
     .from('notifications')
     .select('*, users!sender_id(*)')

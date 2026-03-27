@@ -95,19 +95,24 @@ export async function signOut() {
     try {
         const { data: { user } } = await supabase.auth.getUser();
         console.log(user?.id);
+        
         try {
+            // Obtenemos el FCM token real (mismo que guardamos)
             token = (await Notifications.getDevicePushTokenAsync()).data;
         } catch (e) {
-            console.log("No se pudo obtener el token, procediendo con borrado parcial");
+            console.log("No se pudo obtener el token FCM, procediendo con borrado parcial");
         }
 
-
         if (user) {
-            const { error: deviceError } = await supabase
-                .from('devices')
-                .delete()
-                .eq('user_id', user.id).eq('device_identifier', Device.osBuildId).eq('device_name', Device.deviceName).eq('fcm_token', token);
-            if (deviceError) throw deviceError;
+            if (token) {
+                const { error: deviceError } = await supabase
+                    .from('devices')
+                    .delete()
+                    .eq('user_id', user.id)
+                    .eq('fcm_token', token);
+                    
+                if (deviceError) throw deviceError;
+            }
 
             await supabase.auth.signOut();
         }

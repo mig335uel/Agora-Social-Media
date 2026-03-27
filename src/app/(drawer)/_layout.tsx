@@ -6,13 +6,13 @@ import { requestNotificationPermission, saveDeviceToken } from '@/Services/Notif
 import useAuth from '@/hooks/useAuth';
 
 export default function DrawerLayout() {
+  const user = useAuth();
 
   useEffect(() => {
     // 1. Creamos una función asíncrona dentro del useEffect
     const setupNotifications = async () => {
       try {
         // 2. Obtenemos el usuario actual de la sesión
-        const user = useAuth();
         
         if (user) {
           // 3. Ponemos 'await' para esperar a que se genere el token real
@@ -30,7 +30,7 @@ export default function DrawerLayout() {
 
     // 5. Ejecutamos la función
     setupNotifications();
-  }, []);
+  }, [user]);
   return (
     
     <Drawer

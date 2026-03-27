@@ -34,7 +34,7 @@ export async function createPost(content: string, localImages: ProcessedImage[] 
     if (parentPostId) {
       const { data: parentData } = await supabase
         .from('posts')
-        .select('replies_count')
+        .select('replies_count, user_id')
         .eq('id', parentPostId)
         .single();
 
@@ -43,6 +43,22 @@ export async function createPost(content: string, localImages: ProcessedImage[] 
           .from('posts')
           .update({ replies_count: (parentData.replies_count || 0) + 1 })
           .eq('id', parentPostId);
+
+        if (parentData.user_id && parentData.user_id !== user.id) {
+          const { data: senderData } = await supabase.from('users').select('username').eq('id', user.id).single();
+          const payload: Notifications = {
+            username: senderData?.username || "Alguien",
+            title: "¡Nuevo Comentario! 💬",
+            body: `${senderData?.username || "Alguien"} ha comentado tu publicación`,
+            post_id: parentPostId,
+            user_id: user.id,
+          };
+          fetch("https://api.periodiconaranja.es/agoras/notificacion/comment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-platform": Platform.OS },
+            body: JSON.stringify(payload)
+          }).catch(() => null);
+        }
       }
     }
 
@@ -126,6 +142,19 @@ export async function createPost(content: string, localImages: ProcessedImage[] 
 
 export async function deletePost(postId: string) {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: postData } = await supabase.from('posts').select('parent_post_id').eq('id', postId).single();
+      if (postData?.parent_post_id) {
+        await supabase
+          .from('notifications')
+          .delete()
+          .eq('post_id', postData.parent_post_id)
+          .eq('sender_id', user.id)
+          .eq('type', 'comment');
+      }
+    }
+
     await supabase.from('posts').delete().eq('id', postId);
     return true;
   } catch (error) {
@@ -230,6 +259,7 @@ export async function repostPost(postId: string): Promise<{ reposted: boolean }>
           title: "¡Nuevo Repost! 🔄",
           body: `${senderData?.username || "Alguien"} ha compartido tu publicación`,
           post_id: postId,
+          user_id: currentUser.id,
         };
         fetch("https://api.periodiconaranja.es/agoras/notificacion/repost", {
           method: "POST",
@@ -237,7 +267,15 @@ export async function repostPost(postId: string): Promise<{ reposted: boolean }>
           body: JSON.stringify(payload)
         }).catch(() => null);
       }
+    } else if (!data.reposted && currentUser) {
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('post_id', postId)
+        .eq('sender_id', currentUser.id)
+        .eq('type', 'repost');
     }
+    
     if (error) throw error;
     return { reposted: data.reposted };
   } catch (error) {
