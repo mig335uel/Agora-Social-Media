@@ -79,10 +79,10 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
 
       </View>
       
-      <View style={styles.section}>
+      <View className="">
           <TouchableOpacity 
             activeOpacity={0.7}
-            className={`border border-white rounded-full ${isDark ? 'bg-black' : 'bg-white'} items-center p-4 active:bg-red-500`}
+            className={`border ${isDark ? 'border-white' : 'border-black'} rounded-full p-4 px-5 mx-5  mt-5 ${isDark ? 'bg-black' : 'bg-white'} items-center  active:bg-red-500`}
             onPress={handleSignOut}
           >
             <Text className={`font-bold text-xl ${isDark ? 'text-white' : 'text-black'}`}>Cerrar Sesión</Text>
@@ -118,14 +118,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  section: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 10,
-    gap: 10,
-    borderWidth: 1,
-    borderRadius: 100,
-  },
+  
   iconRow: {
     flexDirection: 'row',
     alignItems: 'center',

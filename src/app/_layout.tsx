@@ -7,6 +7,7 @@ import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { Session } from '@supabase/supabase-js';
 import "../../global.css";
+import { requestNotificationPermission, saveDeviceToken } from '@/Services/NotificacitonService';
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
@@ -37,6 +38,22 @@ export default function RootLayout() {
       setSession(session);
     });
   }, []);
+
+  useEffect(() => {
+    const registrarDispositivo = async () => {
+      // Como estamos dentro del componente, "session" sí existe aquí
+      if (session?.user) {
+        console.log("Sesión detectada, verificando token de notificaciones...");
+        const token = await requestNotificationPermission();
+        
+        if (token) {
+          await saveDeviceToken(session.user.id, token);
+        }
+      }
+    };
+
+    registrarDispositivo();
+  }, [session]);
   useEffect(() => {
     // 2. Cuando LLEGA una notificación (App abierta en pantalla)
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {

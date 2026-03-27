@@ -191,15 +191,23 @@ export async function toggleLike(postId: string): Promise<{ liked: boolean }> {
           title: "¡Nuevo Like! ❤️",
           body: `${senderData?.username || "Alguien"} le dio like a tu publicación`,
           post_id: postId,
-          user_id: postData.user_id
+          user_id: currentUser.id,
         };
-
+        console.log(payload);
         fetch("https://api.periodiconaranja.es/agoras/notificacion/like", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-platform": Platform.OS },
           body: JSON.stringify(payload)
         }).catch(() => null);
       }
+    } else {
+      // Si retiró el like, borramos la notificación correspondiente
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('post_id', postId)
+        .eq('sender_id', currentUser.id)
+        .eq('type', 'like');
     }
 
     return { liked: data.liked };

@@ -58,3 +58,19 @@ export async function saveDeviceToken(userId: string, token: string) {
   if (error) console.error("Error guardando token:", error.message);
   else console.log("✅ Token guardado");
 }
+
+
+export async function getNotifcations(userId: string){
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*, user:sender_id(*)')
+    .eq('receiver_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error("Error obteniendo notificaciones:", error.message);
+    return [];
+  }
+
+  return data;
+}
