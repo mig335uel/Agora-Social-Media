@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, useColorScheme, Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, useColorScheme, ActivityIndicator, FlatList } from "react-native";
 import { Post } from "@/Types/Posts";
 import { supabase } from "@/lib/supbase/supabase";
 import useAuth from "@/hooks/useAuth";
@@ -8,22 +7,20 @@ import { useProfileRefresh } from "../../../../Controller/_context";
 import PostCard from "@/Components/Posts/PostsCard";
 import ProfileAppBar from "@/Components/MyProfileScreen/AppBar";
 import ProfileHeader from "@/Components/MyProfileScreen/ProfileHeader";
-import { Tabs } from "react-native-collapsible-tab-view";
-
+import ProfileCustomTabBar from "@/Components/MyProfileScreen/ProfileCustomTabBar";
 
 export default function Profile() {
-    const scheme = useColorScheme();
-    const isDark = scheme === 'dark';
+    const isDark = useColorScheme() === 'dark';
     const user = useAuth();
     const { refreshStats } = useProfileRefresh();
 
     const [posts, setPosts] = useState<Post[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loadingPosts, setLoadingPosts] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [activeTab, setActiveTab] = useState("posts");
 
     const fetchPosts = useCallback(async () => {
         if (!user?.id) return;
-        setLoading(true);
         try {
             const { data: postsData, error: postsError } = await supabase
                 .from('posts')
@@ -31,13 +28,9 @@ export default function Profile() {
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
-
             if (postsError) throw postsError;
             if (postsData && postsData.length > 0) {
-                // 1. Obtener todos los IDs de los posts para traer su media de una vez
                 const postIds = postsData.map(p => p.id);
-
-                // 2. Traer la media de todos los posts en una sola consulta
                 const { data: mediaData, error: mediaError } = await supabase
                     .from('media_feature')
                     .select('*')
@@ -45,10 +38,9 @@ export default function Profile() {
 
                 if (mediaError) throw mediaError;
 
-                // 3. Mapear cada post con su usuario y su media correspondiente
                 const fullPosts = postsData.map(post => ({
                     ...post,
-                    user: user, // Asignamos el usuario actual (dueño del perfil)
+                    user: user,
                     media: mediaData?.filter(m => m.post_id === post.id) || []
                 }));
 
@@ -59,8 +51,7 @@ export default function Profile() {
         } catch (error) {
             console.error('Error fetching posts:', error);
         } finally {
-            setLoading(false);
-            setRefreshing(false);
+            setLoadingPosts(false);
         }
     }, [user?.id]);
 
@@ -77,21 +68,35 @@ export default function Profile() {
         setRefreshing(false);
     }, [fetchPosts, refreshStats]);
 
-    const HeaderComponent = () => (
+    // ── Header que se montará al inicio de la lista ───────────────────
+    const renderHeader = () => (
         <View style={{ backgroundColor: isDark ? '#000' : '#fff' }}>
             <ProfileAppBar user={user || undefined} />
             <ProfileHeader user={user || undefined} isMe={true} />
+            <ProfileCustomTabBar activeTab={activeTab} onTabChange={setActiveTab} />
         </View>
     );
 
-    // Versión iOS: Usa la FlatList de la librería (la cabecera la pone elLayout)
-    return (
+    if (loadingPosts && posts.length === 0) {
+        return (
+            <View style={{ flex: 1, backgroundColor: isDark ? '#000' : '#fff' }}>
+                {renderHeader()}
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color="#1DA1F2" />
+                </View>
+            </View>
+        );
+    }
 
-        <PostCard
-            posts={posts}
-            onRefresh={onRefresh}
-            refreshing={refreshing}
-            FlatListComponent={Tabs.FlatList}
-        />
+    return (
+        <View style={{ flex: 1, backgroundColor: isDark ? '#000' : '#fff' }}>
+            <PostCard
+                posts={activeTab === "posts" ? posts : []}
+                ListHeaderComponent={renderHeader()}
+                onRefresh={onRefresh}
+                refreshing={refreshing}
+                FlatListComponent={FlatList} // Usamos nativo en lugar de Tabs.FlatList
+            />
+        </View>
     );
 }

@@ -214,17 +214,17 @@ export default function ProfileHeader({ user, isMe, isFollowing, onFollowChange 
           >
             <View className="flex-1 p-4 items-center">
               <Text className="text-xl font-black text-black dark:text-white">{stats.posts}</Text>
-              <Text className="text-[10px] font-bold text-gray-500 uppercase">publicaciones</Text>
+              <Text className="text-[9.5px] font-bold text-gray-500 uppercase">publicaciones</Text>
             </View>
             <View className="w-[1px] bg-gray-200/50 dark:bg-white/10 my-4" />
             <View className="flex-1 p-4 items-center">
               <Text className="text-xl font-black text-black dark:text-white">{stats.followers}</Text>
-              <Text className="text-[10px] font-bold text-gray-500 uppercase">seguidores</Text>
+              <Text className="text-[9.5px] font-bold text-gray-500 uppercase">seguidores</Text>
             </View>
             <View className="w-[1px] bg-gray-200/50 dark:bg-white/10 my-4" />
             <View className="flex-1 p-4 items-center">
               <Text className="text-xl font-black text-black dark:text-white">{stats.following}</Text>
-              <Text className="text-[10px] font-bold text-gray-500 uppercase">seguidos</Text>
+              <Text className="text-[9.5px] font-bold text-gray-500 uppercase">seguidos</Text>
             </View>
           </BlurView>
         ) : (

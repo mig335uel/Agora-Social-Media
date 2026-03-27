@@ -63,7 +63,7 @@ export async function saveDeviceToken(userId: string, token: string) {
 export async function getNotifcations(userId: string){
   const { data, error } = await supabase
     .from('notifications')
-    .select('*, user:sender_id(*)')
+    .select('*, users!sender_id(*)')
     .eq('receiver_id', userId)
     .order('created_at', { ascending: false });
 
@@ -73,4 +73,20 @@ export async function getNotifcations(userId: string){
   }
 
   return data;
+}
+
+/**
+ * Marca todas las notificaciones no leídas de un usuario como leídas.
+ * Se llama al abrir la pantalla de notificaciones para resetear el badge.
+ */
+export async function markAllAsRead(userId: string) {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('receiver_id', userId)
+    .eq('is_read', false);
+
+  if (error) {
+    console.error("Error marcando como leídas:", error.message);
+  }
 }

@@ -1,183 +1,206 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Image, Platform, useColorScheme } from "react-native";
-import { useLocalSearchParams, router } from "expo-router";
-import { Tabs } from "react-native-collapsible-tab-view";
+import { View, Text, StyleSheet, ActivityIndicator, useColorScheme, RefreshControl, FlatList } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import { getUserPosts, RankedPost } from "@/Services/FeedService";
 import { toggleLike, repostPost, recordShare } from "@/Services/PostService";
 import { Ionicons } from "@expo/vector-icons";
-import MediaGrid from "@/Components/Posts/MediaGrid";
-import PostCard from "@/Components/Posts/PostCard";
+import PostCardItem from "@/Components/Posts/PostCard";
 import { supabase } from "@/lib/supbase/supabase";
 import { Usuario } from "@/Types/Users";
 import useAuth from "@/hooks/useAuth";
 import { checkFollowStatus } from "@/Services/UserService";
+import { useProfileRefresh } from "@/Controller/_context";
+import ProfileAppBar from "@/Components/MyProfileScreen/AppBar";
+import ProfileHeader from "@/Components/MyProfileScreen/ProfileHeader";
+import ProfileCustomTabBar from "@/Components/MyProfileScreen/ProfileCustomTabBar";
 
 export default function Perfil() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const colorScheme = useColorScheme();
     const currentUser = useAuth();
-    const [user, setUser] = useState<Usuario | null>(null);
     const isDark = colorScheme === 'dark';
-    const [posts, setPosts] = useState<RankedPost[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
+    
+    // Context refresh para los stats del ProfileHeader
+    const { refreshStats } = useProfileRefresh();
+
+    const [user, setUser] = useState<Usuario | null>(null);
     const [isFollowing, setIsFollowing] = useState(false);
+    
+    const [posts, setPosts] = useState<RankedPost[]>([]);
+    const [loadingPosts, setLoadingPosts] = useState(true);
+    const [loadingProfile, setLoadingProfile] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [activeTab, setActiveTab] = useState("posts");
 
-    const fetchPosts = useCallback(async (isRefresh = false) => {
+    // ── Carga de datos del perfil ───────────────────────────────────────
+    const fetchProfileData = useCallback(async () => {
         if (!id) return;
-        if (isRefresh) setRefreshing(true);
-        else setLoading(true);
-
         try {
-            const { data: fetchedUser } = await supabase.from('users').select('*').eq('id', id).single();
-            setUser(fetchedUser);
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', id)
+                .single();
 
-            let following = false;
+            if (userError) throw userError;
+            setUser(userData);
+
             if (currentUser && currentUser.id !== id) {
-                following = await checkFollowStatus(currentUser.id, id);
+                const following = await checkFollowStatus(currentUser.id, id);
                 setIsFollowing(following);
-            } else if (currentUser && currentUser.id === id) {
-                setIsFollowing(true);
-                following = true;
-            }
-
-            const canView = !fetchedUser?.is_private || following || (currentUser && currentUser.id === id);
-
-            if (canView) {
-                const data = await getUserPosts(id);
-                setPosts(data);
-            } else {
-                setPosts([]);
             }
         } catch (error) {
-            console.error("Error fetching user posts:", error);
+            console.error("Error fetching profile layout data:", error);
         } finally {
-            setLoading(false);
-            setRefreshing(false);
+            setLoadingProfile(false);
         }
     }, [id, currentUser?.id]);
 
-    useEffect(() => {
-        const isFollow = async () => {
-            if (currentUser && currentUser.id !== id) {
-                const my = useAuth();
-                const following = await checkFollowStatus(my!.id, id);
-                setIsFollowing(following);
-            }
+    // ── Carga de los posts del usuario ──────────────────────────────────
+    const fetchPosts = useCallback(async () => {
+        if (!id) return;
+        try {
+            const response = await getUserPosts(id);
+            setPosts(response || []);
+        } catch (error) {
+            console.error("Error fetching posts:", error);
+        } finally {
+            setLoadingPosts(false);
         }
-        isFollow();
+    }, [id]);
+
+    useEffect(() => {
+        fetchProfileData();
         fetchPosts();
+    }, [fetchProfileData, fetchPosts]);
 
-    }, [fetchPosts]);
+    // ── Pull-to-refresh Global ──────────────────────────────────────────
+    const handleRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await Promise.all([
+            fetchProfileData(),
+            fetchPosts(),
+            refreshStats()
+        ]);
+        setRefreshing(false);
+    }, [fetchProfileData, fetchPosts, refreshStats]);
 
-    const handleLike = async (postId: string) => {
+    // ── Acciones en Posts ───────────────────────────────────────────────
+    const handleLike = async (postId: string) => { /* Optimistic UI Omitted context since using old component, assuming inside old handleLike. Re-implementing correctly: */
         setPosts(prev => prev.map(p => {
             if (p.id === postId) {
                 const liked = !p.is_liked;
-                return {
-                    ...p,
-                    is_liked: liked,
-                    likes_count: Math.max(0, (p.likes_count || 0) + (liked ? 1 : -1))
-                };
+                return { ...p, is_liked: liked, likes_count: Math.max(0, (p.likes_count || 0) + (liked ? 1 : -1)) };
             }
             return p;
         }));
-        try {
-            await toggleLike(postId);
-        } catch (error) {
-            console.error("Error liking post:", error);
-            fetchPosts(true);
-        }
+        try { await toggleLike(postId); } catch (e) { fetchPosts(); }
     };
 
     const handleRepost = async (postId: string) => {
         setPosts(prev => prev.map(p => {
             if (p.id === postId) {
                 const reposted = !p.is_reposted;
-                return {
-                    ...p,
-                    is_reposted: reposted,
-                    reposts_count: Math.max(0, (p.reposts_count || 0) + (reposted ? 1 : -1))
-                };
+                return { ...p, is_reposted: reposted, reposts_count: Math.max(0, (p.reposts_count || 0) + (reposted ? 1 : -1)) };
             }
             return p;
         }));
-        try {
-            await repostPost(postId);
-        } catch (error) {
-            console.error("Error reposting:", error);
-            fetchPosts(true);
-        }
+        try { await repostPost(postId); } catch (e) { fetchPosts(); }
     };
 
-    const handleReply = async (content: string, images: any[], postId: string) => {
-        setPosts(prev => prev.map(p => {
-            if (p.id === postId) {
-                return {
-                    ...p,
-                    is_replied: true,
-                    replies_count: (p.replies_count || 0) + 1
-                };
-            }
-            return p;
-        }));
-        try {
-            const { createPost } = require("@/Services/PostService");
-            await createPost(content, images, postId);
-            fetchPosts(true);
-        } catch (error) {
-            console.error("Error replying:", error);
-            fetchPosts(true);
-        }
+    const handleShare = async (postId: string) => {
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, shares_count: (p.shares_count || 0) + 1 } : p));
+        try { await recordShare(postId); } catch (e) {}
     };
 
+    const renderItem = ({ item }: { item: RankedPost }) => (
+        <PostCardItem 
+            post={item} 
+            onLike={handleLike} 
+            onRepost={handleRepost} 
+            onShare={handleShare} 
+            onReply={async () => fetchPosts()} // Optimistic syncs in component if needed
+        />
+    );
 
-    const renderItem = ({ item }: { item: RankedPost }) => {
+    // ── Renderizado del Header Completo ─────────────────────────────────
+    const renderHeader = () => {
+        if (loadingProfile && !user) return (
+            <View style={{ height: 300, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator color="#1DA1F2" />
+            </View>
+        );
         return (
-            <PostCard
-                post={item}
-                onLike={handleLike}
-                onRepost={handleRepost}
-                onShare={(postId) => recordShare(postId)}
-                onReply={handleReply}
-                onPress={(post) => router.push(`/post/${post.id}`)}
-            />
+            <View style={{ backgroundColor: isDark ? '#000' : '#fff' }}>
+                <ProfileAppBar user={user || undefined} isMe={currentUser?.id === id} />
+                <ProfileHeader
+                    user={user || undefined}
+                    isMe={currentUser?.id === id}
+                    isFollowing={isFollowing}
+                    onFollowChange={setIsFollowing}
+                />
+                <ProfileCustomTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+            </View>
         );
     };
 
-    if (loading && posts.length === 0) {
+    // ── Renderizado de UI Principal ─────────────────────────────────────
+    if (loadingProfile && !user) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#000' : '#fff' }}>
-                <ActivityIndicator color="#1DA1F2" />
+                <ActivityIndicator size="large" color="#1DA1F2" />
             </View>
         );
     }
 
     if (user?.is_private && !isFollowing && currentUser?.id !== id) {
         return (
-            <Tabs.ScrollView contentContainerStyle={styles.privateContainer}>
-                <Ionicons name="lock-closed-outline" size={64} color={isDark ? '#fff' : '#000'} />
-                <Text style={[styles.privateText, { color: isDark ? '#fff' : '#000' }]}>
-                    Este perfil es privado
-                </Text>
-            </Tabs.ScrollView>
+            <FlatList
+                data={[]}
+                renderItem={() => null}
+                ListHeaderComponent={renderHeader}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#1DA1F2" />}
+                contentContainerStyle={[styles.privateContainer, { backgroundColor: isDark ? '#000' : '#fff', flexGrow: 1 }]}
+                ListEmptyComponent={() => (
+                    <View style={styles.privateLockContainer}>
+                        <Ionicons name="lock-closed-outline" size={64} color={isDark ? '#fff' : '#000'} />
+                        <Text style={[styles.privateText, { color: isDark ? '#fff' : '#000' }]}>
+                            Este perfil es privado
+                        </Text>
+                    </View>
+                )}
+            />
         );
     }
 
     return (
-        <Tabs.FlatList
-            data={posts}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            onRefresh={() => fetchPosts(true)}
-            refreshing={refreshing}
-            contentContainerStyle={{ paddingBottom: 100 }}
-            ListEmptyComponent={() => (
-                <View style={styles.emptyContainer}>
-                    <Text style={[styles.emptyText, { color: isDark ? '#444' : '#999' }]}>No hay publicaciones todavía.</Text>
-                </View>
-            )}
-        />
+        <View style={{ flex: 1, backgroundColor: isDark ? '#000' : '#fff' }}>
+            <FlatList
+                data={activeTab === "posts" ? posts : []}
+                keyExtractor={(item) => item.id}
+                renderItem={renderItem}
+                ListHeaderComponent={renderHeader}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        tintColor="#1DA1F2"
+                        colors={["#1DA1F2"]}
+                    />
+                }
+                contentContainerStyle={{ paddingBottom: 100 }}
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={() => (
+                    !loadingPosts ? (
+                        <View style={styles.emptyContainer}>
+                            <Text style={[styles.emptyText, { color: isDark ? '#444' : '#999' }]}>No hay publicaciones todavía.</Text>
+                        </View>
+                    ) : (
+                        <ActivityIndicator style={{ marginTop: 20 }} color="#1DA1F2" />
+                    )
+                )}
+            />
+        </View>
     );
 }
 
@@ -191,14 +214,16 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     privateContainer: {
-        flex: 1,
-        justifyContent: 'center',
+        paddingBottom: 40,
+    },
+    privateLockContainer: {
+        marginTop: 60,
         alignItems: 'center',
-        paddingTop: '30%',
+        justifyContent: 'center',
     },
     privateText: {
         marginTop: 16,
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: '600',
     }
 });

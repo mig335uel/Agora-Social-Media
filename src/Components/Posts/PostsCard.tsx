@@ -1,6 +1,6 @@
 import { Post } from "@/Types/Posts";
 import { GlassContainer } from "expo-glass-effect";
-import { FlatList, View, StyleSheet, Platform, ActionSheetIOS, Alert, AlertButton, useColorScheme } from "react-native";
+import { FlatList, View, StyleSheet, Platform, ActionSheetIOS, Alert, AlertButton, useColorScheme, RefreshControl } from "react-native";
 import useAuth from "@/hooks/useAuth";
 import { deletePost, toggleLike, repostPost, recordShare, createPost } from "@/Services/PostService";
 import { router } from "expo-router";
@@ -200,15 +200,25 @@ export default function PostCard({
         renderItem: renderCard,
         contentContainerStyle: { marginTop: 2, paddingVertical: 12, paddingHorizontal: 12, paddingBottom: ((Platform.OS === 'ios') ? 0 : 80), },
         showsVerticalScrollIndicator: false,
-
-
         ItemSeparatorComponent: () => <View style={{ height: 8 }} />,
         ListHeaderComponent: ListHeaderComponent,
-        onRefresh: onRefresh,
-        refreshing: refreshing,
+        
+        // Usamos refreshControl en vez de onRefresh/refreshing porque
+        // Tabs.FlatList (react-native-collapsible-tab-view) solo acepta refreshControl
+        refreshControl: onRefresh ? (
+            <RefreshControl
+                refreshing={refreshing ?? false}
+                onRefresh={onRefresh}
+                tintColor="#1DA1F2"
+                colors={["#1DA1F2"]}
+            />
+        ) : undefined,
     };
 
-    if (Platform.OS === 'ios') {
+    // Si es iOS y estamos usando el FlatList estándar, lo envolvemos en GlassContainer.
+    // Pero si nos pasan un Custom FlatList (como Tabs.FlatList), NO debemos envolverlo,
+    // porque librerías como react-native-collapsible-tab-view requieren que el FlatList sea root absoluto.
+    if (Platform.OS === 'ios' && FlatListComponent === FlatList) {
         return (
             <GlassContainer style={{ flex: 1 }}>
                 <FlatListComponent  {...listProps} />
