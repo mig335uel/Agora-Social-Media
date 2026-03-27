@@ -59,14 +59,14 @@ export default function TabLayout() {
 
           tabBarStyle: {
             position: 'absolute',
-            backgroundColor: isDark
-              ? 'rgba(0, 0, 0, 0.5)'
-              : 'rgba(255, 255, 255, 0.5)',
+            backgroundColor: 'transparent',
 
             shadowColor: isDark ? '#fff' : '#000',
             backfaceVisibility: 'hidden',
-            borderStyle: 'dashed',
-            borderTopColor: isDark ? '#fff' : '#000',
+            borderStyle: 'solid',
+            borderWidth: 0.5,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+            borderTopColor: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)',
             bottom: 20,           // Margen inferior
             left: 20,             // Margen izquierdo
             right: 20,            // Margen derecho
@@ -92,7 +92,7 @@ export default function TabLayout() {
               intensity={100}
               tint={isDark ? 'dark' : 'light'}
               blurReductionFactor={50}
-              style={StyleSheet.absoluteFill}
+              style={[StyleSheet.absoluteFill, { borderRadius: 30, overflow: 'hidden' }]}
             />
           ),
 

@@ -50,6 +50,9 @@ export default function RootLayout() {
         if (token) {
           await saveDeviceToken(session.user.id, token);
         }
+
+        // Sincronizar el badge del icono al entrar
+        await updateAppBadge(session.user.id);
       }
     };
 
