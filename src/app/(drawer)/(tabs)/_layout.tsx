@@ -1,6 +1,6 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useNavigation } from 'expo-router';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome, Octicons } from '@expo/vector-icons';
-import { Platform, StyleSheet, useColorScheme, View, Text, Button, TouchableOpacity, Pressable } from 'react-native';
+import { Platform, StyleSheet, useColorScheme, View, Text, Button, TouchableOpacity, Pressable, DeviceEventEmitter } from 'react-native';
 import { GlassContainer, GlassView } from 'expo-glass-effect';
 import { NativeTabTrigger, NativeTabs } from 'expo-router/build/native-tabs';
 import "/global.css";
@@ -14,10 +14,12 @@ import { supabase } from '@lib/supbase/supabase'
 
 export default function TabLayout() {
   const user = useAuth();
+  const navigation = useNavigation();
   const [notificationNumber, setNotificationNumber] = useState<number>(0);
-  // Guardamos si es iOS en una constante para que el código quede más limpio
+
   const fetchNotificationNumber = async () => {
-    const { data, error } = await supabase.from('notifications').select('*').eq('receiver_id', user?.id).eq('is_read', false);
+    if (!user?.id) return;
+    const { data, error } = await supabase.from('notifications').select('*').eq('receiver_id', user.id).eq('is_read', false);
 
     if (error) {
       console.error("Error obteniendo notificaciones:", error.message);
@@ -26,8 +28,25 @@ export default function TabLayout() {
     }
   }
   useEffect(() => {
+    if (!user?.id) return;
+
     fetchNotificationNumber();
-  }, []);
+
+    // 1. Escuchar el evento que mandamos desde el RootLayout cuando llega un push
+    const subscription = DeviceEventEmitter.addListener('notificationReceived', () => {
+      fetchNotificationNumber();
+    });
+
+    // 2. Refrescar cuando la pantalla gana el foco (por si venimos de leer las notis)
+    const focusListener = navigation.addListener('focus', () => {
+      fetchNotificationNumber();
+    });
+
+    return () => {
+      subscription.remove();
+      focusListener();
+    };
+  }, [user?.id, navigation]);
   const isIOS = Platform.OS === 'ios';
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
@@ -56,7 +75,6 @@ export default function TabLayout() {
             borderTopWidth: 0,
             marginHorizontal: 10,
             elevation: 0,         // Quitar sombra en Android
-            overflow: 'hidden',
           },
           tabBarItemStyle: {
             height: 60,

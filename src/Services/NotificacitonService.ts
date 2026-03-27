@@ -90,9 +90,9 @@ export async function saveDeviceToken(userId: string, token: string) {
 
 
 
-export async function getNotifcations(userId: string){
+export async function getNotifcations(userId: string) {
   if (!userId || userId === "undefined") return [];
-  
+
   const { data, error } = await supabase
     .from('notifications')
     .select('*, users!sender_id(*)')
@@ -120,5 +120,25 @@ export async function markAllAsRead(userId: string) {
 
   if (error) {
     console.error("Error marcando como leídas:", error.message);
+  } else {
+    // Sincronizar el badge del icono de la app a 0
+    Notifications.setBadgeCountAsync(0);
+  }
+}
+
+/**
+ * Obtiene el conteo de notificaciones no leídas y actualiza el badge del icono de la app.
+ */
+export async function updateAppBadge(userId: string) {
+  if (!userId || userId === "undefined") return;
+
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('receiver_id', userId)
+    .eq('is_read', false);
+
+  if (!error && count !== null) {
+    Notifications.setBadgeCountAsync(count);
   }
 }

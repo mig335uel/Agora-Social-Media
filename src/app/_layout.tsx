@@ -7,11 +7,12 @@ import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { Session } from '@supabase/supabase-js';
 import "../../global.css";
-import { requestNotificationPermission, saveDeviceToken } from '@/Services/NotificacitonService';
+import { requestNotificationPermission, saveDeviceToken, updateAppBadge } from '@/Services/NotificacitonService';
+import { DeviceEventEmitter } from 'react-native';
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    shouldSetBadge: true,
     shouldShowBanner: true,
     shouldShowList: true,
   }),
@@ -45,7 +46,7 @@ export default function RootLayout() {
       if (session?.user) {
         console.log("Sesión detectada, verificando token de notificaciones...");
         const token = await requestNotificationPermission();
-        
+
         if (token) {
           await saveDeviceToken(session.user.id, token);
         }
@@ -58,6 +59,8 @@ export default function RootLayout() {
     // 2. Cuando LLEGA una notificación (App abierta en pantalla)
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
       console.log('📬 Notificación en pantalla:', notification.request.content.title);
+      // Emitir evento para que el TabBar se entere y actualice el numerito
+      DeviceEventEmitter.emit('notificationReceived');
     });
 
     // 3. Cuando el usuario TOCA la notificación (App abierta, en segundo plano o cerrada)
