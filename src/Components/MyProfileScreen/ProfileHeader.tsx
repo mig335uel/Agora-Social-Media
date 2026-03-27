@@ -68,11 +68,21 @@ export default function ProfileHeader({ user, isMe, isFollowing, onFollowChange 
   }, [fetchData]);
 
   const handleToggleFollow = async () => {
-    if (!currentUser || !userId || effectiveIsMe || followLoading) return;
+    console.log("DEBUG: handleToggleFollow pulsado", { currentUser: currentUser?.id, userId });
+    if (!currentUser || !userId || effectiveIsMe || followLoading) {
+      console.log("DEBUG: handleToggleFollow cancelado", { 
+        missingUser: !currentUser, 
+        missingUserId: !userId, 
+        isMe: effectiveIsMe, 
+        loading: followLoading 
+      });
+      return;
+    }
 
     setFollowLoading(true);
     try {
       const nowFollowing = await toggleFollow(currentUser.id, userId);
+      console.log("DEBUG: toggleFollow resultado:", nowFollowing);
       if (onFollowChange) onFollowChange(nowFollowing);
       
       // Update local followers count optionally
@@ -134,10 +144,14 @@ export default function ProfileHeader({ user, isMe, isFollowing, onFollowChange 
 
         {/* User Identity */}
         <View className="items-center mt-4 px-6">
-          <Text className="text-3xl font-black text-black dark:text-white text-center">
-
-            {user?.display_name || 'Agora User'} {user?.is_verified === true ? <Ionicons name="checkmark-circle" size={24} color="#3b82f6" /> : null}
-          </Text>
+          <View className="flex-row items-center gap-1">
+            <Text className="text-3xl font-black text-black dark:text-white text-center">
+              {user?.display_name || 'Agora User'}
+            </Text>
+            {user?.is_verified === true && (
+              <Ionicons name="checkmark-circle" size={24} color="#3b82f6" />
+            )}
+          </View>
           <View className="flex-row items-center mt-1 bg-blue-100 dark:bg-blue-900/30 px-3 py-1 rounded-full">
             <Text className="text-blue-600 dark:text-blue-400 font-bold text-sm italic">
               @{user?.username || 'username'}

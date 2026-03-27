@@ -12,34 +12,45 @@ export interface ProcessedImage {
 }
 
 /**
- * Abre la librería de imágenes, permite al usuario elegir una y la procesa a formato WebP.
- * No sube la imagen a ningún servidor, solo devuelve los datos locales.
+ * Abre la librería de imágenes, permite al usuario elegir una o varias y las procesa a formato WebP.
+ * @param allowMultiple Si se permite elegir más de una imagen.
  */
-export const pickAndProcessImage = async (): Promise<ProcessedImage | null> => {
+export const pickAndProcessImage = async (allowMultiple: boolean = false): Promise<ProcessedImage[]> => {
   const pickerResult = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsEditing: true,
+    allowsEditing: !allowMultiple, // El recorte solo funciona con una sola imagen
+    allowsMultipleSelection: allowMultiple,
     quality: 1,
   });
 
-  if (pickerResult.canceled || !pickerResult.assets[0].uri) return null;
+  if (pickerResult.canceled || !pickerResult.assets || pickerResult.assets.length === 0) return [];
 
-  const webpImage = await ImageManipulator.manipulateAsync(
-    pickerResult.assets[0].uri,
-    [{ resize: { width: 1200 } }],
-    {
-      compress: 0.8,
-      format: ImageManipulator.SaveFormat.WEBP,
-      base64: true
+  const processedImages: ProcessedImage[] = [];
+
+  for (const asset of pickerResult.assets) {
+    try {
+      const webpImage = await ImageManipulator.manipulateAsync(
+        asset.uri,
+        [{ resize: { width: 1200 } }],
+        {
+          compress: 0.8,
+          format: ImageManipulator.SaveFormat.WEBP,
+          base64: true
+        }
+      );
+
+      if (webpImage.base64) {
+        processedImages.push({
+          uri: webpImage.uri,
+          base64: webpImage.base64
+        });
+      }
+    } catch (error) {
+      console.error("Error processing asset:", asset.uri, error);
     }
-  );
+  }
 
-  if (!webpImage.base64) return null;
-
-  return {
-    uri: webpImage.uri,
-    base64: webpImage.base64
-  };
+  return processedImages;
 };
 
 /**
@@ -72,11 +83,11 @@ export const uploadPostImage = async (postId: string, image: ProcessedImage): Pr
 
 // Mantenemos esta para compatibilidad o la refactorizamos
 export const uploadAgoraImage = async () => {
-  const processed = await pickAndProcessImage();
-  if (!processed) return null;
+  const processedList = await pickAndProcessImage();
+  if (processedList.length === 0) return null;
 
   // Si no hay postId, lo subimos a una carpeta 'temp' o raíz
-  return uploadPostImage('general', processed);
+  return uploadPostImage('general', processedList[0]);
 };
 
 /**

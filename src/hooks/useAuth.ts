@@ -8,38 +8,40 @@ export default function useAuth() {
     const [usuario, setUsuario] = useState<Usuario | null>(null);
 
     useEffect(() => {
-        
-        const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user !== null) {
-               
-                if (user) {
+        const getUserData = async (userId: string) => {
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', userId)
+                    .maybeSingle();
 
-                    try {
-                        const { data, error } = await supabase.schema('public').from('users').select('*').eq('id', user.id).maybeSingle();
-
-                        if (error) throw error;
-
-                        if (data) {
-                            setUsuario(data);
-                            return usuario;
-                        }
-                    } catch (error) {
-                        console.log(error);
-                        throw error;
-                    }
-
-
-
-
-
-                }
+                if (error) console.error("Error fetching user data:", error);
+                if (data) setUsuario(data);
+            } catch (err) {
+                console.error("Unexpected error in useAuth:", err);
             }
-        }
+        };
 
+        // 1. Carga inicial
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) {
+                getUserData(session.user.id);
+            } else {
+                setUsuario(null);
+            }
+        });
 
-        getUser();
+        // 2. Escuchar cambios de sesión
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session?.user) {
+                getUserData(session.user.id);
+            } else {
+                setUsuario(null);
+            }
+        });
 
+        return () => subscription.unsubscribe();
     }, []);
 
     return usuario;

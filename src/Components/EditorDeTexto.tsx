@@ -123,9 +123,9 @@ export const EditorDeTexto = ({
   const handleAddImage = async () => {
     setIsUploading(true);
     try {
-      const processed = await pickAndProcessImage();
-      if (processed) {
-        setImages([...images, processed]);
+      const processedList = await pickAndProcessImage(true);
+      if (processedList && processedList.length > 0) {
+        setImages([...images, ...processedList]);
       }
     } catch (error) {
       console.error("Error picking image:", error);

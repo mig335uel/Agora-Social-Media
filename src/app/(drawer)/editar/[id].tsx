@@ -55,9 +55,9 @@ export default function EditProfileByIdScreen() {
 
     const handlePickImage = async () => {
         try {
-            const processed = await pickAndProcessImage();
-            if (processed) {
-                setNewAvatar(processed);
+            const processedList = await pickAndProcessImage(false);
+            if (processedList && processedList.length > 0) {
+                setNewAvatar(processedList[0]);
             }
         } catch (error) {
             console.error("Error picking image:", error);
