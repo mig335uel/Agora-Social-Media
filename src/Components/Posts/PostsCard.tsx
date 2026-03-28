@@ -202,7 +202,7 @@ export default function PostCard({
         data: localPosts,
         keyExtractor: (item: Post) => item.id,
         renderItem: renderCard,
-        contentContainerStyle: { marginTop: 2, paddingVertical: 12, paddingHorizontal: 12, paddingBottom: ((Platform.OS === 'ios') ? 110 : 80), },
+        contentContainerStyle: { marginTop: 2, paddingBottom: ((Platform.OS === 'ios') ? 110 : 80), },
         showsVerticalScrollIndicator: false,
         ItemSeparatorComponent: () => <View style={{ height: 8 }} />,
         ListHeaderComponent: ListHeaderComponent,
