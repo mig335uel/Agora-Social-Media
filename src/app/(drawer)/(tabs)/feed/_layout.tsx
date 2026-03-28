@@ -18,7 +18,7 @@ export default function TopBarNavigation() {
                             overflow: 'visible',
                             elevation: 1,
                             shadowColor: 'transparent',
-                            paddingBottom: 2
+                            paddingBottom: 0
                             // borderBottomWidth: 1,
                             // borderTopWidth: 1,
 

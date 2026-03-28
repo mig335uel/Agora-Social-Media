@@ -252,7 +252,7 @@ export const EditorDeTexto = ({
             selectionColor={isDark ? '#2563eb55' : '#2563eb33'}
             textAlignVertical="top"
             underlineColorAndroid="transparent"
-            autoCorrect={false}
+            autoCorrect={true}
             spellCheck={false}
           >
             <Text style={{ color: isDark ? 'white' : 'black' }}>

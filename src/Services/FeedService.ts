@@ -267,3 +267,81 @@ export async function getUserPosts(targetUserId: string, limit: number = 20, off
     return [];
   }
 }
+
+/**
+ * Obtiene el feed de "Seguidos" (Follows) con toda la metadata necesaria.
+ */
+export async function getFollowsFeed(limit: number = 20, offset: number = 0): Promise<RankedPost[]> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    // 1. Obtener la lista de personas a las que sigo
+    const { data: follows, error: followsError } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', user.id);
+
+    if (followsError) throw followsError;
+    const followingIds = follows.map(f => f.following_id);
+    if (followingIds.length === 0) return [];
+
+    // 2. Traer los posts de esas personas
+    const { data: postsData, error: postsError } = await supabase
+      .from('posts')
+      .select(`
+          *,
+          user:users!user_id(*),
+          media:media_feature!id(*)
+      `)
+      .in('user_id', followingIds)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (postsError) throw postsError;
+    if (!postsData || postsData.length === 0) return [];
+
+    const postIds = postsData.map(p => String(p.id));
+
+    // 3. Obtener interacciones del usuario actual para estos posts
+    const [likesRes, repostsRes, repliesRes] = await Promise.all([
+      supabase.from('likes').select('post_id').eq('user_id', user.id).in('post_id', postIds),
+      supabase.from('reposts').select('post_id').eq('user_id', user.id).in('post_id', postIds),
+      supabase.from('posts').select('parent_post_id').eq('user_id', user.id).in('parent_post_id', postIds)
+    ]);
+
+    const likedIds = new Set(likesRes.data?.map(l => l.post_id));
+    const repostedIds = new Set(repostsRes.data?.map(r => r.post_id));
+    const repliedIds = new Set(repliesRes.data?.map(r => r.parent_post_id));
+
+    // 4. Mapear todo a RankedPost (usando la estructura que espera la UI)
+    const result: RankedPost[] = postsData.map(p => {
+      return {
+        id: String(p.id),
+        content: p.content || '',
+        media: p.media as any,
+        created_at: String(p.created_at),
+        likes_count: Number(p.likes_count || 0),
+        reposts_count: Number(p.reposts_count || 0),
+        replies_count: Number(p.replies_count || 0),
+        shares_count: Number(p.shares_count || 0),
+        user_id: String(p.user_id),
+        username: p.user?.username || '',
+        user: p.user,
+        display_name: p.user?.display_name || '',
+        profile_picture_url: p.user?.profile_picture_url || null,
+        rank_score: 1.0, 
+        viral_score: 0,
+        combined_score: 1.0,
+        is_liked: likedIds.has(String(p.id)),
+        is_reposted: repostedIds.has(String(p.id)),
+        is_replied: repliedIds.has(String(p.id))
+      };
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error en getFollowsFeed:", error);
+    return [];
+  }
+}

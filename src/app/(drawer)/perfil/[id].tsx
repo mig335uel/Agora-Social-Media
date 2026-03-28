@@ -5,58 +5,37 @@ import { getUserPosts, RankedPost } from "@/Services/FeedService";
 import { toggleLike, repostPost, recordShare } from "@/Services/PostService";
 import { Ionicons } from "@expo/vector-icons";
 import PostCardItem from "@/Components/Posts/PostCard";
-import { supabase } from "@/lib/supbase/supabase";
-import { Usuario } from "@/Types/Users";
-import useAuth from "@/hooks/useAuth";
-import { checkFollowStatus } from "@/Services/UserService";
 import { useProfileRefresh } from "@/Controller/_context";
 import ProfileAppBar from "@/Components/MyProfileScreen/AppBar";
 import ProfileHeader from "@/Components/MyProfileScreen/ProfileHeader";
 import ProfileCustomTabBar from "@/Components/MyProfileScreen/ProfileCustomTabBar";
 
+// Importar el contexto del layout (¡Magia!)
+import { useProfileData } from "./_layout";
+
 export default function Perfil() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const colorScheme = useColorScheme();
-    const currentUser = useAuth();
     const isDark = colorScheme === 'dark';
-    
-    // Context refresh para los stats del ProfileHeader
+
+    // 1. Usar el Layout como ÚNICA fuente de la verdad
+    const { 
+        profileUser: user, 
+        isFollowing, 
+        isMe, 
+        loadingProfile, 
+        setIsFollowing, 
+        fetchProfileData 
+    } = useProfileData();
+
     const { refreshStats } = useProfileRefresh();
 
-    const [user, setUser] = useState<Usuario | null>(null);
-    const [isFollowing, setIsFollowing] = useState(false);
-    
     const [posts, setPosts] = useState<RankedPost[]>([]);
     const [loadingPosts, setLoadingPosts] = useState(true);
-    const [loadingProfile, setLoadingProfile] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState("posts");
 
-    // ── Carga de datos del perfil ───────────────────────────────────────
-    const fetchProfileData = useCallback(async () => {
-        if (!id) return;
-        try {
-            const { data: userData, error: userError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', id)
-                .single();
-
-            if (userError) throw userError;
-            setUser(userData);
-
-            if (currentUser && currentUser.id !== id) {
-                const following = await checkFollowStatus(currentUser.id, id);
-                setIsFollowing(following);
-            }
-        } catch (error) {
-            console.error("Error fetching profile layout data:", error);
-        } finally {
-            setLoadingProfile(false);
-        }
-    }, [id, currentUser?.id]);
-
-    // ── Carga de los posts del usuario ──────────────────────────────────
+    // 2. Este componente AHORA solo se encarga del FEED
     const fetchPosts = useCallback(async () => {
         if (!id) return;
         try {
@@ -70,23 +49,20 @@ export default function Perfil() {
     }, [id]);
 
     useEffect(() => {
-        fetchProfileData();
         fetchPosts();
-    }, [fetchProfileData, fetchPosts]);
+    }, [fetchPosts]);
 
-    // ── Pull-to-refresh Global ──────────────────────────────────────────
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
         await Promise.all([
-            fetchProfileData(),
-            fetchPosts(),
-            refreshStats()
+            fetchProfileData(), // Refresca cabecera desde layout
+            fetchPosts(),       // Refresca feed desde aquí
+            refreshStats()      // Refresca stats
         ]);
         setRefreshing(false);
     }, [fetchProfileData, fetchPosts, refreshStats]);
 
-    // ── Acciones en Posts ───────────────────────────────────────────────
-    const handleLike = async (postId: string) => { /* Optimistic UI Omitted context since using old component, assuming inside old handleLike. Re-implementing correctly: */
+    const handleLike = async (postId: string) => {
         setPosts(prev => prev.map(p => {
             if (p.id === postId) {
                 const liked = !p.is_liked;
@@ -115,15 +91,14 @@ export default function Perfil() {
 
     const renderItem = ({ item }: { item: RankedPost }) => (
         <PostCardItem 
-            post={item} 
+            post={item as any} 
             onLike={handleLike} 
             onRepost={handleRepost} 
             onShare={handleShare} 
-            onReply={async () => fetchPosts()} // Optimistic syncs in component if needed
+            onReply={async () => fetchPosts()}
         />
     );
 
-    // ── Renderizado del Header Completo ─────────────────────────────────
     const renderHeader = () => {
         if (loadingProfile && !user) return (
             <View style={{ height: 300, justifyContent: 'center', alignItems: 'center' }}>
@@ -132,10 +107,10 @@ export default function Perfil() {
         );
         return (
             <View style={{ backgroundColor: isDark ? '#000' : '#fff' }}>
-                <ProfileAppBar user={user || undefined} isMe={currentUser?.id === id} />
+                <ProfileAppBar user={user || undefined} isMe={isMe} />
                 <ProfileHeader
                     user={user || undefined}
-                    isMe={currentUser?.id === id}
+                    isMe={isMe}
                     isFollowing={isFollowing}
                     onFollowChange={setIsFollowing}
                 />
@@ -144,7 +119,6 @@ export default function Perfil() {
         );
     };
 
-    // ── Renderizado de UI Principal ─────────────────────────────────────
     if (loadingProfile && !user) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#000' : '#fff' }}>
@@ -153,12 +127,12 @@ export default function Perfil() {
         );
     }
 
-    if (user?.is_private && !isFollowing && currentUser?.id !== id) {
+    if (user?.is_private && !isFollowing && !isMe) {
         return (
             <FlatList
                 data={[]}
                 renderItem={() => null}
-                ListHeaderComponent={renderHeader}
+                ListHeaderComponent={renderHeader()}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#1DA1F2" />}
                 contentContainerStyle={[styles.privateContainer, { backgroundColor: isDark ? '#000' : '#fff', flexGrow: 1 }]}
                 ListEmptyComponent={() => (
@@ -179,7 +153,7 @@ export default function Perfil() {
                 data={activeTab === "posts" ? posts : []}
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
-                ListHeaderComponent={renderHeader}
+                ListHeaderComponent={renderHeader()}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
@@ -205,25 +179,9 @@ export default function Perfil() {
 }
 
 const styles = StyleSheet.create({
-    emptyContainer: {
-        padding: 40,
-        alignItems: 'center',
-    },
-    emptyText: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    privateContainer: {
-        paddingBottom: 40,
-    },
-    privateLockContainer: {
-        marginTop: 60,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    privateText: {
-        marginTop: 16,
-        fontSize: 18,
-        fontWeight: '600',
-    }
+    emptyContainer: { padding: 40, alignItems: 'center' },
+    emptyText: { fontSize: 16, fontWeight: '500' },
+    privateContainer: { paddingBottom: 40 },
+    privateLockContainer: { marginTop: 60, alignItems: 'center', justifyContent: 'center' },
+    privateText: { marginTop: 16, fontSize: 18, fontWeight: '600' }
 });

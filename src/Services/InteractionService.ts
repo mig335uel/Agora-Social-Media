@@ -12,12 +12,23 @@ export async function recordInteractions(interactions: InteractionPayload[]) {
   if (interactions.length === 0) return;
 
   try {
-    const { error } = await supabase.rpc('record_user_interactions', {
-      payload: interactions
-    });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-    if (error) throw error;
-    console.log(`✅ [InteractionService] Registradas ${interactions.length} interacciones.`);
+    // El sistema sugiere usar 'increment_user_interests_for_post' con p_post_id y p_user_id
+    const promises = interactions.map(item => 
+      supabase.rpc('increment_user_interests_for_post', { 
+        p_post_id: item.post_id,
+        p_user_id: user.id
+      })
+    );
+
+    const results = await Promise.all(promises);
+    const firstError = results.find(r => r.error)?.error;
+    
+    if (firstError) throw firstError;
+
+    
   } catch (error) {
     console.error("❌ [InteractionService] Error registrando interacciones:", error);
   }

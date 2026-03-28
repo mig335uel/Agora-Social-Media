@@ -13,13 +13,17 @@ export default function PostCard({
     ListHeaderComponent,
     onRefresh,
     refreshing,
-    FlatListComponent = FlatList
+    FlatListComponent = FlatList,
+    onViewableItemsChanged,
+    viewabilityConfig
 }: {
     posts: Post[] | any[],
     ListHeaderComponent?: React.ReactElement,
     onRefresh?: () => void,
     refreshing?: boolean,
-    FlatListComponent?: any
+    FlatListComponent?: any,
+    onViewableItemsChanged?: (info: any) => void,
+    viewabilityConfig?: any
 }) {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
@@ -198,10 +202,12 @@ export default function PostCard({
         data: localPosts,
         keyExtractor: (item: Post) => item.id,
         renderItem: renderCard,
-        contentContainerStyle: { marginTop: 2, paddingVertical: 12, paddingHorizontal: 12, paddingBottom: ((Platform.OS === 'ios') ? 0 : 80), },
+        contentContainerStyle: { marginTop: 2, paddingVertical: 12, paddingHorizontal: 12, paddingBottom: ((Platform.OS === 'ios') ? 110 : 80), },
         showsVerticalScrollIndicator: false,
         ItemSeparatorComponent: () => <View style={{ height: 8 }} />,
         ListHeaderComponent: ListHeaderComponent,
+        onViewableItemsChanged,
+        viewabilityConfig,
         
         // Usamos refreshControl en vez de onRefresh/refreshing porque
         // Tabs.FlatList (react-native-collapsible-tab-view) solo acepta refreshControl

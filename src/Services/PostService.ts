@@ -63,19 +63,37 @@ export async function createPost(content: string, localImages: ProcessedImage[] 
     }
 
     // Subir imágenes
+    // Subir imágenes
     if (localImages.length > 0) {
-      const mediaUrls: string[] = [];
-      for (const localImg of localImages) {
-        const publicUrl = await uploadPostImage(post.id, localImg);
-        if (publicUrl) mediaUrls.push(publicUrl);
-      }
+      console.log(`Subiendo ${localImages.length} imágenes...`);
+      
+      // 1. Subir las imágenes en paralelo para mayor velocidad
+      const uploadPromises = localImages.map(localImg => uploadPostImage(post.id, localImg));
+      const results = await Promise.all(uploadPromises);
+      
+      // 2. Filtrar las URLs válidas (ignorando las que hayan fallado y devuelto null)
+      const mediaUrls = results.filter(url => url !== null) as string[];
+
       if (mediaUrls.length > 0) {
+        // PRECAUCIÓN: Asegúrate de que tu columna en Supabase se llame exactamente 'image'
+        // A veces se suele llamar 'media_url'. Si es así, cámbialo aquí abajo.
         const mediaInserts = mediaUrls.map(url => ({
           post_id: post.id,
           user_id: user.id,
-          image: url
+          image: url 
         }));
-        await supabase.from('media_feature').insert(mediaInserts);
+
+        console.log("Insertando en media_feature:", mediaInserts);
+
+        // 3. ¡IMPORTANTE! Capturar el error del insert
+        const { error: mediaError } = await supabase.from('media_feature').insert(mediaInserts);
+        
+        if (mediaError) {
+          console.error("❌ Error al vincular las imágenes con el post en la tabla media_feature:", mediaError);
+          throw mediaError; // Hacemos que la función falle y el usuario sepa que algo fue mal
+        } else {
+          console.log("✅ Imágenes insertadas correctamente en la base de datos.");
+        }
       }
     }
 

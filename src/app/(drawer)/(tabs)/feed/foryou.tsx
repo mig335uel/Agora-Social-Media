@@ -81,10 +81,9 @@ export default function ForYou() {
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        await Promise.all([fetchFeed(), syncInteractions()]); // Aprovecham
+        await fetchFeed();
         setRefreshing(false);
-        // os para limpiar buffer
-    }, [fetchFeed, syncInteractions]);
+    }, [fetchFeed]);
 
     const logout = async () => {
         try {
@@ -131,7 +130,13 @@ export default function ForYou() {
                     </TouchableOpacity>
                 </View>
             ) : (
-                <PostCard posts={posts} onRefresh={onRefresh} refreshing={refreshing} />
+                <PostCard 
+                    posts={posts} 
+                    onRefresh={onRefresh} 
+                    refreshing={refreshing} 
+                    onViewableItemsChanged={onViewableItemsChanged}
+                    viewabilityConfig={viewabilityConfig}
+                />
             )}
         </View>
     );
