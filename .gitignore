@@ -18,7 +18,7 @@ GoogleService-Info.plist
 *.p12
 *.key
 *.mobileprovision
-
+docs/*
 # Metro
 .metro-health-check*
 
