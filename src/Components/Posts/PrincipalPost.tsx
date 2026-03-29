@@ -10,6 +10,7 @@ import { ProcessedImage } from '@/Services/ImageService';
 import { createPost, getTrendingTopics, toggleLike, repostPost, recordShare } from '@/Services/PostService';
 import { searchUsers } from '@/Services/UserService';
 import { router } from 'expo-router';
+import ImageViewer from '../ImageViewer';
 
 interface PrincipalPostProps {
   post: Post;
@@ -49,6 +50,8 @@ export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
   const [isReplyModalVisible, setIsReplyModalVisible] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [localPost, setLocalPost] = useState<Post>(post);
+  const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   useEffect(() => {
     setLocalPost(post);
@@ -161,7 +164,13 @@ export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
         </Text>
 
         {postToRender.media && postToRender.media.length > 0 && (
-          <MediaGrid media={postToRender.media} />
+          <MediaGrid 
+            media={postToRender.media} 
+            onImagePress={(index) => {
+              setSelectedImageIndex(index);
+              setIsImageViewerVisible(true);
+            }} 
+          />
         )}
       </View>
 
@@ -265,6 +274,18 @@ export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
           </View>
         </View>
       </Modal>
+
+      <ImageViewer
+        post={localPost}
+        media={localPost.media || []}
+        isVisible={isImageViewerVisible}
+        initialIndex={selectedImageIndex}
+        onClose={() => setIsImageViewerVisible(false)}
+        onLike={handleLike}
+        onRepost={handleRepost}
+        onShare={handleShare}
+        onReply={() => setIsReplyModalVisible(true)}
+      />
     </View>
   );
 }

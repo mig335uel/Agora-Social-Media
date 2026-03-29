@@ -3,14 +3,15 @@ import React from 'react';
 import { View, Image, StyleSheet, Dimensions, Pressable } from 'react-native';
 
 interface MediaGridProps {
-    media: media_feature[]
+    media: media_feature[];
+    onImagePress?: (index: number) => void;
 }
 
 const { width } = Dimensions.get('window');
 const GRID_PADDING = 32; // Ajuste según el contenedor
 const GRID_WIDTH = width - GRID_PADDING;
 
-export default function MediaGrid({ media }: MediaGridProps) {
+export default function MediaGrid({ media, onImagePress }: MediaGridProps) {
     if (!media || media.length === 0) return null;
 
     const renderImages = () => {
@@ -18,7 +19,7 @@ export default function MediaGrid({ media }: MediaGridProps) {
 
         if (count === 1) {
             return (
-                <Pressable style={styles.singleImageContainer}>
+                <Pressable onPress={() => onImagePress?.(0)} style={styles.singleImageContainer}>
                     <Image source={{ uri: media[0].image! }} style={styles.image} resizeMode="cover" />
                 </Pressable>
             );
@@ -28,7 +29,7 @@ export default function MediaGrid({ media }: MediaGridProps) {
             return (
                 <View style={styles.gridContainer}>
                     {media.map((item, index) => (
-                        <Pressable key={index} style={styles.halfImage}>
+                        <Pressable key={index} onPress={() => onImagePress?.(index)} style={styles.halfImage}>
                             <Image source={{ uri: item.image! }} style={styles.image} resizeMode="cover" />
                         </Pressable>
                     ))}
@@ -39,14 +40,14 @@ export default function MediaGrid({ media }: MediaGridProps) {
         if (count === 3) {
             return (
                 <View style={styles.gridContainer}>
-                    <Pressable style={styles.halfImage}>
+                    <Pressable onPress={() => onImagePress?.(0)} style={styles.halfImage}>
                         <Image source={{ uri: media[0].image! }} style={styles.image} resizeMode="cover" />
                     </Pressable>
                     <View style={styles.columnContainer}>
-                        <Pressable style={styles.quarterImage}>
+                        <Pressable onPress={() => onImagePress?.(1)} style={styles.quarterImage}>
                             <Image source={{ uri: media[1].image! }} style={styles.image} resizeMode="cover" />
                         </Pressable>
-                        <Pressable style={styles.quarterImage}>
+                        <Pressable onPress={() => onImagePress?.(2)} style={styles.quarterImage}>
                             <Image source={{ uri: media[2].image! }} style={styles.image} resizeMode="cover" />
                         </Pressable>
                     </View>
@@ -58,18 +59,18 @@ export default function MediaGrid({ media }: MediaGridProps) {
             return (
                 <View style={styles.gridContainer}>
                     <View style={styles.columnContainer}>
-                        <Pressable style={styles.quarterImage}>
+                        <Pressable onPress={() => onImagePress?.(0)} style={styles.quarterImage}>
                             <Image source={{ uri: media[0].image! }} style={styles.image} resizeMode="cover" />
                         </Pressable>
-                        <Pressable style={styles.quarterImage}>
+                        <Pressable onPress={() => onImagePress?.(1)} style={styles.quarterImage}>
                             <Image source={{ uri: media[1].image! }} style={styles.image} resizeMode="cover" />
                         </Pressable>
                     </View>
                     <View style={styles.columnContainer}>
-                        <Pressable style={styles.quarterImage}>
+                        <Pressable onPress={() => onImagePress?.(2)} style={styles.quarterImage}>
                             <Image source={{ uri: media[2].image! }} style={styles.image} resizeMode="cover" />
                         </Pressable>
-                        <Pressable style={styles.quarterImage}>
+                        <Pressable onPress={() => onImagePress?.(3)} style={styles.quarterImage}>
                             <Image source={{ uri: media[3].image! }} style={styles.image} resizeMode="cover" />
                         </Pressable>
                     </View>

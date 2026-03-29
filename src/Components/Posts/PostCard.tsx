@@ -8,6 +8,7 @@ import { EditorDeTexto } from "../EditorDeTexto";
 import { searchUsers } from "@/Services/UserService";
 import { getTrendingTopics } from "@/Services/PostService";
 import { ProcessedImage } from "@/Services/ImageService";
+import ImageViewer from "../ImageViewer";
 
 // ─── Utilidad: formatea números grandes (56000000 → 56M) ────────────────────
 const formatCount = (n: number | undefined | null): string => {
@@ -50,6 +51,8 @@ export default function PostCard({
     const isDark = colorScheme === 'dark';
     const [isReplyModalVisible, setIsReplyModalVisible] = useState(false);
     const [replyContent, setReplyContent] = useState('');
+    const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
     const textColor = isDark ? '#ffffff' : '#0f0f0f';
     const subColor = isDark ? '#8b8b8b' : '#6b6b6b';
@@ -152,7 +155,15 @@ export default function PostCard({
             </Text>
 
             {/* ── Grilla de imágenes ── */}
-            {post.media && <MediaGrid media={post.media!} />}
+            {post.media && (
+                <MediaGrid 
+                    media={post.media!} 
+                    onImagePress={(index) => {
+                        setSelectedImageIndex(index);
+                        setIsImageViewerVisible(true);
+                    }} 
+                />
+            )}
 
             <View style={[styles.separator, { backgroundColor: separatorColor }]} />
 
@@ -221,6 +232,18 @@ export default function PostCard({
                     </View>
                 </View>
             </Modal>
+
+            <ImageViewer
+                post={post}
+                media={post.media || []}
+                isVisible={isImageViewerVisible}
+                initialIndex={selectedImageIndex}
+                onClose={() => setIsImageViewerVisible(false)}
+                onLike={onLike}
+                onRepost={onRepost}
+                onShare={onShare}
+                onReply={() => setIsReplyModalVisible(true)}
+            />
         </TouchableOpacity>
     );
 }
