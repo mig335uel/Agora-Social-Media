@@ -19,6 +19,8 @@ Notifications.setNotificationHandler({
 });
 
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,12 +110,12 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style={isDark ? "light" : "dark"} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: isDark ? '#141414' : '#fff' } }}>
         <Stack.Screen name="login" />
         <Stack.Screen name="(drawer)" />
       </Stack>
-    </>
+    </SafeAreaProvider>
   );
 }

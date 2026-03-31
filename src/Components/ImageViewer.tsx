@@ -13,7 +13,7 @@ import {
     Animated,
     useColorScheme,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Post, media_feature } from '@/Types/Posts';
 import { BlurView } from 'expo-blur';
@@ -55,6 +55,7 @@ export default function ImageViewer({
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const scrollX = useRef(new Animated.Value(0)).current;
     const flatListRef = useRef<FlatList>(null);
+    const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
 
@@ -128,7 +129,7 @@ export default function ImageViewer({
                 />
 
                 {/* Top Header Overlay */}
-                <SafeAreaView style={styles.topHeader} edges={['top']}>
+                <View style={[styles.topHeader, { paddingTop: Math.max(insets.top, 10) }]}>
                     <TouchableOpacity 
                         style={styles.closeButton} 
                         onPress={onClose}
@@ -147,7 +148,7 @@ export default function ImageViewer({
                             </BlurView>
                         </View>
                     )}
-                </SafeAreaView>
+                </View>
 
                 {/* Bottom Interaction Overlay */}
                 {post && (
@@ -155,7 +156,7 @@ export default function ImageViewer({
                         colors={['transparent', 'rgba(0,0,0,0.8)', '#000']}
                         style={styles.bottomOverlay}
                     >
-                        <SafeAreaView edges={['bottom']}>
+                        <View style={{ paddingBottom: Math.max(insets.bottom, 20) }}>
                             <View style={styles.overlayContent}>
                                 {/* Post Content (Brief) */}
                                 {post.content && (
@@ -194,7 +195,7 @@ export default function ImageViewer({
                                     />
                                 </View>
                             </View>
-                        </SafeAreaView>
+                        </View>
                     </LinearGradient>
                 )}
             </View>
@@ -244,7 +245,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
         zIndex: 10,
     },
     closeButton: {
@@ -274,7 +274,6 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         paddingTop: 20,
-        paddingBottom: Platform.OS === 'ios' ? 0 : 20,
     },
     overlayContent: {
         paddingHorizontal: 20,
