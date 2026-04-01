@@ -1,5 +1,12 @@
+import useAuth from "@/hooks/useAuth";
 import { supabase } from "../lib/supbase/supabase";
 import { Usuario } from "../Types/Users";
+interface Notifications {
+  username: string;
+  title: string;
+  body: string;
+  user_id?: string;
+}
 
 /**
  * Busca usuarios por su username para el sistema de menciones.
@@ -48,18 +55,18 @@ export async function toggleFollow(followerId: string, followingId: string): Pro
         .delete()
         .eq('follower_id', followerId)
         .eq('following_id', followingId);
-      
+
       if (deleteError) throw deleteError;
       return false;
     } else {
       // Seguir
       const { error: insertError } = await supabase
         .from('follows')
-        .insert({ 
-          follower_id: followerId, 
-          following_id: followingId 
+        .insert({
+          follower_id: followerId,
+          following_id: followingId
         });
-      
+
       // Si por una race condition ya se insertó, lo tratamos como "éxito" (ya lo sigue)
       if (insertError) {
         if (insertError.code === '23505') return true;
@@ -113,4 +120,37 @@ export async function updateUserProfile(userId: string, updates: Partial<Usuario
     console.error("Error updating user profile:", error);
     throw error;
   }
+}
+
+
+export async function FollowsPrivateUsers(userId: string) {
+  const user = useAuth();
+
+  try {
+    const { data, error } = await supabase.from('follow_requests').insert({
+      requester_id: user?.id,
+      requested_id: userId
+    });
+
+    if (error) throw error;
+
+    if (data) {
+      const payload: Notifications = {
+        username: user?.username || "Alguien",
+        title: "Nueva solicitud de seguimiento",
+        body: `${user?.username || "Alguien"} ha solicitado seguirte.`,
+        user_id: userId
+      }
+      await fetch('https://api.periodiconaranja.es/notificacion/requestfollow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+    }
+  } catch (error) {
+
+  }
+
 }
