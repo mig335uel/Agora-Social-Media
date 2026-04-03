@@ -12,9 +12,11 @@ import { Usuario } from "@/Types/Users";
 export const ProfileDataContext = createContext<{
     profileUser: Usuario | null;
     isFollowing: boolean;
+    isPending: boolean;
     isMe: boolean;
     loadingProfile: boolean;
     setIsFollowing: (val: boolean) => void;
+    setIsPending: (val: boolean) => void;
     fetchProfileData: () => Promise<void>;
 } | null>(null);
 
@@ -36,6 +38,7 @@ export default function PerfilLayout() {
     // Estado centralizado del perfil
     const [profileUser, setProfileUser] = useState<Usuario | null>(null);
     const [isFollowing, setIsFollowing] = useState(false);
+    const [isPending, setIsPending] = useState(false);
     const [loadingProfile, setLoadingProfile] = useState(true);
 
     const isMe = currentUser?.id === id;
@@ -56,6 +59,15 @@ export default function PerfilLayout() {
             if (currentUser && currentUser.id !== id) {
                 const following = await checkFollowStatus(currentUser.id, id);
                 setIsFollowing(following);
+
+                // Si no lo sigue y el usuario es privado, verificar si hay solicitud pendiente
+                if (!following && (userData as Usuario).is_private) {
+                    const { checkFollowRequestStatus } = require("@/Services/UserService");
+                    const pending = await checkFollowRequestStatus(currentUser.id, id);
+                    setIsPending(pending);
+                } else {
+                    setIsPending(false);
+                }
             }
         } catch (error) {
             console.error("Error fetching profile layout data:", error);
@@ -70,7 +82,7 @@ export default function PerfilLayout() {
 
     return (
         <ProfileRefreshContext.Provider value={{ refreshStats: refreshStatsFn, setRefreshStats: setRefreshStatsFn }}>
-            <ProfileDataContext.Provider value={{ profileUser, isFollowing, isMe, loadingProfile, setIsFollowing, fetchProfileData }}>
+            <ProfileDataContext.Provider value={{ profileUser, isFollowing, isPending, isMe, loadingProfile, setIsFollowing, setIsPending, fetchProfileData }}>
                 <SafeAreaView style={{ flex: 1 }} className={isDark ? 'bg-black' : 'bg-white'} edges={['top']}>
                     <Slot />
                 </SafeAreaView>

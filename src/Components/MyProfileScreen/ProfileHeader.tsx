@@ -16,10 +16,12 @@ interface ProfileHeaderProps {
   user?: Usuario;
   isMe?: boolean;
   isFollowing?: boolean;
+  isPending?: boolean;
   onFollowChange?: (following: boolean) => void;
+  onPendingChange?: (pending: boolean) => void;
 }
 
-export default function ProfileHeader({ user, isMe, isFollowing, onFollowChange }: ProfileHeaderProps) {
+export default function ProfileHeader({ user, isMe, isFollowing, isPending, onFollowChange, onPendingChange }: ProfileHeaderProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const currentUser = useAuth();
@@ -68,30 +70,41 @@ export default function ProfileHeader({ user, isMe, isFollowing, onFollowChange 
   }, [fetchData]);
 
   const handleToggleFollow = async () => {
-    console.log("DEBUG: handleToggleFollow pulsado", { currentUser: currentUser?.id, userId });
-    if (!currentUser || !userId || effectiveIsMe || followLoading) {
-      console.log("DEBUG: handleToggleFollow cancelado", { 
-        missingUser: !currentUser, 
-        missingUserId: !userId, 
-        isMe: effectiveIsMe, 
-        loading: followLoading 
-      });
-      return;
-    }
+    if (!currentUser || !userId || effectiveIsMe || followLoading) return;
 
     setFollowLoading(true);
     try {
-      const nowFollowing = await toggleFollow(currentUser.id, userId);
-      console.log("DEBUG: toggleFollow resultado:", nowFollowing);
-      if (onFollowChange) onFollowChange(nowFollowing);
-      
-      // Update local followers count optionally
-      setStats(prev => ({
-        ...prev,
-        followers: prev.followers + (nowFollowing ? 1 : -1)
-      }));
+      const { toggleFollow, FollowsPrivateUsers, cancelFollowRequest } = require('@/Services/UserService');
+
+      if (isFollowing) {
+        // Dejar de seguir (común para todos)
+        const nowFollowing = await toggleFollow(currentUser.id, userId);
+        if (onFollowChange) onFollowChange(nowFollowing);
+        
+        setStats(prev => ({
+          ...prev,
+          followers: Math.max(0, prev.followers - 1)
+        }));
+      } else if (isPending) {
+        // Cancelar solicitud pendiente
+        await cancelFollowRequest(currentUser.id, userId);
+        if (onPendingChange) onPendingChange(false);
+      } else if (user?.is_private) {
+        // Enviar solicitud a usuario privado
+        await FollowsPrivateUsers(currentUser.id, userId);
+        if (onPendingChange) onPendingChange(true);
+      } else {
+        // Seguir usuario público
+        const nowFollowing = await toggleFollow(currentUser.id, userId);
+        if (onFollowChange) onFollowChange(nowFollowing);
+        
+        setStats(prev => ({
+          ...prev,
+          followers: prev.followers + 1
+        }));
+      }
     } catch (error) {
-      console.error("Error toggling follow:", error);
+      console.error("Error en handleToggleFollow:", error);
     } finally {
       setFollowLoading(false);
     }
@@ -189,7 +202,7 @@ export default function ProfileHeader({ user, isMe, isFollowing, onFollowChange 
           ) : (
             <>
               <TouchableOpacity
-                className={`flex-row items-center gap-2 px-10 py-3 rounded-2xl ${isFollowing ? 'bg-gray-200 dark:bg-gray-800' : 'bg-black dark:bg-white'}`}
+                className={`flex-row items-center gap-2 px-10 py-3 rounded-2xl ${isFollowing || isPending ? 'bg-gray-200 dark:bg-gray-800' : 'bg-black dark:bg-white'}`}
                 activeOpacity={0.8}
                 onPress={handleToggleFollow}
                 disabled={followLoading}
@@ -199,12 +212,12 @@ export default function ProfileHeader({ user, isMe, isFollowing, onFollowChange 
                 ) : (
                   <>
                     <Ionicons 
-                      name={isFollowing ? "person-remove-outline" : "person-add-outline"} 
+                      name={isFollowing ? "person-remove-outline" : (isPending ? "time-outline" : "person-add-outline")} 
                       size={20} 
-                      color={isFollowing ? (isDark ? '#fff' : '#000') : (isDark ? '#000' : '#fff')} 
+                      color={isFollowing || isPending ? (isDark ? '#fff' : '#000') : (isDark ? '#000' : '#fff')} 
                     />
-                    <Text className={`font-bold ${isFollowing ? 'text-black dark:text-white' : 'text-white dark:text-black'}`}>
-                      {isFollowing ? 'dejar de seguir' : 'seguir'}
+                    <Text className={`font-bold ${isFollowing || isPending ? 'text-black dark:text-white' : 'text-white dark:text-black'}`}>
+                      {isFollowing ? 'dejar de seguir' : (isPending ? 'pendiente' : 'seguir')}
                     </Text>
                   </>
                 )}

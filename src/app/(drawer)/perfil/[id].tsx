@@ -22,9 +22,11 @@ export default function Perfil() {
     const { 
         profileUser: user, 
         isFollowing, 
+        isPending,
         isMe, 
         loadingProfile, 
         setIsFollowing, 
+        setIsPending,
         fetchProfileData 
     } = useProfileData();
 
@@ -112,7 +114,9 @@ export default function Perfil() {
                     user={user || undefined}
                     isMe={isMe}
                     isFollowing={isFollowing}
+                    isPending={isPending}
                     onFollowChange={setIsFollowing}
+                    onPendingChange={setIsPending}
                 />
                 <ProfileCustomTabBar activeTab={activeTab} onTabChange={setActiveTab} />
             </View>

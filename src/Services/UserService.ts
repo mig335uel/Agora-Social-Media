@@ -123,23 +123,24 @@ export async function updateUserProfile(userId: string, updates: Partial<Usuario
 }
 
 
-export async function FollowsPrivateUsers(userId: string) {
-  const user = useAuth();
-
+export async function FollowsPrivateUsers(followerId: string, followingId: string) {
   try {
     const { data, error } = await supabase.from('follow_requests').insert({
-      requester_id: user?.id,
-      requested_id: userId
-    });
+      requester_id: followerId,
+      requested_id: followingId
+    }).select().single();
 
     if (error) throw error;
 
     if (data) {
+      // Obtener datos del solicitante para la notificación
+      const { data: requester } = await supabase.from('users').select('username').eq('id', followerId).single();
+
       const payload: Notifications = {
-        username: user?.username || "Alguien",
+        username: requester?.username || "Alguien",
         title: "Nueva solicitud de seguimiento",
-        body: `${user?.username || "Alguien"} ha solicitado seguirte.`,
-        user_id: userId
+        body: `${requester?.username || "Alguien"} ha solicitado seguirte.`,
+        user_id: followingId
       }
       await fetch('https://api.periodiconaranja.es/notificacion/requestfollow', {
         method: 'POST',
@@ -150,7 +151,90 @@ export async function FollowsPrivateUsers(userId: string) {
       });
     }
   } catch (error) {
-
+    console.error("Error en FollowsPrivateUsers:", error);
+    throw error;
   }
+}
 
+
+export async function FollowRequestAccept(followerId: string, followingId: string) {
+  try {
+    // followerId es quien pidió seguir (requester)
+    // followingId es quien acepta (requested)
+    const { data, error } = await supabase.from('follows').insert({
+      follower_id: followerId,
+      following_id: followingId
+    }).select().single();
+
+    if (error) throw error;
+
+    if (data) {
+      // Obtener datos del seguidor para la notificación
+      const { data: follower } = await supabase.from('users').select('username').eq('id', followerId).single();
+
+      const payload: Notifications = {
+        username: follower?.username || "Alguien",
+        title: "Solicitud de seguimiento aceptada",
+        body: `${follower?.username || "Alguien"} ahora te sigue.`,
+        user_id: followingId
+      }
+      await fetch('https://api.periodiconaranja.es/notificacion/requestfollow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      // Borrar la solicitud
+      const { error: deleteError } = await supabase
+        .from('follow_requests')
+        .delete()
+        .eq('requester_id', followerId)
+        .eq('requested_id', followingId);
+
+      if (deleteError) throw deleteError;
+    }
+  } catch (error) {
+    console.error("Error en FollowRequestAccept:", error);
+    throw error;
+  }
+}
+
+/**
+ * Verifica si existe una solicitud de seguimiento pendiente.
+ */
+export async function checkFollowRequestStatus(requesterId: string, requestedId: string): Promise<boolean> {
+  if (!requesterId || !requestedId) return false;
+  try {
+    const { data, error } = await supabase
+      .from('follow_requests')
+      .select('*')
+      .eq('requester_id', requesterId)
+      .eq('requested_id', requestedId);
+
+    if (error) throw error;
+    return data && data.length > 0;
+  } catch (error) {
+    console.error("Error en checkFollowRequestStatus:", error);
+    return false;
+  }
+}
+
+/**
+ * Cancela una solicitud de seguimiento.
+ */
+export async function cancelFollowRequest(requesterId: string, requestedId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('follow_requests')
+      .delete()
+      .eq('requester_id', requesterId)
+      .eq('requested_id', requestedId);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error("Error en cancelFollowRequest:", error);
+    throw error;
+  }
 }
