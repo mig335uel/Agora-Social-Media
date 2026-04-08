@@ -94,10 +94,7 @@ export async function unregisterDevice() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const rawId = Device.osBuildId || 'Unknown';
-    const myDeviceIdentifier = rawId.length >= 32 
-       ? rawId 
-       : `00000000-0000-0000-0000-${rawId.padStart(12, '0')}`;
+    const myDeviceIdentifier = Device.osBuildId || 'Unknown';
 
     console.log("🗑️ Desvinculando hardware:", myDeviceIdentifier);
 
