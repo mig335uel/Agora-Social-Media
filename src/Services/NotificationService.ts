@@ -65,21 +65,21 @@ export async function requestNotificationPermission() {
  */
 export async function saveDeviceToken(userId: string, token: string) {
   try {
-     // 1. Identificador nativo (Sin parches de UUID, Supabase generará el ID aleatorio)
-     const myDeviceIdentifier = Device.osBuildId || 'Unknown';
-    
-     // 2. LIMPIEZA AGRESIVA
-     await supabase
-       .from('devices')
-       .delete()
-       .or(`fcm_token.eq."${token}",and(user_id.eq."${userId}",device_identifier.eq."${myDeviceIdentifier}")`);
+    // 1. Identificador nativo (Sin parches de UUID, Supabase generará el ID aleatorio)
+    const myDeviceIdentifier = Device.osBuildId || 'Unknown';
 
-     // 3. ACTIVACIÓN DEL BÚNKER E2EE
-     await E2EEService.vincularHardwareConMiCuenta(myDeviceIdentifier, userId, token);
-     
-     // Complemento opcional: Puedes guardar también el device_name / last_seen modificando 
-     // el código del AgoraBunkerModule de Kotlin después, por ahora esto certifica el aparato.
-     console.log("✅ Búnker E2EE Inicializado y Token registrado para:", userId);
+    // 2. LIMPIEZA AGRESIVA
+    await supabase
+      .from('devices')
+      .delete()
+      .or(`fcm_token.eq."${token}",and(user_id.eq."${userId}",device_identifier.eq."${myDeviceIdentifier}")`);
+
+    // 3. ACTIVACIÓN DEL BÚNKER E2EE
+    await E2EEService.vincularHardwareConMiCuenta(myDeviceIdentifier, userId, token);
+
+    // Complemento opcional: Puedes guardar también el device_name / last_seen modificando 
+    // el código del AgoraBunkerModule de Kotlin después, por ahora esto certifica el aparato.
+    console.log("✅ Búnker E2EE Inicializado y Token registrado para:", userId);
 
   } catch (err) {
     console.error("❌ Error inesperado forjando hardware en saveDeviceToken:", err);
@@ -133,28 +133,28 @@ export function activarInterceptacionDecodificadora() {
     // Revisamos si el objeto 'data' trae la carga militar de tu servidor NodeJS
     const payloadExtra = notification.request.content.data as any;
     const { encrypted_content, encrypted_symmetric_key } = payloadExtra;
-    
+
     if (encrypted_content && encrypted_symmetric_key) {
-        try {
-            console.log("🔒 Push Encriptado Detectado. Iniciando rotura de candado TEE...");
-            // 1. Despertamos al TEE para romper la llave RSA
-            const llaveAESBase64 = await AgoraBunker.descifrarLlaveDeChatR(encrypted_symmetric_key);
-            
-            // 2. Desencriptamos el texto final
-            const mensajePlano = await AgoraBunker.descifrarMensajeTextoR(encrypted_content, llaveAESBase64);
-            
-            // 3. Mostramos la Notificación limpia y segura en pantalla 
-            await Notifications.scheduleNotificationAsync({
-                content: { 
-                  title: "Mensaje Confidencial", 
-                  body: mensajePlano 
-                },
-                trigger: null // Disparador Inmediato
-            });
-            console.log("🔓 Push descifrado y mostrado exitosamente.");
-        } catch(e) {
-            console.error("❌ Catástrofe: No se pudo descifrar push:", e)
-        }
+      try {
+        console.log("🔒 Push Encriptado Detectado. Iniciando rotura de candado TEE...");
+        // 1. Despertamos al TEE para romper la llave RSA
+        const llaveAESBase64 = await AgoraBunker.descifrarLlaveDeChatR(encrypted_symmetric_key);
+
+        // 2. Desencriptamos el texto final
+        const mensajePlano = await AgoraBunker.descifrarMensajeTextoR(encrypted_content, llaveAESBase64);
+
+        // 3. Mostramos la Notificación limpia y segura en pantalla 
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "Mensaje Confidencial",
+            body: mensajePlano
+          },
+          trigger: null // Disparador Inmediato
+        });
+        console.log("🔓 Push descifrado y mostrado exitosamente.");
+      } catch (e) {
+        console.error("❌ Catástrofe: No se pudo descifrar push:", e)
+      }
     }
   });
 }
