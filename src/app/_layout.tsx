@@ -7,7 +7,7 @@ import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { Session } from '@supabase/supabase-js';
 import "../../global.css";
-import { requestNotificationPermission, saveDeviceToken, updateAppBadge } from '@/Services/NotificacitonService';
+import { activarInterceptacionDecodificadora, requestNotificationPermission, saveDeviceToken, updateAppBadge } from '@/Services/NotificationService';
 import { DeviceEventEmitter } from 'react-native';
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -40,6 +40,9 @@ export default function RootLayout() {
     supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
+  }, []);
+  useEffect(() => {
+    activarInterceptacionDecodificadora();
   }, []);
 
   useEffect(() => {

@@ -90,35 +90,22 @@ export async function LoginAuth({ loginForm }: { loginForm: LoginForm }) {
 
 
 
+import { unregisterDevice } from "./NotificationService";
+
 export async function signOut() {
-    let token;
     try {
         const { data: { user } } = await supabase.auth.getUser();
-        console.log(user?.id);
         
-        try {
-            // Obtenemos el FCM token real (mismo que guardamos)
-            token = (await Notifications.getDevicePushTokenAsync()).data;
-        } catch (e) {
-            console.log("No se pudo obtener el token FCM, procediendo con borrado parcial");
-        }
-
         if (user) {
-            if (token) {
-                const { error: deviceError } = await supabase
-                    .from('devices')
-                    .delete()
-                    .eq('user_id', user.id)
-                    .eq('fcm_token', token);
-                    
-                if (deviceError) throw deviceError;
-            }
-
+            // Desvinculamos el hardware de forma segura antes de salir
+            await unregisterDevice();
+            
+            // Cerramos la sesión en Supabase
             await supabase.auth.signOut();
         }
         return true;
     } catch (error) {
-        console.log(error);
+        console.log("Error en signOut:", error);
         throw error;
     }
 }

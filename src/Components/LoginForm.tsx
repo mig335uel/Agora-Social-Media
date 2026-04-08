@@ -6,7 +6,7 @@ import { LoginForm } from "../Types/LoginForm";
 import { useState } from 'react'
 import { BlurView } from "expo-blur";
 import { LoginAuth } from "../Services/authService";
-import { requestNotificationPermission, saveDeviceToken } from "../Services/NotificacitonService";
+import { requestNotificationPermission, saveDeviceToken } from "../Services/NotificationService";
 import { router } from "expo-router";
 import { GlassView } from "expo-glass-effect";
 import { TouchableWithoutFeedback } from "react-native";

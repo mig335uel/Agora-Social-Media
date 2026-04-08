@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Drawer } from 'expo-router/drawer';
 import CustomDrawerContent from '@/Components/CustomDrawerContent';
 import { Octicons } from '@expo/vector-icons';
-import { requestNotificationPermission, saveDeviceToken } from '@/Services/NotificacitonService';
+import { requestNotificationPermission, saveDeviceToken } from '@/Services/NotificationService';
 import useAuth from '@/hooks/useAuth';
 
 export default function DrawerLayout() {
@@ -13,11 +13,11 @@ export default function DrawerLayout() {
     const setupNotifications = async () => {
       try {
         // 2. Obtenemos el usuario actual de la sesión
-        
+
         if (user) {
           // 3. Ponemos 'await' para esperar a que se genere el token real
           const token = await requestNotificationPermission();
-          
+
           if (token) {
             // 4. Le pasamos el ID del usuario Y el token a tu función
             await saveDeviceToken(user.id, token);
@@ -32,9 +32,9 @@ export default function DrawerLayout() {
     setupNotifications();
   }, [user]);
   return (
-    
+
     <Drawer
-     drawerContent={(props) => <CustomDrawerContent {...props} />} 
+      drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
         drawerType: 'slide',
@@ -46,22 +46,22 @@ export default function DrawerLayout() {
       <Drawer.Screen
         name="(tabs)"
         options={{
-          drawerItemStyle:{display:'none'} 
-         
+          drawerItemStyle: { display: 'none' }
+
         }}
       />
       <Drawer.Screen
         name="post"
         options={{
-          drawerItemStyle:{display:'none'} 
-         
+          drawerItemStyle: { display: 'none' }
+
         }}
       />
       <Drawer.Screen
         name="editar"
         options={{
-          drawerItemStyle:{display:'none'} 
-         
+          drawerItemStyle: { display: 'none' }
+
         }}
       />
     </Drawer>

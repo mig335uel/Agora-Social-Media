@@ -1,5 +1,5 @@
 import useAuth from "@/hooks/useAuth";
-import { getNotifcations, markAllAsRead } from "@/Services/NotificacitonService";
+import { getNotifcations, markAllAsRead } from "@/Services/NotificationService";
 import { Notifications } from "@/Types/Notifications";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -30,11 +30,11 @@ function timeAgo(dateStr: string): string {
 // ─── Icono según el tipo de notificación ──────────────────────────────────
 function NotifIcon({ type }: { type: string }) {
     const config: Record<string, { name: keyof typeof Ionicons.glyphMap; color: string }> = {
-        like:     { name: "heart",             color: "#F91880" },
-        repost:   { name: "repeat",            color: "#00BA7C" },
-        reply:    { name: "chatbubble",        color: "#1DA1F2" },
-        mention:  { name: "at",               color: "#9b59b6" },
-        follow:   { name: "person-add",       color: "#f39c12" },
+        like: { name: "heart", color: "#F91880" },
+        repost: { name: "repeat", color: "#00BA7C" },
+        reply: { name: "chatbubble", color: "#1DA1F2" },
+        mention: { name: "at", color: "#9b59b6" },
+        follow: { name: "person-add", color: "#f39c12" },
     };
     const cfg = config[type] ?? { name: "notifications", color: "#888" };
     return (
@@ -49,13 +49,13 @@ function NotificationItem({ item, isDark }: { item: Notifications; isDark: boole
     const bg = item.is_read
         ? isDark ? "#111" : "#fff"
         : isDark ? "#1a1a2e" : "#f0f4ff";
-    const textColor  = isDark ? "#fff" : "#0f0f0f";
-    const subColor   = isDark ? "#888" : "#6b6b6b";
+    const textColor = isDark ? "#fff" : "#0f0f0f";
+    const subColor = isDark ? "#888" : "#6b6b6b";
     const borderColor = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
 
     const user = (item as any).users;
     const displayName = user?.display_name || user?.username || "Agora User";
-    const avatarUri   = user?.profile_picture_url;
+    const avatarUri = user?.profile_picture_url;
 
     const handlePress = () => {
         // Si tiene post_id, navega al post; si es follow, al perfil del sender
@@ -106,12 +106,12 @@ export default function NotificationScreen() {
     const user = useAuth();
 
     const [notifications, setNotifications] = useState<Notifications[]>([]);
-    const [loading,       setLoading]       = useState(true);
-    const [refreshing,    setRefreshing]    = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
 
-    const bg        = isDark ? "#000"               : "#fff";
-    const emptyColor = isDark ? "#555"              : "#aaa";
-    const sepColor  = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+    const bg = isDark ? "#000" : "#fff";
+    const emptyColor = isDark ? "#555" : "#aaa";
+    const sepColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
 
     // ── Carga de datos ───────────────────────────────────────────────────
     const fetchNotifications = useCallback(async (isRefresh = false) => {
