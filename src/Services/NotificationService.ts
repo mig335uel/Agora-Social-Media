@@ -1,5 +1,6 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import * as SecureStore from 'expo-secure-store';
 import { Platform, Alert } from 'react-native';
 import { supabase } from "../lib/supbase/supabase";
 import { E2EEService } from './E2EEService';
@@ -8,17 +9,20 @@ import { NativeModules } from 'react-native';
 const { AgoraBunker } = NativeModules;
 
 /**
- * Solicita permisos de notificación y obtiene el Expo Push Token.
+ * Solicita permisos de notificación y obtiene el token de push (APN en iOS, FCM en Android).
+ * Si getDevicePushTokenAsync falla (red, configuración), devuelve un token de desarrollo
+ * para no bloquear el registro del Búnker E2EE.
  */
-export async function requestNotificationPermission() {
-  console.log("--- Iniciando requestNotificationPermission (Expo SDK) ---");
+export async function requestNotificationPermission(): Promise<string | null> {
+  console.log("--- Iniciando requestNotificationPermission ---");
 
   if (!Device.isDevice) {
-    console.log('DEBUG: No es un dispositivo físico. Saltando permiso.');
-    return null;
+    const simToken = `DEV_SIMULATOR_${Device.modelId || 'unknown'}`;
+    console.log('Simulador detectado. Token de desarrollo:', simToken);
+    return simToken;
   }
 
-  // Configurar canal para Android (Requerido para Android 8.0+)
+  // Canal de notificaciones para Android 8.0+
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
       name: 'Default',
@@ -28,35 +32,42 @@ export async function requestNotificationPermission() {
     });
   }
 
-  // 1. Permisos para Android 13+ y iOS
+  // Solicitar permiso al usuario
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
 
   if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
+    try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    } catch (permError) {
+      console.warn("⚠️ Error solicitando permiso:", permError);
+    }
   }
 
   if (finalStatus !== 'granted') {
-    console.log("DEBUG: Permiso denegado.");
-    Alert.alert('Permiso denegado', 'Activa las notificaciones en ajustes.');
+    console.log("Permiso de notificaciones denegado por el usuario.");
+    Alert.alert(
+      'Notificaciones desactivadas',
+      'Para recibir mensajes activa las notificaciones en Ajustes.',
+    );
     return null;
   }
 
-  // 2. Obtener Token FCM (Firebase Cloud Messaging)
+  // Obtener el token APN (iOS) o FCM (Android)
   try {
-    // @ts-ignore - Algunas versiones de tipos de expo-notifications no incluyen projectId, pero es válido en runtime.
+    // @ts-ignore
     const token = (await Notifications.getDevicePushTokenAsync({
       projectId: "5daba5d2-4908-419a-9034-2e3ea691e59f"
     })).data;
-    console.log("DEBUG: Token FCM obtenido:", token);
+    console.log("✅ Token push obtenido:", token);
     return token;
   } catch (error: any) {
-    console.warn("DEBUG: No se pudo obtener el token oficial:", error.message);
-    // BYPASS PARA DESARROLLO: Generamos un token sintético para no bloquear el registro del Búnker/RSA
-    const dummyToken = `BUNKER_FREE_ACCOUNT_${Device.osBuildId || Math.random().toString(36).substring(7)}`;
-    console.log("DEBUG: Usando Token de Emergencia para registrar hardware:", dummyToken);
-    return dummyToken;
+    // Fallback: si falla el token real (configuración, red, etc.),
+    // generamos un token de desarrollo para no bloquear el registro del Búnker E2EE.
+    const devToken = `DEV_${Platform.OS.toUpperCase()}_${Device.osBuildId || Device.modelId || Date.now()}`;
+    console.warn("⚠️ Token push no disponible. Usando token de desarrollo:", devToken, error.message);
+    return devToken;
   }
 }
 
@@ -65,21 +76,22 @@ export async function requestNotificationPermission() {
  */
 export async function saveDeviceToken(userId: string, token: string) {
   try {
-    // 1. Identificador nativo (Sin parches de UUID, Supabase generará el ID aleatorio)
-    const myDeviceIdentifier = Device.osBuildId || 'Unknown';
+    const myDeviceIdentifier = Device.osBuildId || Device.modelId || 'Unknown';
 
-    // 2. LIMPIEZA AGRESIVA
+    // Limpieza previa (fila duplicada por mismo token o mismo hardware)
     await supabase
       .from('devices')
       .delete()
       .or(`fcm_token.eq."${token}",and(user_id.eq."${userId}",device_identifier.eq."${myDeviceIdentifier}")`);
 
-    // 3. ACTIVACIÓN DEL BÚNKER E2EE
+    // Registro nativo (Kotlin/Swift) — pasa el identificador exacto
     await E2EEService.vincularHardwareConMiCuenta(myDeviceIdentifier, userId, token);
 
-    // Complemento opcional: Puedes guardar también el device_name / last_seen modificando 
-    // el código del AgoraBunkerModule de Kotlin después, por ahora esto certifica el aparato.
-    console.log("✅ Búnker E2EE Inicializado y Token registrado para:", userId);
+    // Persistimos el identificador localmente para garantizar el borrado en logout.
+    // SecureStore es cifrado y sobrevive reinicios. No depende de Device.osBuildId en logout.
+    await SecureStore.setItemAsync('agora_device_identifier', myDeviceIdentifier);
+
+    console.log("✅ Búnker E2EE Inicializado. Identifier guardado:", myDeviceIdentifier);
 
   } catch (err) {
     console.error("❌ Error inesperado forjando hardware en saveDeviceToken:", err);
@@ -88,26 +100,47 @@ export async function saveDeviceToken(userId: string, token: string) {
 
 /**
  * Elimina el registro del dispositivo actual de Supabase al cerrar sesión.
+ * - Android: usa el módulo nativo (apiKey del TEE + SSL Pinning).
+ * - iOS: usa el cliente Supabase JS (URLProtocol inyecta la apiKey automáticamente).
  */
 export async function unregisterDevice() {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
 
-    const myDeviceIdentifier = Device.osBuildId || 'Unknown';
+    // Leemos el identifier guardado al registrar (valor exacto que fue a Supabase)
+    const storedIdentifier = await SecureStore.getItemAsync('agora_device_identifier');
+    const myDeviceIdentifier = storedIdentifier || Device.osBuildId || Device.modelId || 'Unknown';
 
-    console.log("🗑️ Desvinculando hardware:", myDeviceIdentifier);
+    console.log("🗑️ Desvinculando hardware:", myDeviceIdentifier, storedIdentifier ? "(SecureStore)" : "(fallback)");
 
-    const { error } = await supabase
-      .from('devices')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('device_identifier', myDeviceIdentifier);
+    if (Platform.OS === 'android') {
+      // Android: el nativo hace el DELETE con la apiKey real del TEE y SSL Pinning
+      const projectUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+      await AgoraBunker.desregistrarDispositivo(
+        myDeviceIdentifier,
+        session.user.id,
+        session.access_token,
+        projectUrl
+      );
+    } else {
+      // iOS: URLProtocol inyecta la apiKey automáticamente en el cliente Supabase
+      const { error, count } = await supabase
+        .from('devices')
+        .delete()
+        .eq('user_id', session.user.id)
+        .eq('device_identifier', myDeviceIdentifier)
+        .select();
 
-    if (error) throw error;
-    console.log("✅ Hardware desvinculado con éxito.");
+      if (error) throw error;
+      console.log(`✅ Hardware desvinculado (iOS). Filas eliminadas: ${count ?? 0}`);
+    }
+
+    // Limpiamos el identifier local tras el borrado
+    await SecureStore.deleteItemAsync('agora_device_identifier');
+
   } catch (e) {
-    console.warn("⚠️ No se pudo desvincular el hardware (posiblemente ya borrado):", e);
+    console.warn("⚠️ No se pudo desvincular el hardware:", e);
   }
 }
 
