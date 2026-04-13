@@ -265,6 +265,7 @@ export const MessageService = {
         chatId: string,
         senderId: string,
         plainText: string,
+        senderDisplayName?: string,
     ): Promise<DecryptedMessage | null> {
         try {
             const myDeviceId = await SecureStore.getItemAsync('agora_device_identifier');
@@ -284,12 +285,26 @@ export const MessageService = {
 
             if (error) throw error;
 
+            // ── Notificación push: fire & forget ────────────────────────────
+            // Mandamos el contenido CIFRADO en el campo data (nunca texto plano)
+            // El servidor filtra tokens de desarrollo automáticamente
+            fetch('https://api.periodiconaranja.es/agoras/notificacion/mensaje', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    sender_id: senderId,
+                    sender_name: senderDisplayName ?? 'Agora',
+                    encrypted_preview: encrypted,
+                }),
+            }).catch((e) => console.warn('[MessageService] Push notification failed (non-critical):', e));
+
             return {
                 id: data.id,
                 chat_id: data.chat_id,
                 sender_id: data.sender_id,
                 content_encrypted: data.content,
-                content: plainText, // ya lo tenemos en claro, sin necesidad de descifrar
+                content: plainText,
                 created_at: data.created_at!,
                 isMine: true,
             };
@@ -298,6 +313,7 @@ export const MessageService = {
             return null;
         }
     },
+
 
     /**
      * Suscribe al canal Realtime de un chat.

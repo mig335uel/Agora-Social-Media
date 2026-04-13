@@ -76,10 +76,16 @@ export default function RootLayout() {
       const data = response.notification.request.content.data;
       console.log('👆 Usuario tocó la notificación. Datos:', data);
 
-      // Extraemos el postId que envías desde Node.js
-      if (data && data.postId) {
+      // ── Mensaje de chat ─────────────────────────────────────────────────
+      if (data?.type === 'new_message' && data.chat_id) {
+        console.log(`Navegando al chat: ${data.chat_id}`);
+        router.push(`/messaging/${data.chat_id}` as any);
+        return;
+      }
+
+      // ── Notificación de post (like, comment, repost...) ─────────────────
+      if (data?.postId) {
         console.log(`Navegando al post ID: ${data.postId}`);
-        // Redirigimos al post exacto dentro de tu Drawer
         router.push(`/post/${data.postId}`);
       }
     });

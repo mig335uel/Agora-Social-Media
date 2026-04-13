@@ -162,7 +162,12 @@ export default function ChatScreen() {
         setMessages((prev) => [optimisticMsg, ...prev]);
 
         // Cifrar y persistir en Supabase
-        const sent = await MessageService.sendMessage(chatId, user.id, text);
+        const sent = await MessageService.sendMessage(
+            chatId,
+            user.id,
+            text,
+            user.display_name || user.username,
+        );
 
         if (sent) {
             // Reemplazamos el optimistic por el real (con ID real de Supabase)
