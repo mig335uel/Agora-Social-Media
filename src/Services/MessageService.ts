@@ -50,23 +50,25 @@ async function getOrDecryptAesKey(chatId: string, myDeviceId: string): Promise<s
     if (!AgoraBunker) return null;
 
     try {
-        // 2. Buscar el sobre cifrado con la llave pública de ESTE dispositivo
+        // El device_id en chat_encripted_key es el UUID de devices.id (generado por Postgres).
+        // Usamos agora_device_db_id que guardamos en SecureStore tras el registro.
+        const dbDeviceId = await SecureStore.getItemAsync('agora_device_db_id') ?? myDeviceId;
+
         const { data, error } = await supabase
             .from('chat_encripted_key')
             .select('encripted_key')
             .eq('chat_id', chatId)
-            .eq('device_id', myDeviceId)
+            .eq('device_id', dbDeviceId)
             .maybeSingle();
 
         if (error || !data?.encripted_key) {
-            console.warn('[MessageService] No se encontró llave cifrada para el chat:', chatId);
+            console.warn('[MessageService] No se encontró llave cifrada para el chat:', chatId, '| device_id:', dbDeviceId);
             return null;
         }
 
-        // 3. Abrir el candado RSA con la llave privada del hardware (TEE/Keychain)
+        // Abrir el candado RSA con la llave privada del hardware (TEE/Keychain)
         const aesKeyBase64: string = await AgoraBunker.descifrarLlaveDeChatR(data.encripted_key);
 
-        // 4. Guardar en caché
         aesKeyCache.set(chatId, aesKeyBase64);
         return aesKeyBase64;
     } catch (e) {
@@ -98,6 +100,15 @@ export const MessageService = {
      */
     clearKeyCache(): void {
         aesKeyCache.clear();
+    },
+
+    /**
+     * Inyecta una llave AES ya descifrada en el caché en RAM.
+     * Lo llama el listener global de Realtime cuando llega un INSERT en chat_encripted_key.
+     */
+    precalentarLlave(chatId: string, aesKeyBase64: string): void {
+        aesKeyCache.set(chatId, aesKeyBase64);
+        console.log(`[MessageService] 🔑 Llave precalentada para chat: ${chatId}`);
     },
 
     /**
@@ -365,6 +376,142 @@ export const MessageService = {
             .update({ last_read_at: new Date().toISOString() })
             .eq('chat_id', chatId)
             .eq('user_id', userId);
+    },
+
+    /**
+     * Crea un chat directo (follow mutuo) o una solicitud de chat (follow no mutuo).
+     * Distribuye la llave AES cifrada a cada dispositivo de ambos participantes.
+     */
+    async createChat(
+        myUserId: string,
+        targetUserId: string,
+        myDeviceId: string,
+    ): Promise<import('@/Types/Chats').ChatCreationResult> {
+        try {
+            // ── 0. ¿Ya existe un chat entre estos dos? ──────────────────────
+            const { data: existing } = await supabase
+                .from('chat_participants')
+                .select('chat_id')
+                .eq('user_id', myUserId)
+                .is('left_at', null);
+
+            if (existing?.length) {
+                const myChats = existing.map((p) => p.chat_id);
+                const { data: shared } = await supabase
+                    .from('chat_participants')
+                    .select('chat_id')
+                    .eq('user_id', targetUserId)
+                    .in('chat_id', myChats)
+                    .is('left_at', null)
+                    .limit(1);
+
+                if (shared?.[0]) {
+                    return { type: 'existing', chat_id: shared[0].chat_id };
+                }
+            }
+
+            // ── 1. Comprobar follow mutuo ───────────────────────────────────
+            const [{ data: iFollow }, { data: theyFollow }] = await Promise.all([
+                supabase
+                    .from('followers')
+                    .select('id')
+                    .eq('follower_id', myUserId)
+                    .eq('following_id', targetUserId)
+                    .maybeSingle(),
+                supabase
+                    .from('followers')
+                    .select('id')
+                    .eq('follower_id', targetUserId)
+                    .eq('following_id', myUserId)
+                    .maybeSingle(),
+            ]);
+
+            const isMutual = !!iFollow && !!theyFollow;
+
+            // ── 2a. No mutuo → chat_request ─────────────────────────────────
+            if (!isMutual) {
+                const { data: req, error } = await supabase
+                    .from('chat_requests')
+                    .insert({
+                        sender_id: myUserId,
+                        receiver_id: targetUserId,
+                        status: 'pending',
+                    })
+                    .select('id')
+                    .single();
+
+                if (error) throw error;
+                return { type: 'request', request_id: req.id };
+            }
+
+            // ── 2b. Mutuo → crear chat + distribución E2EE ──────────────────
+
+            if (!AgoraBunker) throw new Error('AgoraBunker no disponible');
+
+            // Generar llave AES-256 en el Búnker nativo (nunca sale del proceso)
+            const aesKeyBase64: string = await AgoraBunker.generarLlaveAESR();
+
+            // Crear el chat
+            const { data: chat, error: chatErr } = await supabase
+                .from('chats')
+                .insert({ type: 'direct' })
+                .select('id')
+                .single();
+
+            if (chatErr || !chat) throw chatErr ?? new Error('No se pudo crear el chat');
+
+            // Añadir participantes
+            await supabase.from('chat_participants').insert([
+                { chat_id: chat.id, user_id: myUserId },
+                { chat_id: chat.id, user_id: targetUserId },
+            ]);
+
+            // ── Distribución de llaves ──────────────────────────────────────
+            // device_id en chat_encripted_key = devices.id (UUID generado por Postgres).
+            // El cliente conoce este UUID porque lo guarda en SecureStore('agora_device_db_id')
+            // justo después del registro en saveDeviceToken().
+            const { data: devices } = await supabase
+                .from('devices')
+                .select('id, user_id, public_device_key')
+                .in('user_id', [myUserId, targetUserId])
+                .not('public_device_key', 'is', null);
+
+            const keyInserts: { chat_id: string; device_id: string; encripted_key: string }[] = [];
+
+            await Promise.all(
+                (devices ?? []).map(async (device) => {
+                    if (!device.public_device_key) return;
+                    try {
+                        const encryptedKey: string = await AgoraBunker.cifrarLlaveConPublicKeyR(
+                            aesKeyBase64,
+                            device.public_device_key,
+                        );
+                        keyInserts.push({
+                            chat_id: chat.id,
+                            device_id: device.id,          // UUID de devices.id ← FK correcta
+                            encripted_key: encryptedKey,
+                        });
+                    } catch (e) {
+                        console.warn(`[MessageService] No se pudo cifrar llave para device UUID ${device.id}:`, e);
+                    }
+                })
+            );
+
+            if (keyInserts.length > 0) {
+                await supabase.from('chat_encripted_key').insert(keyInserts);
+            }
+
+            // Pre-calentar la llave en RAM para el dispositivo CREADOR al instante.
+            // Los otros dispositivos la recibirán vía Realtime y llaman a precalentarLlave().
+            aesKeyCache.set(chat.id, aesKeyBase64);
+
+            console.log(`[MessageService] ✅ Chat E2EE creado: ${chat.id} | llaves distribuidas: ${keyInserts.length}`);
+            return { type: 'direct', chat_id: chat.id };
+
+        } catch (e) {
+            console.error('[MessageService] Error en createChat:', e);
+            return null;
+        }
     },
 
     timeAgo,

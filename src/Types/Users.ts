@@ -14,3 +14,6 @@ export interface Usuario{
     is_private: boolean;
     is_verified?: boolean;
 }
+
+
+

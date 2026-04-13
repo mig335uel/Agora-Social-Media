@@ -87,14 +87,28 @@ export async function saveDeviceToken(userId: string, token: string) {
     // Registro nativo (Kotlin/Swift) — pasa el identificador exacto
     await E2EEService.vincularHardwareConMiCuenta(myDeviceIdentifier, userId, token);
 
-    // Persistimos el identificador localmente para garantizar el borrado en logout.
-    // SecureStore es cifrado y sobrevive reinicios. No depende de Device.osBuildId en logout.
+    // Persistimos el identifier de texto (para desregistro en logout)
     await SecureStore.setItemAsync('agora_device_identifier', myDeviceIdentifier);
 
-    console.log("✅ Búnker E2EE Inicializado. Identifier guardado:", myDeviceIdentifier);
+    // ── Clave: obtener el UUID asignado por Postgres al row de devices ──────────
+    // El UUID (devices.id) es lo que usa chat_encripted_key.device_id como FK.
+    // El cliente nunca lo conoce antes de esta consulta.
+    const { data: deviceRow } = await supabase
+      .from('devices')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('device_identifier', myDeviceIdentifier)
+      .maybeSingle();
+
+    if (deviceRow?.id) {
+      await SecureStore.setItemAsync('agora_device_db_id', deviceRow.id);
+      console.log('✅ Búnker E2EE Inicializado. Device DB UUID guardado:', deviceRow.id);
+    } else {
+      console.warn('⚠️ No se pudo obtener el UUID del dispositivo de Supabase.');
+    }
 
   } catch (err) {
-    console.error("❌ Error inesperado forjando hardware en saveDeviceToken:", err);
+    console.error('❌ Error inesperado forjando hardware en saveDeviceToken:', err);
   }
 }
 

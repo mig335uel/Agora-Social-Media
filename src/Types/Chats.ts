@@ -76,3 +76,17 @@ export interface ChatInboxItem {
     unread_count: number;
     updated_at: string;
 }
+
+/** Resultado de intentar crear un chat */
+export type ChatCreationResult =
+    | { type: 'direct'; chat_id: string }   // follow mutuo → chat creado
+    | { type: 'request'; request_id: string } // no mutuo → solicitud enviada
+    | { type: 'existing'; chat_id: string }  // el chat ya existía
+    | null;
+
+export interface PendingChatRequest {
+    request_id: string;
+    sender_id: string;
+    sender_username: string;
+    created_at: string;
+}
