@@ -91,6 +91,7 @@ export async function LoginAuth({ loginForm }: { loginForm: LoginForm }) {
 
 
 import { unregisterDevice } from "./NotificationService";
+import { MessageService } from "./MessageService";
 
 export async function signOut() {
     try {
@@ -100,6 +101,9 @@ export async function signOut() {
             // Desvinculamos el hardware de forma segura antes de salir
             await unregisterDevice();
             
+            // Borramos las llaves AES de mensajes de la RAM
+            MessageService.clearKeyCache();
+
             // Cerramos la sesión en Supabase
             await supabase.auth.signOut();
         }

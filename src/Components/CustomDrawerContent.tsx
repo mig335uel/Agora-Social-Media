@@ -68,13 +68,23 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             router.push("/(tabs)/profile")
             props.navigation.closeDrawer();
           }}
-          
           className='flex-row p-4 gap-3 border rounded-full px-5 mx-5 shadow-current drop-shadow-sm'
-
           style={[styles.ButtonProfile, isDark ? { borderColor: '#fff' } : { borderColor: '#000' } ]}
         >
           <Octicons name="person-fill" size={24} color={isDark ? '#fff' : '#000'} />
           <Text className='font-bold text-xl' style={{ color: isDark ? '#fff' : '#000' }}>Perfil</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => {
+            router.push("/messaging" as any);
+            props.navigation.closeDrawer();
+          }}
+          className='flex-row p-4 gap-3 border rounded-full px-5 mx-5 mt-3 shadow-current drop-shadow-sm'
+          style={[styles.ButtonProfile, isDark ? { borderColor: '#fff' } : { borderColor: '#000' } ]}
+        >
+          <Octicons name="comment-discussion" size={24} color={isDark ? '#fff' : '#000'} />
+          <Text className='font-bold text-xl' style={{ color: isDark ? '#fff' : '#000' }}>Mensajes</Text>
         </TouchableOpacity>
 
       </View>

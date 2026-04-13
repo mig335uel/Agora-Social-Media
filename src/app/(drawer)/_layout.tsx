@@ -61,7 +61,12 @@ export default function DrawerLayout() {
         name="editar"
         options={{
           drawerItemStyle: { display: 'none' }
-
+        }}
+      />
+      <Drawer.Screen
+        name="messaging"
+        options={{
+          drawerItemStyle: { display: 'none' }
         }}
       />
     </Drawer>
