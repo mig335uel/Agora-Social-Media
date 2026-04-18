@@ -76,9 +76,13 @@ export async function requestNotificationPermission(): Promise<string | null> {
  */
 export async function saveDeviceToken(userId: string, token: string) {
   try {
-    const myDeviceIdentifier = Device.osBuildId || Device.modelId || 'Unknown';
+    let myDeviceIdentifier = await SecureStore.getItemAsync('agora_device_identifier');
+    if (!myDeviceIdentifier) {
+      // Generamos un ID único por instalación para evitar que modelos iguales compartan el ID
+      myDeviceIdentifier = `device_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    }
 
-    // Limpieza previa (fila duplicada por mismo token o mismo hardware)
+    // Limpieza previa (fila duplicada por mismo token o mismo hardware exacto)
     await supabase
       .from('devices')
       .delete()

@@ -444,10 +444,10 @@ export const MessageService = {
             const aesKeyBase64: string = await AgoraBunker.generarLlaveAESR();
             console.log(`[createChat] 2. AES generada: ${aesKeyBase64.substring(0, 8)}...`);
 
-            // Crear el chat
+            // Crear el chat con created_by para poder recuperarlo inmediatamente
             const { data: chat, error: chatErr } = await supabase
                 .from('chats')
-                .insert({ type: 'direct' })
+                .insert({ type: 'direct', created_by: myUserId })
                 .select('id')
                 .single();
 
@@ -469,11 +469,15 @@ export const MessageService = {
             console.log(`[createChat] 4. Participantes insertados OK`);
 
             // Distribución de llaves E2EE
-            const { data: devices } = await supabase
-                .from('devices')
-                .select('id, user_id, public_device_key')
-                .in('user_id', [myUserId, targetUserId])
-                .not('public_device_key', 'is', null);
+            // Usamos una función RPC (Security Definer) para evitar que el RLS
+            // nos oculte los dispositivos del otro usuario, ya que necesitamos su clave pública.
+            const { data: devices, error: rpcError } = await supabase
+                .rpc('get_public_keys_for_users', {
+                    target_user_ids: [myUserId, targetUserId]
+                });
+            if (rpcError) {
+                 console.error("[createChat] Error en el RPC get_public_keys_for_users:", rpcError);
+            }
 
             console.log(`[createChat] 5. Dispositivos con public_key: ${devices?.length ?? 0}`);
 

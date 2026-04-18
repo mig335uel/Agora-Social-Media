@@ -6,7 +6,6 @@ import { LoginForm } from "../Types/LoginForm";
 import { useState } from 'react'
 import { BlurView } from "expo-blur";
 import { LoginAuth } from "../Services/authService";
-import { requestNotificationPermission, saveDeviceToken } from "../Services/NotificationService";
 import { router } from "expo-router";
 import { GlassView } from "expo-glass-effect";
 import { TouchableWithoutFeedback } from "react-native";
@@ -24,11 +23,8 @@ export default function LoginForms({ onNavigateToRegister }: { onNavigateToRegis
         try {
             const results = await LoginAuth({ loginForm });
             if (results && results.user) {
-                // Registrar el dispositivo para el nuevo usuario
-                const token = await requestNotificationPermission();
-                if (token) {
-                    await saveDeviceToken(results.user.id, token);
-                }
+                // Registro del dispositivo se hace automáticamente en _layout.tsx
+                // cuando session cambia (useEffect([session]))
                 router.replace('/');
             }
         } catch (error) {

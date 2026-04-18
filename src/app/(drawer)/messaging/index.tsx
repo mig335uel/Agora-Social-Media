@@ -15,7 +15,7 @@ import {
     View,
 } from 'react-native';
 import { Ionicons, Octicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
@@ -268,7 +268,11 @@ export default function MessagingInbox() {
         if (isRefresh) setRefreshing(false); else setLoading(false);
     }, [user?.id]);
 
-    useEffect(() => { fetchInbox(); }, [fetchInbox]);
+    useFocusEffect(
+        useCallback(() => {
+            fetchInbox();
+        }, [fetchInbox])
+    );
 
     const filtered = search.trim()
         ? chats.filter((c) => {

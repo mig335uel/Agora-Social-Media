@@ -15,19 +15,9 @@ export default function DrawerLayout() {
   const user = useAuth();
   const keyDeliveryChannel = useRef<RealtimeChannel | null>(null);
 
-  // ── Registro del dispositivo + token push ──────────────────────────────────
-  useEffect(() => {
-    const setupDevice = async () => {
-      if (!user) return;
-      try {
-        const token = await requestNotificationPermission();
-        if (token) await saveDeviceToken(user.id, token);
-      } catch (error) {
-        console.error('[DrawerLayout] Error configurando dispositivo:', error);
-      }
-    };
-    setupDevice();
-  }, [user]);
+  // ── Registro del dispositivo ya se hace en _layout.tsx (raíz) ──────────────
+  // NO duplicar aquí: en iOS, una doble llamada a requestPermissionsAsync()
+  // mientras el diálogo del sistema está abierto causa un deny automático.
 
   // ── Listener global de ENTREGA DE LLAVES E2EE ─────────────────────────────
   //
@@ -49,15 +39,18 @@ export default function DrawerLayout() {
         return;
       }
 
+      // Saneamos el UUID por si se guardó en SecureStore con algún espacio invisible
+      const cleanDbDeviceId = myDbDeviceId.trim();
+
       keyDeliveryChannel.current = supabase
-        .channel(`key-delivery:${myDbDeviceId}`)
+        .channel(`key-delivery`)
         .on(
           'postgres_changes',
           {
             event: 'INSERT',
             schema: 'public',
             table: 'chat_encripted_key',
-            filter: `device_id=eq.${myDbDeviceId}`,
+            filter: `device_id=eq.${cleanDbDeviceId}`,
           },
           async (payload) => {
             const { chat_id, encripted_key } = payload.new as {
@@ -107,7 +100,7 @@ export default function DrawerLayout() {
       }}
     >
       <Drawer.Screen name="(tabs)" options={{ drawerItemStyle: { display: 'none' } }} />
-      <Drawer.Screen name="post"   options={{ drawerItemStyle: { display: 'none' } }} />
+      <Drawer.Screen name="post" options={{ drawerItemStyle: { display: 'none' } }} />
       <Drawer.Screen name="editar" options={{ drawerItemStyle: { display: 'none' } }} />
       <Drawer.Screen name="messaging" options={{ drawerItemStyle: { display: 'none' } }} />
     </Drawer>
