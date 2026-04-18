@@ -388,12 +388,16 @@ export const MessageService = {
         myDeviceId: string,
     ): Promise<import('@/Types/Chats').ChatCreationResult> {
         try {
+            console.log(`[createChat] ▶ Inicio | yo: ${myUserId} → target: ${targetUserId}`);
+
             // ── 0. ¿Ya existe un chat entre estos dos? ──────────────────────
-            const { data: existing } = await supabase
+            const { data: existing, error: existErr } = await supabase
                 .from('chat_participants')
                 .select('chat_id')
                 .eq('user_id', myUserId)
                 .is('left_at', null);
+
+            console.log(`[createChat] 0. Mis participaciones: ${existing?.length ?? 0} | error: ${existErr?.message ?? 'ninguno'}`);
 
             if (existing?.length) {
                 const myChats = existing.map((p) => p.chat_id);
@@ -406,20 +410,21 @@ export const MessageService = {
                     .limit(1);
 
                 if (shared?.[0]) {
+                    console.log(`[createChat] ♻️ Chat existente encontrado: ${shared[0].chat_id}`);
                     return { type: 'existing', chat_id: shared[0].chat_id };
                 }
             }
 
             // ── 1. Comprobar follow mutuo ───────────────────────────────────
-            const [{ data: iFollow }, { data: theyFollow }] = await Promise.all([
+            const [{ data: iFollow, error: fErr1 }, { data: theyFollow, error: fErr2 }] = await Promise.all([
                 supabase
-                    .from('followers')
+                    .from('follows')
                     .select('id')
                     .eq('follower_id', myUserId)
                     .eq('following_id', targetUserId)
                     .maybeSingle(),
                 supabase
-                    .from('followers')
+                    .from('follows')
                     .select('id')
                     .eq('follower_id', targetUserId)
                     .eq('following_id', myUserId)
@@ -427,29 +432,17 @@ export const MessageService = {
             ]);
 
             const isMutual = !!iFollow && !!theyFollow;
+            console.log(`[createChat] 1. Follow mutuo: ${isMutual} | yo→él: ${!!iFollow} | él→yo: ${!!theyFollow} | errors: ${fErr1?.message ?? '-'}, ${fErr2?.message ?? '-'}`);
 
-            // ── 2a. No mutuo → chat_request ─────────────────────────────────
-            if (!isMutual) {
-                const { data: req, error } = await supabase
-                    .from('chat_requests')
-                    .insert({
-                        sender_id: myUserId,
-                        receiver_id: targetUserId,
-                        status: 'pending',
-                    })
-                    .select('id')
-                    .single();
-
-                if (error) throw error;
-                return { type: 'request', request_id: req.id };
+            // ── 2. SIEMPRE crear el chat + distribución E2EE ────────────────
+            // (Independientemente de si es mutuo o no, el chat se crea)
+            if (!AgoraBunker) {
+                console.error('[createChat] ❌ AgoraBunker no disponible');
+                throw new Error('AgoraBunker no disponible');
             }
 
-            // ── 2b. Mutuo → crear chat + distribución E2EE ──────────────────
-
-            if (!AgoraBunker) throw new Error('AgoraBunker no disponible');
-
-            // Generar llave AES-256 en el Búnker nativo (nunca sale del proceso)
             const aesKeyBase64: string = await AgoraBunker.generarLlaveAESR();
+            console.log(`[createChat] 2. AES generada: ${aesKeyBase64.substring(0, 8)}...`);
 
             // Crear el chat
             const { data: chat, error: chatErr } = await supabase
@@ -458,23 +451,31 @@ export const MessageService = {
                 .select('id')
                 .single();
 
-            if (chatErr || !chat) throw chatErr ?? new Error('No se pudo crear el chat');
+            if (chatErr || !chat) {
+                console.error('[createChat] ❌ Error creando chat:', chatErr?.message);
+                throw chatErr ?? new Error('No se pudo crear el chat');
+            }
+            console.log(`[createChat] 3. Chat creado: ${chat.id}`);
 
             // Añadir participantes
-            await supabase.from('chat_participants').insert([
+            const { error: partErr } = await supabase.from('chat_participants').insert([
                 { chat_id: chat.id, user_id: myUserId },
                 { chat_id: chat.id, user_id: targetUserId },
             ]);
+            if (partErr) {
+                console.error('[createChat] ❌ Error participantes:', partErr.message);
+                throw partErr;
+            }
+            console.log(`[createChat] 4. Participantes insertados OK`);
 
-            // ── Distribución de llaves ──────────────────────────────────────
-            // device_id en chat_encripted_key = devices.id (UUID generado por Postgres).
-            // El cliente conoce este UUID porque lo guarda en SecureStore('agora_device_db_id')
-            // justo después del registro en saveDeviceToken().
+            // Distribución de llaves E2EE
             const { data: devices } = await supabase
                 .from('devices')
                 .select('id, user_id, public_device_key')
                 .in('user_id', [myUserId, targetUserId])
                 .not('public_device_key', 'is', null);
+
+            console.log(`[createChat] 5. Dispositivos con public_key: ${devices?.length ?? 0}`);
 
             const keyInserts: { chat_id: string; device_id: string; encripted_key: string }[] = [];
 
@@ -488,28 +489,47 @@ export const MessageService = {
                         );
                         keyInserts.push({
                             chat_id: chat.id,
-                            device_id: device.id,          // UUID de devices.id ← FK correcta
+                            device_id: device.id,
                             encripted_key: encryptedKey,
                         });
                     } catch (e) {
-                        console.warn(`[MessageService] No se pudo cifrar llave para device UUID ${device.id}:`, e);
+                        console.warn(`[createChat] ⚠️ Fallo cifrando llave para device ${device.id}:`, e);
                     }
                 })
             );
 
             if (keyInserts.length > 0) {
-                await supabase.from('chat_encripted_key').insert(keyInserts);
+                const { error: keyErr } = await supabase.from('chat_encripted_key').insert(keyInserts);
+                if (keyErr) console.error('[createChat] ❌ Error insertando llaves:', keyErr.message);
+                else console.log(`[createChat] 6. Llaves distribuidas: ${keyInserts.length}`);
             }
 
-            // Pre-calentar la llave en RAM para el dispositivo CREADOR al instante.
-            // Los otros dispositivos la recibirán vía Realtime y llaman a precalentarLlave().
+            // Pre-calentar la llave en RAM del dispositivo creador
             aesKeyCache.set(chat.id, aesKeyBase64);
 
-            console.log(`[MessageService] ✅ Chat E2EE creado: ${chat.id} | llaves distribuidas: ${keyInserts.length}`);
-            return { type: 'direct', chat_id: chat.id };
+            // ── 3. Si NO es mutuo → además meter en chat_requests ───────────
+            //   Si el receptor rechaza → se borra el chat entero (DELETE cascade)
+            if (!isMutual) {
+                console.log(`[createChat] 7. No mutuo → insertando chat_request...`);
+                const { error: reqErr } = await supabase
+                    .from('chat_requests')
+                    .insert({
+                        chat_id: chat.id,
+                        sender_id: myUserId,
+                        receiver_id: targetUserId,
+                    });
+
+                if (reqErr) {
+                    console.warn('[createChat] ⚠️ Error insertando chat_request:', reqErr.message);
+                }
+            }
+
+            const resultType = isMutual ? 'direct' : 'request';
+            console.log(`[createChat] ✅ Chat E2EE creado (${resultType}): ${chat.id}`);
+            return { type: resultType, chat_id: chat.id };
 
         } catch (e) {
-            console.error('[MessageService] Error en createChat:', e);
+            console.error('[createChat] 💥 EXCEPCIÓN:', e);
             return null;
         }
     },

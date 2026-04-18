@@ -80,8 +80,8 @@ export interface ChatInboxItem {
 /** Resultado de intentar crear un chat */
 export type ChatCreationResult =
     | { type: 'direct'; chat_id: string }   // follow mutuo → chat creado
-    | { type: 'request'; request_id: string } // no mutuo → solicitud enviada
-    | { type: 'existing'; chat_id: string }  // el chat ya existía
+    | { type: 'request'; chat_id: string }  // no mutuo → chat creado + solicitud
+    | { type: 'existing'; chat_id: string } // el chat ya existía
     | null;
 
 export interface PendingChatRequest {

@@ -111,8 +111,8 @@ function NewChatModal({ visible, onClose, myUserId, isDark }: {
     const loadFollowing = async () => {
         setLoading(true);
         const { data } = await supabase
-            .from('followers')
-            .select('following_id, users!followers_following_id_fkey(id, username, display_name, profile_picture_url, is_verified)')
+            .from('follows')
+            .select('following_id, users!follows_following_id_fkey(id, username, display_name, profile_picture_url, is_verified)')
             .eq('follower_id', myUserId)
             .limit(50);
         setUsers((data ?? []).map((d: any) => d.users).filter(Boolean));
@@ -135,18 +135,30 @@ function NewChatModal({ visible, onClose, myUserId, isDark }: {
 
     const handleStart = async (targetUser: any) => {
         setCreating(targetUser.id);
-        const myDeviceId = await SecureStore.getItemAsync('agora_device_identifier') ?? '';
-        const result: ChatCreationResult = await MessageService.createChat(myUserId, targetUser.id, myDeviceId);
-        setCreating(null);
+        console.log('[NewChat] Iniciando chat con:', targetUser.username);
 
-        if (!result) return;
+        try {
+            const myDeviceId = await SecureStore.getItemAsync('agora_device_identifier') ?? '';
+            const result: ChatCreationResult = await MessageService.createChat(myUserId, targetUser.id, myDeviceId);
+            console.log('[NewChat] Resultado createChat:', JSON.stringify(result));
 
-        if (result.type === 'direct' || result.type === 'existing') {
-            onClose();
-            router.push(`/messaging/${result.chat_id}` as any);
-        } else if (result.type === 'request') {
-            onClose();
-            // TODO: mostrar confirmación "Solicitud enviada"
+            setCreating(null);
+
+            if (!result) {
+                console.error('[NewChat] createChat devolvió null');
+                return;
+            }
+
+            // El chat SIEMPRE se crea (direct, existing o request) y siempre tiene chat_id
+            if (result.chat_id) {
+                onClose();
+                setTimeout(() => {
+                    router.push(`/messaging/${result.chat_id}` as any);
+                }, 350);
+            }
+        } catch (e) {
+            console.error('[NewChat] Error en handleStart:', e);
+            setCreating(null);
         }
     };
 
