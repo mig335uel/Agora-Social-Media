@@ -419,13 +419,13 @@ export const MessageService = {
             const [{ data: iFollow, error: fErr1 }, { data: theyFollow, error: fErr2 }] = await Promise.all([
                 supabase
                     .from('follows')
-                    .select('id')
+                    .select('follower_id')
                     .eq('follower_id', myUserId)
                     .eq('following_id', targetUserId)
                     .maybeSingle(),
                 supabase
                     .from('follows')
-                    .select('id')
+                    .select('follower_id')
                     .eq('follower_id', targetUserId)
                     .eq('following_id', myUserId)
                     .maybeSingle(),
