@@ -169,16 +169,8 @@ export async function unregisterDevice() {
  * Iniciar este escuchador en tu Layout principal. Desencripta onTheFly
  */
 export function activarInterceptacionDecodificadora() {
-  // Manejador que decide mostrar la notificación aunque estemos en la app
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
+  // NOTA: El setNotificationHandler global está en _layout.tsx.
+  // No lo redefinimos aquí para no sobreescribirlo y perder flags como shouldSetBadge.
 
   Notifications.addNotificationReceivedListener(async (notification) => {
     // Revisamos si el objeto 'data' trae la carga militar de tu servidor NodeJS

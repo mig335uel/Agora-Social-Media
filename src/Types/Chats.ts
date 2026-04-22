@@ -16,10 +16,9 @@ export interface chat_content {
 export interface chat_participants {
     chat_id: string;
     user_id: string;
-    hidden_at: string | null;
-    role: string;
+    hidden_at: string | null;  // El usuario ha ocultado el chat (sin abandonarlo)
+    left_at: string | null;    // El usuario ha abandonado el chat
     last_read_at: string | null;
-    left_at: string | null;
 }
 
 export interface media_feature_chat {
@@ -27,7 +26,7 @@ export interface media_feature_chat {
     chat_id: string;
     sender_id: string;
     message_id: string;
-    media_url: string;
+    media_id: string;
     created_at?: string;
 }
 
@@ -35,7 +34,8 @@ export interface chat_encrypted_keys {
     id: string;
     chat_id: string;
     device_id: string;
-    encrypted_key: string;
+    // Nota: en BD la columna se llama 'encripted_key' (typo heredado del schema)
+    encripted_key: string;
 }
 
 export interface chat_requests {
@@ -43,7 +43,19 @@ export interface chat_requests {
     chat_id: string;
     sender_id: string;
     receiver_id: string;
-    status: string;
+    created_at?: string;
+    // status no existe en el schema actual — la aceptación se gestiona borrando la fila
+}
+
+export interface Device {
+    id: string;
+    user_id: string;
+    device_identifier: string;
+    device_name?: string;
+    platform?: string;
+    fcm_token?: string;
+    public_device_key?: string;
+    is_banned: boolean;
     created_at?: string;
 }
 

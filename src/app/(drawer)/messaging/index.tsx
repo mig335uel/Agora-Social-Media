@@ -106,9 +106,10 @@ function NewChatModal({ visible, onClose, myUserId, isDark }: {
         if (!visible) { setSearch(''); setUsers([]); return; }
         // Cargar contactos seguidos al abrir
         loadFollowing();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [visible]);
 
-    const loadFollowing = async () => {
+    const loadFollowing = useCallback(async () => {
         setLoading(true);
         const { data } = await supabase
             .from('follows')
@@ -117,7 +118,7 @@ function NewChatModal({ visible, onClose, myUserId, isDark }: {
             .limit(50);
         setUsers((data ?? []).map((d: any) => d.users).filter(Boolean));
         setLoading(false);
-    };
+    }, [myUserId]);
 
     const handleSearch = async (q: string) => {
         setSearch(q);

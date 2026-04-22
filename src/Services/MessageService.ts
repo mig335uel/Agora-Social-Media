@@ -122,18 +122,22 @@ export const MessageService = {
                 console.warn('[MessageService] No hay device_identifier en SecureStore');
             }
 
-            // 1. Obtener los chats en los que participo (no archivados, no salidos)
+            // 1. Obtener los chats en los que participo
+            //    · left_at  IS NULL → no ha abandonado el chat
+            //    · hidden_at IS NULL → no lo ha ocultado manualmente
             const { data: participations, error: partErr } = await supabase
                 .from('chat_participants')
                 .select('chat_id, last_read_at')
                 .eq('user_id', myUserId)
-                .is('left_at', null);
+                .is('left_at', null)
+                .is('hidden_at', null);
 
             if (partErr || !participations?.length) return [];
 
             const chatIds = participations.map((p) => p.chat_id);
 
             // 2. Obtener datos base de los chats + el otro participante + último mensaje
+            //    Hint de FK explícito en users para evitar ambigüedad (Supabase PostgREST)
             const { data: chatsRaw, error: chatErr } = await supabase
                 .from('chats')
                 .select(`
@@ -141,7 +145,10 @@ export const MessageService = {
                     type,
                     name,
                     created_at,
-                    chat_participants!inner(user_id, users(id, username, display_name, profile_picture_url, is_verified)),
+                    chat_participants!inner(
+                        user_id,
+                        users!chat_participants_user_id_fkey(id, username, display_name, profile_picture_url, is_verified)
+                    ),
                     chat_content(id, content, sender_id, created_at)
                 `)
                 .in('id', chatIds)
@@ -191,14 +198,26 @@ export const MessageService = {
                     };
                 }
 
-                // Contar no leídos
+                // Contar no leídos: consulta dedicada para evitar el sesgo del LIMIT 1
                 const myParticipation = participations.find((p) => p.chat_id === chat.id);
                 const lastReadAt = myParticipation?.last_read_at;
                 let unread = 0;
                 if (lastReadAt) {
-                    unread = rawMessages.filter(
-                        (m: any) => m.sender_id !== myUserId && new Date(m.created_at) > new Date(lastReadAt)
-                    ).length;
+                    const { count } = await supabase
+                        .from('chat_content')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('chat_id', chat.id)
+                        .neq('sender_id', myUserId)
+                        .gt('created_at', lastReadAt);
+                    unread = count ?? 0;
+                } else if (!lastReadAt) {
+                    // Nunca ha leído → todos los mensajes del contacto son no leídos
+                    const { count } = await supabase
+                        .from('chat_content')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('chat_id', chat.id)
+                        .neq('sender_id', myUserId);
+                    unread = count ?? 0;
                 }
 
                 items.push({
@@ -223,24 +242,38 @@ export const MessageService = {
     },
 
     /**
-     * Obtiene todos los mensajes de un chat y los desencripta.
+     * Obtiene los mensajes de un chat y los desencripta.
+     * @param cursor  ISO timestamp del mensaje más antiguo ya cargado (para paginación).
+     *                Omitir en la primera carga.
+     * @param limit   Número de mensajes por página (por defecto 40).
      */
-    async getMessages(chatId: string, myUserId: string): Promise<DecryptedMessage[]> {
+    async getMessages(
+        chatId: string,
+        myUserId: string,
+        cursor?: string,
+        limit = 40,
+    ): Promise<DecryptedMessage[]> {
         try {
             const myDeviceId = await SecureStore.getItemAsync('agora_device_identifier');
             if (!myDeviceId) return [];
 
-            // 1. Obtener mensajes ordenados
-            const { data, error } = await supabase
+            // 1. Obtener mensajes ordenados (más reciente primero)
+            //    Si hay cursor, traer solo mensajes MÁS ANTIGUOS que él (paginación infinita hacia arriba)
+            let query = supabase
                 .from('chat_content')
                 .select('id, chat_id, content, sender_id, created_at')
                 .eq('chat_id', chatId)
                 .order('created_at', { ascending: false })
-                .limit(60);
+                .limit(limit);
 
+            if (cursor) {
+                query = query.lt('created_at', cursor);
+            }
+
+            const { data, error } = await query;
             if (error || !data) return [];
 
-            // 2. Obtener la llave AES del chat (una sola vez)
+            // 2. Obtener la llave AES del chat (una sola vez, cacheada en RAM)
             const aesKey = await getOrDecryptAesKey(chatId, myDeviceId);
 
             // 3. Descifrar todos en paralelo
@@ -335,6 +368,7 @@ export const MessageService = {
         chatId: string,
         myUserId: string,
         cb: (msg: DecryptedMessage) => void,
+        onError?: (status: string) => void,
     ): RealtimeChannel {
         const channel = supabase
             .channel(`chat:${chatId}`)
@@ -364,7 +398,14 @@ export const MessageService = {
                     });
                 },
             )
-            .subscribe();
+            .subscribe((status, err) => {
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.warn(`[MessageService] Canal Realtime en error (${status}):`, err?.message ?? err);
+                    onError?.(status);
+                } else if (status === 'SUBSCRIBED') {
+                    console.log(`[MessageService] Canal Realtime suscrito: ${chatId}`);
+                }
+            });
 
         return channel;
     },
@@ -444,10 +485,10 @@ export const MessageService = {
             const aesKeyBase64: string = await AgoraBunker.generarLlaveAESR();
             console.log(`[createChat] 2. AES generada: ${aesKeyBase64.substring(0, 8)}...`);
 
-            // Crear el chat con created_by para poder recuperarlo inmediatamente
+            // Crear el chat — solo type (el diagrama de BD no incluye created_by en chats)
             const { data: chat, error: chatErr } = await supabase
                 .from('chats')
-                .insert({ type: 'direct', created_by: myUserId })
+                .insert({ type: 'direct' })
                 .select('id')
                 .single();
 
@@ -485,7 +526,8 @@ export const MessageService = {
 
             await Promise.all(
                 (devices ?? []).map(async (device) => {
-                    if (!device.public_device_key) return;
+                    // Omitir dispositivos sin clave pública o baneados (campo is_banned de la tabla devices)
+                    if (!device.public_device_key || device.is_banned) return;
                     try {
                         const encryptedKey: string = await AgoraBunker.cifrarLlaveConPublicKeyR(
                             aesKeyBase64,

@@ -75,6 +75,8 @@ export default function ChatScreen() {
 
     const [messages, setMessages] = useState<DecryptedMessage[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
     const [inputText, setInputText] = useState('');
     const [sending, setSending] = useState(false);
     const [contactName, setContactName] = useState('');
@@ -82,6 +84,8 @@ export default function ChatScreen() {
 
     const listRef = useRef<FlatList>(null);
     const channelRef = useRef<RealtimeChannel | null>(null);
+    const oldestCursorRef = useRef<string | undefined>(undefined);
+    const [realtimeError, setRealtimeError] = useState(false);
 
     const bg = isDark ? '#000' : '#fff';
     const inputBg = isDark ? '#1a1a1a' : '#f0f0f7';
@@ -96,11 +100,13 @@ export default function ChatScreen() {
 
         const init = async () => {
             setLoading(true);
+            oldestCursorRef.current = undefined;
+            setHasMore(true);
 
-            // 1. Datos del otro participante
+            // 1. Datos del otro participante (FK explícita para evitar ambigüedad PostgREST)
             const { data: participants } = await supabase
                 .from('chat_participants')
-                .select('user_id, users(display_name, username, profile_picture_url)')
+                .select('user_id, users!chat_participants_user_id_fkey(display_name, username, profile_picture_url)')
                 .eq('chat_id', chatId)
                 .neq('user_id', user.id);
 
@@ -110,9 +116,14 @@ export default function ChatScreen() {
                 setContactAvatar(other.users.profile_picture_url ?? null);
             }
 
-            // 2. Mensajes históricos desencriptados
+            // 2. Mensajes históricos desencriptados (primera página, 40 mensajes)
             const msgs = await MessageService.getMessages(chatId, user.id);
             setMessages(msgs);
+            if (msgs.length > 0) {
+                // El último elemento es el más antiguo (la lista viene desc por created_at)
+                oldestCursorRef.current = msgs[msgs.length - 1].created_at;
+            }
+            if (msgs.length < 40) setHasMore(false);
             setLoading(false);
 
             // 3. Marcar como leídos
@@ -122,15 +133,56 @@ export default function ChatScreen() {
         init();
     }, [chatId, user?.id]);
 
-    // ── Suscripción Realtime ─────────────────────────────────────────────────
+    // ── Cargar más mensajes (scroll infinito hacia el pasado) ─────────────────
+    const handleLoadMore = useCallback(async () => {
+        if (!chatId || !user?.id || loadingMore || !hasMore) return;
+        if (!oldestCursorRef.current) return;
+
+        setLoadingMore(true);
+        const older = await MessageService.getMessages(chatId, user.id, oldestCursorRef.current);
+        if (older.length === 0) {
+            setHasMore(false);
+        } else {
+            // Los mensajes más antiguos van al FINAL del array (que es el INICIO de la lista invertida)
+            setMessages((prev) => [...prev, ...older]);
+            oldestCursorRef.current = older[older.length - 1].created_at;
+            if (older.length < 40) setHasMore(false);
+        }
+        setLoadingMore(false);
+    }, [chatId, user?.id, loadingMore, hasMore]);
+
+
+    // ── Suscripción Realtime ───────────────────────────────────────────
     useEffect(() => {
         if (!chatId || !user?.id) return;
 
-        // Abrimos el canal WebSocket
-        channelRef.current = MessageService.subscribeToChat(chatId, user.id, (newMsg) => {
-            // Inserción directa en el estado — sin refetch, sin parpadeo
-            setMessages((prev) => [newMsg, ...prev]);
-        });
+        const subscribe = () => {
+            // Cerramos el canal previo si existiera (re-suscripción tras error)
+            if (channelRef.current) {
+                supabase.removeChannel(channelRef.current);
+                channelRef.current = null;
+            }
+
+            setRealtimeError(false);
+
+            // Abrimos el canal WebSocket
+            channelRef.current = MessageService.subscribeToChat(
+                chatId,
+                user.id,
+                (newMsg) => {
+                    // Inserción directa en el estado — sin refetch, sin parpadeo
+                    setMessages((prev) => [newMsg, ...prev]);
+                    // Marcar como leído en tiempo real (actualiza el badge de la bandeja)
+                    MessageService.markAsRead(chatId, user.id).catch(() => {});
+                },
+                (status) => {
+                    console.warn('[ChatScreen] CHANNEL_ERROR:', status);
+                    setRealtimeError(true);
+                },
+            );
+        };
+
+        subscribe();
 
         return () => {
             // Cleanup: cerramos el websocket al salir
@@ -166,7 +218,7 @@ export default function ChatScreen() {
             chatId,
             user.id,
             text,
-            user.display_name || user.username,
+            user.display_name || user.username || '',
         );
 
         if (sent) {
@@ -240,33 +292,71 @@ export default function ChatScreen() {
                     <ActivityIndicator size="large" color="#1DA1F2" />
                 </View>
             ) : (
-                <FlatList
-                    ref={listRef}
-                    data={messages}
-                    keyExtractor={keyExtractor}
-                    renderItem={renderItem}
-                    inverted
-                    style={{ flex: 1 }}
-                    contentContainerStyle={{
-                        paddingVertical: 12,
-                        paddingHorizontal: 12,
-                        gap: 4,
-                    }}
-                    ListEmptyComponent={() => (
-                        <View style={[styles.centered, { transform: [{ scaleY: -1 }] }]}>
-                            <Ionicons name="lock-closed-outline" size={40} color={isDark ? '#333' : '#ccc'} />
-                            <Text style={{ color: isDark ? '#444' : '#bbb', marginTop: 8, fontSize: 14 }}>
-                                Inicio de la conversación cifrada
-                            </Text>
-                        </View>
+                <>
+                    {realtimeError && (
+                        <Pressable
+                            style={[
+                                styles.errorBanner,
+                                { backgroundColor: isDark ? '#3a1a1a' : '#fff0f0' },
+                            ]}
+                            onPress={() => {
+                                if (!chatId || !user?.id) return;
+                                setRealtimeError(false);
+                                if (channelRef.current) {
+                                    supabase.removeChannel(channelRef.current);
+                                    channelRef.current = null;
+                                }
+                                channelRef.current = MessageService.subscribeToChat(
+                                    chatId,
+                                    user.id,
+                                    (newMsg) => setMessages((prev) => [newMsg, ...prev]),
+                                    (status) => { console.warn('[ChatScreen] retry CHANNEL_ERROR:', status); setRealtimeError(true); },
+                                );
+                            }}
+                        >
+                            <Ionicons name="warning-outline" size={14} color="#e53935" />
+                            <Text style={styles.errorBannerText}>Sin conexión en tiempo real. Toca para reconectar.</Text>
+                        </Pressable>
                     )}
-                />
+                    <FlatList
+                        ref={listRef}
+                        data={messages}
+                        keyExtractor={keyExtractor}
+                        renderItem={renderItem}
+                        inverted
+                        style={{ flex: 1 }}
+                        contentContainerStyle={{
+                            paddingVertical: 12,
+                            paddingHorizontal: 12,
+                            gap: 4,
+                        }}
+                        // Scroll hacia arriba en lista invertida = scroll hacia mensajes más antiguos
+                        onEndReached={handleLoadMore}
+                        onEndReachedThreshold={0.3}
+                        ListFooterComponent={loadingMore ? (
+                            <View style={{ paddingVertical: 12, alignItems: 'center' }}>
+                                <ActivityIndicator size="small" color="#1DA1F2" />
+                            </View>
+                        ) : null}
+                        ListEmptyComponent={() => (
+                            <View style={[styles.centered, { transform: [{ scaleY: -1 }] }]}>
+                                <Ionicons name="lock-closed-outline" size={40} color={isDark ? '#333' : '#ccc'} />
+                                <Text style={[
+                                    { color: isDark ? '#444' : '#bbb', marginTop: 8, fontSize: 14 },
+                                    { transform: [{ scaleY: -1 }] },
+                                ]}>
+                                    Inicio de la conversación cifrada
+                                </Text>
+                            </View>
+                        )}
+                    />
+                </>
             )}
 
-            {/* ── Input de texto ───────────────────────────────────────────── */}
+            {/* ── Input de texto ──────────────────────────────────────────── */}
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={0}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
                 <BlurView
                     intensity={80}
@@ -435,5 +525,18 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    // ─ Error banner
+    errorBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+    },
+    errorBannerText: {
+        fontSize: 12,
+        color: '#e53935',
+        flexShrink: 1,
     },
 });
