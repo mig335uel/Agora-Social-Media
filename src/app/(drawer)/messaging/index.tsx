@@ -106,7 +106,7 @@ function NewChatModal({ visible, onClose, myUserId, isDark }: {
         if (!visible) { setSearch(''); setUsers([]); return; }
         // Cargar contactos seguidos al abrir
         loadFollowing();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [visible]);
 
     const loadFollowing = useCallback(async () => {
