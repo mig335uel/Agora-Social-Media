@@ -6,6 +6,11 @@ import * as SecureStore from 'expo-secure-store';
 
 const AgoraBunker = NativeModules.AgoraBunker || NativeModules.AgoraBunkerModule;
 
+// 🔍 LOG DE DIAGNÓSTICO — borrar tras depurar
+console.log('[DIAG] NativeModules.AgoraBunker:', NativeModules.AgoraBunker ? 'EXISTE' : 'undefined');
+console.log('[DIAG] NativeModules.AgoraBunkerModule:', NativeModules.AgoraBunkerModule ? 'EXISTE' : 'undefined');
+console.log('[DIAG] AgoraBunker resuelto:', AgoraBunker ? JSON.stringify(Object.keys(AgoraBunker)) : 'NULL');
+
 // ─── Caché en RAM de llaves AES por chat ────────────────────────────────────
 // La llave AES se descifra una sola vez al entrar al chat y vive en RAM.
 // Al cerrar la app desaparece. Nunca se persiste en disco.
