@@ -141,8 +141,10 @@ export const MessageService = {
 
             const chatIds = participations.map((p) => p.chat_id);
 
-            // 2. Obtener datos base de los chats + el otro participante + último mensaje
-            //    Hint de FK explícito en users para evitar ambigüedad (Supabase PostgREST)
+            // 2. Obtener datos base de los chats + participantes
+            //    IMPORTANTE: NO incluir chat_content aquí. El uso de
+            //    .order/.limit con referencedTable en PostgREST devuelve []
+            //    cuando un chat no tiene mensajes, rompiendo el inbox entero.
             const { data: chatsRaw, error: chatErr } = await supabase
                 .from('chats')
                 .select(`
@@ -153,14 +155,14 @@ export const MessageService = {
                     chat_participants!inner(
                         user_id,
                         users!chat_participants_user_id_fkey(id, username, display_name, profile_picture_url, is_verified)
-                    ),
-                    chat_content(id, content, sender_id, created_at)
+                    )
                 `)
-                .in('id', chatIds)
-                .order('created_at', { referencedTable: 'chat_content', ascending: false })
-                .limit(1, { referencedTable: 'chat_content' });
+                .in('id', chatIds);
 
-            if (chatErr || !chatsRaw) return [];
+            if (chatErr || !chatsRaw) {
+                console.warn('[MessageService] Error cargando chats:', chatErr?.message);
+                return [];
+            }
 
             // 3. Construir los items desencryptando el último mensaje
             const items: ChatInboxItem[] = [];
@@ -180,9 +182,15 @@ export const MessageService = {
                     is_verified?: boolean;
                 };
 
-                // Último mensaje
-                const rawMessages = (chat.chat_content as any[]);
-                const lastRaw = rawMessages?.[0] ?? null;
+                // 3a. Último mensaje — query independiente por chat
+                //     (funciona correctamente aunque el chat no tenga mensajes)
+                const { data: lastRaw } = await supabase
+                    .from('chat_content')
+                    .select('id, content, sender_id, created_at')
+                    .eq('chat_id', chat.id)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
 
                 let lastMessage: DecryptedMessage | null = null;
 
@@ -232,11 +240,12 @@ export const MessageService = {
                     contact,
                     last_message: lastMessage,
                     unread_count: unread,
+                    // Chats sin mensajes van al final usando la fecha de creación del chat
                     updated_at: lastRaw?.created_at ?? chat.created_at ?? '',
                 });
             }
 
-            // Ordenar por mensaje más reciente
+            // Ordenar por actividad más reciente (último mensaje o creación del chat)
             return items.sort(
                 (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
             );

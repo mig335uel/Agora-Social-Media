@@ -152,46 +152,58 @@ export default function ChatScreen() {
     }, [chatId, user?.id, loadingMore, hasMore]);
 
 
-    // ── Suscripción Realtime ───────────────────────────────────────────
-    useEffect(() => {
+    const autoReconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // ── Suscripción Realtime ─────────────────────────────────────────
+    const subscribeRealtime = useCallback(() => {
         if (!chatId || !user?.id) return;
 
-        const subscribe = () => {
-            // Cerramos el canal previo si existiera (re-suscripción tras error)
-            if (channelRef.current) {
-                supabase.removeChannel(channelRef.current);
-                channelRef.current = null;
-            }
+        // Cancelar timer de reconexion pendiente
+        if (autoReconnectTimer.current) {
+            clearTimeout(autoReconnectTimer.current);
+            autoReconnectTimer.current = null;
+        }
 
-            setRealtimeError(false);
+        // Cerrar canal previo
+        if (channelRef.current) {
+            supabase.removeChannel(channelRef.current);
+            channelRef.current = null;
+        }
 
-            // Abrimos el canal WebSocket
-            channelRef.current = MessageService.subscribeToChat(
-                chatId,
-                user.id,
-                (newMsg) => {
-                    // Inserción directa en el estado — sin refetch, sin parpadeo
-                    setMessages((prev) => [newMsg, ...prev]);
-                    // Marcar como leído en tiempo real (actualiza el badge de la bandeja)
-                    MessageService.markAsRead(chatId, user.id).catch(() => {});
-                },
-                (status) => {
-                    console.warn('[ChatScreen] CHANNEL_ERROR:', status);
-                    setRealtimeError(true);
-                },
-            );
-        };
+        setRealtimeError(false);
 
-        subscribe();
-
-        return () => {
-            // Cleanup: cerramos el websocket al salir
-            if (channelRef.current) {
-                supabase.removeChannel(channelRef.current);
-                channelRef.current = null;
-            }
-        };
+        channelRef.current = MessageService.subscribeToChat(
+            chatId,
+            user.id,
+            (newMsg) => {
+                setMessages((prev) => [newMsg, ...prev]);
+                MessageService.markAsRead(chatId, user.id).catch(() => {});
+            },
+            (status) => {
+                console.warn('[ChatScreen] Canal error:', status);
+                setRealtimeError(true);
+                // Reconexion automática en 4s
+                autoReconnectTimer.current = setTimeout(() => {
+                    console.log('[ChatScreen] Reconectando automáticamente...');
+                    subscribeRealtime();
+                }, 4000);
+            },
+        );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [chatId, user?.id]);
+
+    // Suscribir al montar / cuando cambia el chat o el usuario
+    useEffect(() => {
+        if (!chatId || !user?.id) return;
+        subscribeRealtime();
+        return () => {
+            if (autoReconnectTimer.current) clearTimeout(autoReconnectTimer.current);
+            if (channelRef.current) {
+                supabase.removeChannel(channelRef.current);
+                channelRef.current = null;
+            }
+        };
+    }, [chatId, user?.id, subscribeRealtime]);
 
     // ── Enviar mensaje ────────────────────────────────────────────────────────
     const handleSend = useCallback(async () => {
@@ -234,7 +246,7 @@ export default function ChatScreen() {
         setSending(false);
     }, [inputText, chatId, user?.id, sending]);
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // ── Render ──────────────────────────────────────────────────────────────────
     const renderItem = useCallback(
         ({ item }: { item: DecryptedMessage }) => (
             <MessageBubble msg={item} isDark={isDark} />
@@ -246,20 +258,22 @@ export default function ChatScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: bg }]}>
-            {/* ── Header ──────────────────────────────────────────────────── */}
+            {/* ── Header ─────────────────────────────────────────────────────── */}
             <BlurView
                 intensity={90}
                 tint={isDark ? 'dark' : 'light'}
                 style={[
                     styles.header,
-                    {
-                        paddingTop: insets.top + 6,
-                        borderBottomColor: headerBorder,
-                    },
+                    { paddingTop: insets.top + 6, borderBottomColor: headerBorder },
                 ]}
             >
-                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-                    <Ionicons name="chevron-back" size={26} color={isDark ? '#fff' : '#0f0f0f'} />
+                {/* Botón volver — rounded-full gray pill como ProfileAppBar */}
+                <TouchableOpacity
+                    style={[styles.backBtn, { backgroundColor: isDark ? '#1c1c1c' : '#f0f0f5' }]}
+                    onPress={() => router.back()}
+                    activeOpacity={0.7}
+                >
+                    <Ionicons name="chevron-back" size={20} color={isDark ? '#fff' : '#000'} />
                 </TouchableOpacity>
 
                 {/* Avatar + nombre */}
@@ -267,20 +281,19 @@ export default function ChatScreen() {
                     {contactAvatar ? (
                         <Image source={{ uri: contactAvatar }} style={styles.headerAvatar} />
                     ) : (
-                        <View style={[styles.headerAvatarFallback, { backgroundColor: isDark ? '#2a2a3a' : '#e8e8f0' }]}>
-                            <Text style={{ color: isDark ? '#aaa' : '#555', fontWeight: '700', fontSize: 16 }}>
+                        <View style={[styles.headerAvatarFallback, { backgroundColor: isDark ? '#1c1c28' : '#ebebf5' }]}>
+                            <Text style={{ color: isDark ? '#8888aa' : '#6666aa', fontWeight: '900', fontSize: 16 }}>
                                 {contactName[0]?.toUpperCase() ?? '?'}
                             </Text>
                         </View>
                     )}
-                    <View style={{ gap: 1 }}>
-                        <Text style={[styles.headerName, { color: isDark ? '#fff' : '#0f0f0f' }]} numberOfLines={1}>
+                    <View style={{ gap: 2 }}>
+                        <Text style={[styles.headerName, { color: isDark ? '#fff' : '#0a0a0a' }]} numberOfLines={1}>
                             {contactName || '...'}
                         </Text>
-                        {/* Indicador E2EE */}
                         <View style={styles.e2eeIndicator}>
-                            <Ionicons name="lock-closed" size={10} color="#00BA7C" />
-                            <Text style={styles.e2eeText}>Cifrado extremo a extremo</Text>
+                            <Ionicons name="lock-closed" size={9} color="#00BA7C" />
+                            <Text style={styles.e2eeText}>cifrado extremo a extremo</Text>
                         </View>
                     </View>
                 </View>
@@ -299,19 +312,37 @@ export default function ChatScreen() {
                                 styles.errorBanner,
                                 { backgroundColor: isDark ? '#3a1a1a' : '#fff0f0' },
                             ]}
-                            onPress={() => {
-                                if (!chatId || !user?.id) return;
-                                setRealtimeError(false);
-                                if (channelRef.current) {
-                                    supabase.removeChannel(channelRef.current);
-                                    channelRef.current = null;
+                            onPress={async () => {
+                                // Reconectar y recuperar mensajes que llegaron mientras estaba caído
+                                subscribeRealtime();
+
+                                // Traer mensajes más nuevos que el último que tenemos
+                                if (chatId && user?.id && messages.length > 0) {
+                                    const newest = messages[0].created_at;
+                                    const { data } = await supabase
+                                        .from('chat_content')
+                                        .select('id, chat_id, content, sender_id, created_at')
+                                        .eq('chat_id', chatId)
+                                        .gt('created_at', newest)
+                                        .order('created_at', { ascending: false });
+
+                                    if (data && data.length > 0) {
+                                        // Los mensajes perdidos se añaden al estado (sin descifrar en modo degradado)
+                                        const missed = data.map((m) => ({
+                                            id: m.id,
+                                            chat_id: m.chat_id,
+                                            sender_id: m.sender_id,
+                                            content_encrypted: m.content,
+                                            content: '[mensaje cifrado]',
+                                            created_at: m.created_at!,
+                                            isMine: m.sender_id === user.id,
+                                        }));
+                                        setMessages((prev) => {
+                                            const ids = new Set(prev.map((x) => x.id));
+                                            return [...missed.filter((m) => !ids.has(m.id)), ...prev];
+                                        });
+                                    }
                                 }
-                                channelRef.current = MessageService.subscribeToChat(
-                                    chatId,
-                                    user.id,
-                                    (newMsg) => setMessages((prev) => [newMsg, ...prev]),
-                                    (status) => { console.warn('[ChatScreen] retry CHANNEL_ERROR:', status); setRealtimeError(true); },
-                                );
                             }}
                         >
                             <Ionicons name="warning-outline" size={14} color="#e53935" />
@@ -410,86 +441,78 @@ export default function ChatScreen() {
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    centered: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-    },
-    // ─ Header
+    container: { flex: 1 },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
+
+    // ─ Header — siguiendo ProfileAppBar: px-6, rounded-full buttons
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingBottom: 12,
-        gap: 4,
+        paddingHorizontal: 20,
+        paddingBottom: 14,
+        gap: 12,
         borderBottomWidth: StyleSheet.hairlineWidth,
     },
     backBtn: {
-        width: 40,
-        height: 40,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
         alignItems: 'center',
         justifyContent: 'center',
     },
     headerContact: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
+        gap: 12,
         flex: 1,
     },
     headerAvatar: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
+        width: 40,
+        height: 40,
+        borderRadius: 13,  // squircle como en perfil
     },
     headerAvatarFallback: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
+        width: 40,
+        height: 40,
+        borderRadius: 13,
         alignItems: 'center',
         justifyContent: 'center',
     },
     headerName: {
         fontSize: 16,
-        fontWeight: '700',
-        letterSpacing: -0.2,
+        fontWeight: '900',
+        letterSpacing: -0.6,
+        textTransform: 'uppercase',
     },
     e2eeIndicator: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 3,
+        gap: 4,
     },
     e2eeText: {
-        fontSize: 10,
+        fontSize: 9,
         color: '#00BA7C',
-        fontWeight: '500',
+        fontWeight: '600',
+        letterSpacing: 0.2,
     },
+
     // ─ Burbujas
-    bubbleRow: {
-        marginVertical: 2,
-    },
-    bubbleRowMine: {
-        alignItems: 'flex-end',
-    },
-    bubbleRowOther: {
-        alignItems: 'flex-start',
-    },
+    bubbleRow: { marginVertical: 2 },
+    bubbleRowMine: { alignItems: 'flex-end' },
+    bubbleRowOther: { alignItems: 'flex-start' },
     bubble: {
         maxWidth: '78%',
-        paddingHorizontal: 14,
-        paddingVertical: 9,
-        gap: 3,
+        paddingHorizontal: 15,
+        paddingVertical: 10,
+        gap: 4,
     },
     bubbleMine: {
         borderRadius: 20,
-        borderBottomRightRadius: 5,
+        borderBottomRightRadius: 6,
     },
     bubbleOther: {
         borderRadius: 20,
-        borderBottomLeftRadius: 5,
+        borderBottomLeftRadius: 6,
     },
     bubbleText: {
         fontSize: 15,
@@ -499,44 +522,51 @@ const styles = StyleSheet.create({
         fontSize: 10,
         alignSelf: 'flex-end',
     },
+
     // ─ Input
     inputArea: {
         borderTopWidth: StyleSheet.hairlineWidth,
-        paddingHorizontal: 12,
-        paddingTop: 10,
+        paddingHorizontal: 16,
+        paddingTop: 12,
     },
     inputRow: {
         flexDirection: 'row',
         alignItems: 'flex-end',
-        gap: 8,
+        gap: 10,
     },
     textInput: {
         flex: 1,
         borderRadius: 22,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
+        paddingHorizontal: 18,
+        paddingVertical: 12,
         fontSize: 15,
         maxHeight: 120,
         lineHeight: 20,
+        borderWidth: StyleSheet.hairlineWidth,
     },
     sendBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
     },
+
     // ─ Error banner
     errorBanner: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 14,
-        paddingVertical: 8,
+        gap: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        marginHorizontal: 12,
+        marginVertical: 4,
+        borderRadius: 12,
     },
     errorBannerText: {
         fontSize: 12,
         color: '#e53935',
         flexShrink: 1,
+        fontWeight: '600',
     },
 });

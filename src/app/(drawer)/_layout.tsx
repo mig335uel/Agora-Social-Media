@@ -19,7 +19,7 @@ export default function DrawerLayout() {
   // NO duplicar aquí: en iOS, una doble llamada a requestPermissionsAsync()
   // mientras el diálogo del sistema está abierto causa un deny automático.
 
-  // ── Listener global de ENTREGA DE LLAVES E2EE ─────────────────────────────
+  // ── Listener global de ENTREGA DE LLAVES E2EE ──────────────────────────────────────
   //
   // Cuando createChat() inserta una fila en chat_encripted_key con nuestro device_id,
   // este listener:
@@ -30,20 +30,47 @@ export default function DrawerLayout() {
   useEffect(() => {
     if (!user) return;
 
+    let retryCount = 0;
+    const MAX_RETRIES = 5;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let isMounted = true;
+
     const subscribeToKeyDelivery = async () => {
-      // Usamos el UUID de devices.id (no el device_identifier) porque es la FK
-      // que usa chat_encripted_key.device_id. Se guarda en SecureStore tras el registro.
+      if (!isMounted) return;
+
+      // Limpiar canal previo si existiera
+      if (keyDeliveryChannel.current) {
+        supabase.removeChannel(keyDeliveryChannel.current);
+        keyDeliveryChannel.current = null;
+      }
+
+      // Obtener el UUID de devices.id (FK de chat_encripted_key.device_id)
       const myDbDeviceId = await SecureStore.getItemAsync('agora_device_db_id');
-      if (!myDbDeviceId || !AgoraBunker) {
-        console.warn('[Búnker] Sin device DB UUID o módulo nativo — listener de llaves no iniciado.');
+
+      if (!myDbDeviceId) {
+        // El registro del dispositivo puede no haber terminado aún (carrera de condición)
+        // Reintentar con backoff exponencial hasta MAX_RETRIES veces
+        if (retryCount < MAX_RETRIES) {
+          const delay = Math.min(1000 * 2 ** retryCount, 30000); // max 30s
+          retryCount++;
+          console.warn(`[Búnker] agora_device_db_id no disponible. Reintento ${retryCount}/${MAX_RETRIES} en ${delay}ms...`);
+          retryTimer = setTimeout(subscribeToKeyDelivery, delay);
+        } else {
+          console.error('[Búnker] No se pudo obtener agora_device_db_id tras múltiples intentos. Listener de llaves no iniciado.');
+        }
         return;
       }
 
-      // Saneamos el UUID por si se guardó en SecureStore con algún espacio invisible
+      if (!AgoraBunker) {
+        console.warn('[Búnker] Módulo nativo no disponible — listener de llaves no iniciado.');
+        return;
+      }
+
       const cleanDbDeviceId = myDbDeviceId.trim();
+      console.log(`[Búnker] Iniciando canal de entrega de llaves para device: ${cleanDbDeviceId.substring(0, 8)}...`);
 
       keyDeliveryChannel.current = supabase
-        .channel(`key-delivery`)
+        .channel(`key-delivery-${cleanDbDeviceId}`)
         .on(
           'postgres_changes',
           {
@@ -76,12 +103,19 @@ export default function DrawerLayout() {
         )
         .subscribe((status) => {
           console.log(`[Búnker] Canal de entrega de llaves: ${status}`);
+          if ((status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') && isMounted) {
+            // Reconexion automática tras error transitorio
+            console.warn('[Búnker] Error en canal de llaves — reconectando en 3s...');
+            retryTimer = setTimeout(subscribeToKeyDelivery, 3000);
+          }
         });
     };
 
     subscribeToKeyDelivery();
 
     return () => {
+      isMounted = false;
+      if (retryTimer) clearTimeout(retryTimer);
       if (keyDeliveryChannel.current) {
         supabase.removeChannel(keyDeliveryChannel.current);
         keyDeliveryChannel.current = null;
