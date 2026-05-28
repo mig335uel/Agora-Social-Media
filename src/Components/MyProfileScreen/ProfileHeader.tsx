@@ -261,15 +261,15 @@ export default function ProfileHeader({ user, isMe, isFollowing, isPending, onFo
               <Text className="text-[10px] font-bold text-gray-500 uppercase">publicaciones</Text>
             </View>
             <View className="w-[1px] bg-gray-200/50 dark:bg-white/10 my-4" />
-            <View className="flex-1 p-4 items-center">
+            <TouchableOpacity onPress={() => router.push({ pathname: '/perfil/followers', params: { userId: user?.id } })} className="flex-1 p-4 items-center" activeOpacity={0.7}>
               <Text className="text-xl font-black text-black dark:text-white">{stats.followers}</Text>
               <Text className="text-[10px] font-bold text-gray-500 uppercase">seguidores</Text>
-            </View>
+            </TouchableOpacity>
             <View className="w-[1px] bg-gray-200/50 dark:bg-white/10 my-4" />
-            <View className="flex-1 p-4 items-center">
+            <TouchableOpacity onPress={() => router.push({ pathname: '/perfil/following', params: { userId: user?.id } })} className="flex-1 p-4 items-center" activeOpacity={0.7}>
               <Text className="text-xl font-black text-black dark:text-white">{stats.following}</Text>
               <Text className="text-[10px] font-bold text-gray-500 uppercase">seguidos</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         )}
       </View>
