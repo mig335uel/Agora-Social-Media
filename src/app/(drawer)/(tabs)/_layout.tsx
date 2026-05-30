@@ -1,49 +1,63 @@
 import { Tabs, useNavigation } from 'expo-router';
-import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome, Octicons } from '@expo/vector-icons';
-import { Platform, StyleSheet, useColorScheme, View, Text, Button, TouchableOpacity, Pressable, DeviceEventEmitter } from 'react-native';
-import { GlassContainer, GlassView } from 'expo-glass-effect';
-import { NativeTabTrigger, NativeTabs } from 'expo-router/build/native-tabs';
-import "/global.css";
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { NativeTabsBottomAccessory } from 'expo-router/build/native-tabs/common/elements';
-import { signOut } from '@/Services/authService';
+import { Ionicons, Octicons } from '@expo/vector-icons';
+import {
+  StyleSheet,
+  useColorScheme,
+  View,
+  DeviceEventEmitter,
+} from 'react-native';
 import { BlurView } from 'expo-blur';
 import useAuth from '@/hooks/useAuth';
-import { useEffect, useState } from 'react';
-import { supabase } from '@lib/supbase/supabase'
+import { useEffect, useState, useCallback } from 'react';
+import { supabase } from '@lib/supbase/supabase';
+import { LiquidGlassIndicator } from '@/Components/LiquidGlassTabBar';
+
+// Tabs visibles (mismo orden que las Tabs.Screen con href != null)
+const VISIBLE_TABS = ['feed', 'search', 'newpost', 'notifications', 'profile'];
 
 export default function TabLayout() {
-  const user = useAuth();
+  const user       = useAuth();
   const navigation = useNavigation();
-  const [notificationNumber, setNotificationNumber] = useState<number>(0);
+  const scheme     = useColorScheme();
+  const isDark     = scheme === 'dark';
 
+  const [notificationNumber, setNotificationNumber] = useState<number>(0);
+  const [activeIndex, setActiveIndex]               = useState<number>(0);
+  // ── Medimos el ancho REAL de la barra con onLayout para posicionar
+  //    la píldora exactamente sobre cada icono, sin cálculos manuales.
+  const [barWidth, setBarWidth] = useState<number>(0);
+
+  const onBarLayout = useCallback((e: any) => {
+    setBarWidth(e.nativeEvent.layout.width);
+  }, []);
+
+  // ── Badge de notificaciones ────────────────────────────────────────────────
   const fetchNotificationNumber = async () => {
     if (!user?.id) return;
-    const { data, error } = await supabase.from('notifications').select('*').eq('receiver_id', user.id).eq('is_read', false);
-
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('receiver_id', user.id)
+      .eq('is_read', false);
     if (error) {
-      console.error("Error obteniendo notificaciones:", error.message);
+      console.error('Error obteniendo notificaciones:', error.message);
     } else {
       setNotificationNumber(data?.length || 0);
     }
-  }
+  };
+
   useEffect(() => {
     if (!user?.id) return;
-
     fetchNotificationNumber();
 
-    // 1. Escuchar el evento que mandamos desde el RootLayout cuando llega un push
     const subscription = DeviceEventEmitter.addListener('notificationReceived', () => {
       fetchNotificationNumber();
     });
 
-    // 2. Cuando el usuario abre la pantalla de notificaciones y las marca como leídas,
-    //    reseteamos el badge directamente a 0 sin necesidad de volver a consultar la BD.
     const readSubscription = DeviceEventEmitter.addListener('notificationsRead', () => {
       setNotificationNumber(0);
     });
 
-    // 3. Refrescar cuando la pantalla gana el foco (por si venimos de leer las notis)
     const focusListener = navigation.addListener('focus', () => {
       fetchNotificationNumber();
     });
@@ -54,87 +68,103 @@ export default function TabLayout() {
       focusListener();
     };
   }, [user?.id, navigation]);
-  const isIOS = Platform.OS === 'ios';
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
-
 
   return (
     <Tabs
-
+      screenListeners={{
+        tabPress: (e) => {
+          const tabName = (e.target as string)?.split('-')[0];
+          const idx = VISIBLE_TABS.indexOf(tabName);
+          if (idx !== -1) setActiveIndex(idx);
+        },
+        state: (e) => {
+          const routes = e.data?.state?.routes as any[];
+          const index  = e.data?.state?.index as number;
+          if (routes && index != null) {
+            const name = routes[index]?.name;
+            const idx  = VISIBLE_TABS.indexOf(name);
+            if (idx !== -1) setActiveIndex(idx);
+          }
+        },
+      }}
       screenOptions={{
-
         tabBarStyle: {
           position: 'absolute',
           backgroundColor: 'transparent',
-
-          shadowColor: isDark ? '#fff' : '#000',
+          shadowColor: '#1DA1F2',
+          shadowOpacity: 0.18,
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: 4 },
           backfaceVisibility: 'hidden',
           borderStyle: 'solid',
-          borderWidth: 0.5,
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
-          borderTopColor: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)',
-          bottom: 20,           // Margen inferior
-          left: 20,             // Margen izquierdo
-          right: 20,            // Margen derecho
-          height: 60,           // Altura fija
-          borderRadius: 30,     // Bordes muy redondeados
+          borderWidth: 0.8,
+          borderColor: isDark ? 'rgba(29,161,242,0.35)' : 'rgba(29,161,242,0.22)',
+          borderTopColor: isDark ? 'rgba(29,161,242,0.45)' : 'rgba(29,161,242,0.30)',
+          bottom: 24,
+          left: 12,
+          right: 12,
+          height: 70,
+          borderRadius: 35,
           borderTopWidth: 0,
-          marginHorizontal: 10,
-          elevation: 0,         // Quitar sombra en Android
+          marginHorizontal: 4,
+          elevation: 0,
         },
         tabBarItemStyle: {
-          height: 60,
+          height: 70,
           justifyContent: 'center',
           alignItems: 'center',
-          paddingTop: 12, // Push icon down to center it visually without label
+          paddingTop: 14,
         },
         tabBarIconStyle: {
           justifyContent: 'center',
           alignItems: 'center',
         },
-
         tabBarBackground: () => (
-          <BlurView
-            intensity={100}
-            tint={isDark ? 'dark' : 'light'}
-            blurReductionFactor={50}
-            style={[StyleSheet.absoluteFill, { borderRadius: 30, overflow: 'hidden' }]}
-          />
+          // onLayout mide el ancho exacto que React Native asigna a la barra
+          <View style={StyleSheet.absoluteFill} onLayout={onBarLayout}>
+            {/* Fondo blur — cristal base */}
+            <BlurView
+              intensity={100}
+              tint={isDark ? 'dark' : 'light'}
+              blurReductionFactor={50}
+              style={[StyleSheet.absoluteFill, { borderRadius: 30, overflow: 'hidden' }]}
+            />
+            {/* Píldora Liquid Glass que salta entre tabs */}
+            {barWidth > 0 && (
+              <LiquidGlassIndicator
+                activeIndex={activeIndex}
+                tabCount={VISIBLE_TABS.length}
+                barWidth={barWidth}
+              />
+            )}
+          </View>
         ),
-
         tabBarShowLabel: false,
         headerShown: false,
 
       }}
     >
-
-
       <Tabs.Screen name="feed" options={{
-        title: "Feed",
+        title: 'Feed',
         tabBarIcon: ({ color, size }) => (
           <Octicons name="home-fill" size={size} color={color} />
         ),
       }} />
-      <Tabs.Screen name="index" options={{
-        href: null, // Ocultamos el index si vamos a usar /feed
-      }} />
+      <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen name="search" options={{
-        title: "Buscar",
+        title: 'Buscar',
         tabBarIcon: ({ color, size }) => (
           <Octicons name="search" size={size} color={color} />
         ),
       }} />
-
       <Tabs.Screen name="newpost" options={{
-        title: "Nuevo Post",
+        title: 'Nuevo Post',
         tabBarIcon: ({ color, size }) => (
           <Ionicons name="add-circle" size={size} color={color} />
         ),
       }} />
-
       <Tabs.Screen name="notifications" options={{
-        title: "Notificaciones",
+        title: 'Notificaciones',
         tabBarIcon: ({ color, size }) => (
           <Octicons name="bell-fill" size={size} color={color} />
         ),
@@ -144,16 +174,12 @@ export default function TabLayout() {
           color: '#fff',
         },
       }} />
-
       <Tabs.Screen name="profile" options={{
-        title: "Perfil",
+        title: 'Perfil',
         tabBarIcon: ({ color, size }) => (
           <Octicons name="person-fill" size={size} color={color} />
         ),
       }} />
     </Tabs>
   );
-
-
-
 }
