@@ -37,13 +37,20 @@ export default function TabLayout() {
       fetchNotificationNumber();
     });
 
-    // 2. Refrescar cuando la pantalla gana el foco (por si venimos de leer las notis)
+    // 2. Cuando el usuario abre la pantalla de notificaciones y las marca como leídas,
+    //    reseteamos el badge directamente a 0 sin necesidad de volver a consultar la BD.
+    const readSubscription = DeviceEventEmitter.addListener('notificationsRead', () => {
+      setNotificationNumber(0);
+    });
+
+    // 3. Refrescar cuando la pantalla gana el foco (por si venimos de leer las notis)
     const focusListener = navigation.addListener('focus', () => {
       fetchNotificationNumber();
     });
 
     return () => {
       subscription.remove();
+      readSubscription.remove();
       focusListener();
     };
   }, [user?.id, navigation]);

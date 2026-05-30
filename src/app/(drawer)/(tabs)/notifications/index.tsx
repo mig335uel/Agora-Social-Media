@@ -4,6 +4,7 @@ import { Notifications } from "@/Types/Notifications";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
+import { DeviceEventEmitter } from "react-native";
 import {
     ActivityIndicator,
     FlatList,
@@ -124,8 +125,9 @@ export default function NotificationScreen() {
         setNotifications(data as Notifications[]);
 
         // 2. Marcamos todas como leídas al abrir la pantalla
-        //    Esto resetea el badge del tab de forma natural (el layout consulta is_read)
+        //    Emitimos un evento para que el layout actualice el badge a 0
         await markAllAsRead(user.id);
+        DeviceEventEmitter.emit('notificationsRead');
 
         if (isRefresh) setRefreshing(false);
         else setLoading(false);

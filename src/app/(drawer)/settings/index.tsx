@@ -1,8 +1,8 @@
 import { View, Text, useColorScheme, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../../lib/supbase/supabase';
 import { router } from 'expo-router';
 import useAuth from '@/hooks/useAuth';
+import { signOut } from '@/Services/authService';
 
 // Componente para los encabezados de sección
 const SectionHeader = ({ title }: { title: string }) => {
@@ -66,7 +66,9 @@ export default function SettingsScreen() {
                     text: "Salir", 
                     style: "destructive",
                     onPress: async () => {
-                        await supabase.auth.signOut();
+                        // Usamos el signOut centralizado para desvincular
+                        // este dispositivo de la tabla 'devices' ANTES de cerrar sesión.
+                        await signOut();
                     }
                 }
             ]

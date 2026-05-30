@@ -104,8 +104,9 @@ export async function signOut() {
             // Borramos las llaves AES de mensajes de la RAM
             MessageService.clearKeyCache();
 
-            // Cerramos la sesión en Supabase
-            await supabase.auth.signOut();
+            // scope: 'local' → solo invalida la sesión de ESTE dispositivo.
+            // El scope por defecto ('global') cierra sesión en todos los dispositivos.
+            await supabase.auth.signOut({ scope: 'local' });
         }
         return true;
     } catch (error) {

@@ -143,19 +143,19 @@ export async function unregisterDevice() {
       );
     } else {
       // iOS: URLProtocol inyecta la apiKey automáticamente en el cliente Supabase
+      // count: 'exact' + head: true para obtener el conteo real sin traer filas
       const { error, count } = await supabase
         .from('devices')
         .delete()
         .eq('user_id', session.user.id)
         .eq('device_identifier', myDeviceIdentifier)
-        .select();
-
       if (error) throw error;
       console.log(`✅ Hardware desvinculado (iOS). Filas eliminadas: ${count ?? 0}`);
     }
 
-    // Limpiamos el identifier local tras el borrado
+    // Limpiamos ambas claves del SecureStore tras el borrado
     await SecureStore.deleteItemAsync('agora_device_identifier');
+    await SecureStore.deleteItemAsync('agora_device_db_id');
 
   } catch (e) {
     console.warn("⚠️ No se pudo desvincular el hardware:", e);
