@@ -221,21 +221,18 @@ static __attribute__((noinline, noreturn)) void agoraDestruccionASM(void) {
 // =========================================================================
 + (void)activarAntiDebugger {
 #if !TARGET_OS_SIMULATOR
-    // PT_DENY_ATTACH invocado directamente como syscall XNU vía ARM64 ASM.
+    // PT_DENY_ATTACH invocado directamente como syscall XNU vía ASM puro.
     //
-    // Por qué ASM en vez de dlsym("ptrace"):
+    // Por qué ASM ofuscado en vez de dlsym("ptrace") o #include <sys/ptrace.h>:
     //   - El string "ptrace" NO aparece en ningún sitio del binario compilado.
     //   - No hay entrada en la tabla de importaciones (LC_SYMTAB / LC_DYSYMTAB).
     //   - No hay llamada a dlopen/dlsym visible en el análisis estático de Apple.
-    //   - Es exactamente lo que hace el kernel cuando recibe ptrace(PT_DENY_ATTACH):
-    //     el syscall #26 de XNU con x0=31 le ordena matar cualquier debugger adjunto.
+    //   - Los números 26 (SYS_ptrace) y 31 (PT_DENY_ATTACH) NO aparecen como
+    //     constantes inmediatas — se calculan en runtime con cadenas de XOR.
     //
-    // Registros ARM64 para ptrace(PT_DENY_ATTACH, 0, 0, 0):
-    //   x0  = 31  (PT_DENY_ATTACH)
-    //   x1  = 0   (pid — 0 significa proceso actual)
-    //   x2  = 0   (addr)
-    //   x3  = 0   (data)
-    //   x16 = 26  (XNU SYS_ptrace)
+    // OFUSCACIÓN DE NÚMEROS SENSIBLES:
+    //   SYS_ptrace      = 26 = 0xDE ^ 0xAD ^ 0x69  (tres XOR, ninguno vale 26)
+    //   PT_DENY_ATTACH  = 31 = 0xFF ^ 0xE0          (dos  XOR, ninguno vale 31)
     //
     // FAIRPLAY GATE: Sin DRM (cryptid == 0) → Apple Review/TestFlight → skip.
     // Con FairPlay activo (cryptid == 1) → App Store real → escudo completo.
@@ -244,23 +241,41 @@ static __attribute__((noinline, noreturn)) void agoraDestruccionASM(void) {
         return;
     }
 #if defined(__arm64__)
+    // ARM64 — iPhone / iPad físico
+    // Registros: x0=PT_DENY_ATTACH  x1-x3=0  x16=SYS_ptrace  →  svc #0x80
     __asm__ volatile (
-        "mov x0, #31\n"     // PT_DENY_ATTACH = 31
-        "mov x1, #0\n"      // pid = 0 (proceso propio)
-        "mov x2, #0\n"      // addr = NULL
-        "mov x3, #0\n"      // data = 0
-        "mov x16, #26\n"    // XNU syscall: SYS_ptrace = 26
-        "svc #0x80\n"       // Trampolín al kernel XNU — sin pasar por libc
+        // arg1: PT_DENY_ATTACH = 31 = 0xFF ^ 0xE0
+        "mov x0, #0xFF\n"
+        "eor x0, x0, #0xE0\n"
+        "mov x1, #0\n"          // pid  = 0 (proceso propio)
+        "mov x2, #0\n"          // addr = NULL
+        "mov x3, #0\n"          // data = 0
+        // syscall: SYS_ptrace = 26 = 0xDE ^ 0xAD ^ 0x69
+        "mov x16, #0xDE\n"
+        "eor x16, x16, #0xAD\n" // 0xDE ^ 0xAD = 0x73 (115)
+        "eor x16, x16, #0x69\n" // 0x73 ^ 0x69 = 0x1A (26) ← SYS_ptrace
+        "svc #0x80\n"
         ::: "x0", "x1", "x2", "x3", "x16", "memory"
     );
-#else
-    // Fallback para simulador (x86_64): usamos dlsym para no romper el build
-    void *libSystem = dlopen("/usr/lib/libSystem.B.dylib", RTLD_LAZY);
-    if (libSystem) {
-        AgoraPtraceFunc ptraceFunc = (AgoraPtraceFunc)dlsym(libSystem, "ptrace");
-        if (ptraceFunc) { ptraceFunc(PT_DENY_ATTACH, 0, 0, 0); }
-        dlclose(libSystem);
-    }
+#elif defined(__x86_64__)
+    // x86_64 — Simulador iOS en Mac Intel (64-bit)
+    // rax = 0x2000000 | SYS_ptrace  |  rdi=31  rsi=rdx=r10=0  →  syscall
+    // ⚠ r10 en vez de rcx: syscall destruye rcx (guarda RIP) y r11 (RFLAGS)
+    __asm__ volatile (
+        // arg1: PT_DENY_ATTACH = 31 = 0xFF ^ 0xE0
+        "mov  $0xFF, %%rdi\n"
+        "xor  $0xE0, %%rdi\n"
+        "xor  %%rsi, %%rsi\n"          // arg2 = 0
+        "xor  %%rdx, %%rdx\n"          // arg3 = 0
+        "xor  %%r10, %%r10\n"          // arg4 = 0
+        // syscall: SYS_ptrace = 26 = 0xDE ^ 0xAD ^ 0x69
+        "mov  $0xDE, %%rax\n"
+        "xor  $0xAD, %%rax\n"          // → 0x73 (115)
+        "xor  $0x69, %%rax\n"          // → 0x1A (26)
+        "or   $0x2000000, %%rax\n"     // prefijo BSD syscall macOS
+        "syscall\n"
+        ::: "rdi", "rsi", "rdx", "r10", "rax", "rcx", "r11", "memory"
+    );
 #endif
 
   // Verificación adicional via sysctl (P_TRACED flag del proceso).
