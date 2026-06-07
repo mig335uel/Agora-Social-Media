@@ -89,7 +89,8 @@
             "extraProguardRules": "-keep class javax.crypto.** { *; }\n-keep class java.security.** { *; }\n-keep class com.antihodio.agora.interceptors.** { *; }\n-keepattributes Signature, *Annotation*, EnclosingMethod\n-keep class okhttp3.** { *; }\n-dontwarn okhttp3.**"
           }
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

@@ -126,7 +126,7 @@ export default function SettingsScreen() {
                 <SettingItem 
                     icon="document-text-outline" 
                     title="Términos y Privacidad" 
-                    onPress={() => console.log("Términos")}
+                    onPress={() =>router.push('/(drawer)/settings/privacy') as any}
                 />
                 <SettingItem 
                     icon="information-circle-outline" 
