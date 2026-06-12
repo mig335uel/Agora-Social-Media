@@ -126,14 +126,14 @@ export async function unregisterDevice() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
-    // Leemos el identifier guardado al registrar (valor exacto que fue a Supabase)
-    const storedIdentifier = await SecureStore.getItemAsync('agora_device_identifier');
-    const myDeviceIdentifier = storedIdentifier || Device.osBuildId || Device.modelId || 'Unknown';
+    const deviceDbId        = await SecureStore.getItemAsync('agora_device_db_id');
+    const storedIdentifier  = await SecureStore.getItemAsync('agora_device_identifier');
 
-    console.log("🗑️ Desvinculando hardware:", myDeviceIdentifier, storedIdentifier ? "(SecureStore)" : "(fallback)");
+    console.log('🗑️ Desvinculando hardware — DB UUID:', deviceDbId, '| Identifier:', storedIdentifier);
 
     if (Platform.OS === 'android') {
       // Android: el nativo hace el DELETE con la apiKey real del TEE y SSL Pinning
+      const myDeviceIdentifier = storedIdentifier || Device.osBuildId || Device.modelId || 'Unknown';
       const projectUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
       await AgoraBunker.desregistrarDispositivo(
         myDeviceIdentifier,
@@ -142,15 +142,35 @@ export async function unregisterDevice() {
         projectUrl
       );
     } else {
-      // iOS: URLProtocol inyecta la apiKey automáticamente en el cliente Supabase
-      // count: 'exact' + head: true para obtener el conteo real sin traer filas
-      const { error, count } = await supabase
-        .from('devices')
-        .delete()
-        .eq('user_id', session.user.id)
-        .eq('device_identifier', myDeviceIdentifier)
-      if (error) throw error;
-      console.log(`✅ Hardware desvinculado (iOS). Filas eliminadas: ${count ?? 0}`);
+      // iOS: intentamos borrar por UUID (PK) → más fiable que el identifier
+      let deleted = false;
+
+      if (deviceDbId) {
+        const { error, count } = await supabase
+          .from('devices')
+          .delete({ count: 'exact' })
+          .eq('id', deviceDbId)
+          .eq('user_id', session.user.id); // doble seguridad: solo borramos nuestro propio registro
+
+        if (!error) {
+          console.log(`✅ Hardware desvinculado por UUID (iOS). Filas eliminadas: ${count ?? 0}`);
+          deleted = true;
+        } else {
+          console.warn('⚠️ Fallo al borrar por UUID, intentando fallback por identifier:', error.message);
+        }
+      }
+
+      // Fallback: borrar por device_identifier si el UUID falló o no estaba guardado
+      if (!deleted && storedIdentifier) {
+        const { error, count } = await supabase
+          .from('devices')
+          .delete({ count: 'exact' })
+          .eq('user_id', session.user.id)
+          .eq('device_identifier', storedIdentifier);
+
+        if (error) throw error;
+        console.log(`✅ Hardware desvinculado por identifier (fallback iOS). Filas eliminadas: ${count ?? 0}`);
+      }
     }
 
     // Limpiamos ambas claves del SecureStore tras el borrado
@@ -158,9 +178,10 @@ export async function unregisterDevice() {
     await SecureStore.deleteItemAsync('agora_device_db_id');
 
   } catch (e) {
-    console.warn("⚠️ No se pudo desvincular el hardware:", e);
+    console.warn('⚠️ No se pudo desvincular el hardware:', e);
   }
 }
+
 
 /**
  * =========================================================================
