@@ -16,7 +16,7 @@ export interface ReportMessage {
     id: string;
     report_id: string;
     content: string;
-    sender_id: string;      // UUID del usuario o de la cuenta de la plataforma
+    user_id: string;      // UUID del reportador o de la cuenta plataforma (moderador)
     created_at: string;
 }
 
