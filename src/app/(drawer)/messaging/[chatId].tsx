@@ -257,7 +257,11 @@ export default function ChatScreen() {
     const keyExtractor = useCallback((item: DecryptedMessage) => item.id, []);
 
     return (
-        <View style={[styles.container, { backgroundColor: bg }]}>
+        <KeyboardAvoidingView
+            style={[styles.container, { backgroundColor: bg }]}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+        >
             {/* ── Header ─────────────────────────────────────────────────────── */}
             <BlurView
                 intensity={90}
@@ -385,21 +389,17 @@ export default function ChatScreen() {
             )}
 
             {/* ── Input de texto ──────────────────────────────────────────── */}
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            <BlurView
+                intensity={80}
+                tint={isDark ? 'dark' : 'light'}
+                style={[
+                    styles.inputArea,
+                    {
+                        paddingBottom: insets.bottom + 8,
+                        borderTopColor: inputAreaBorder,
+                    },
+                ]}
             >
-                <BlurView
-                    intensity={80}
-                    tint={isDark ? 'dark' : 'light'}
-                    style={[
-                        styles.inputArea,
-                        {
-                            paddingBottom: insets.bottom + 8,
-                            borderTopColor: inputAreaBorder,
-                        },
-                    ]}
-                >
                     <View style={[styles.inputRow]}>
                         <TextInput
                             style={[styles.textInput, { backgroundColor: inputBg, color: inputColor }]}
@@ -434,8 +434,7 @@ export default function ChatScreen() {
                         </TouchableOpacity>
                     </View>
                 </BlurView>
-            </KeyboardAvoidingView>
-        </View>
+        </KeyboardAvoidingView>
     );
 }
 

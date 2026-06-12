@@ -7,6 +7,7 @@ import { router } from "expo-router";
 import { useState, useEffect } from "react";
 import { ProcessedImage } from "@/Services/ImageService";
 import PostCardItem from "./PostCard";
+import ReportModal from "@/Components/ReportModal";
 
 export default function PostCard({
     posts,
@@ -29,6 +30,10 @@ export default function PostCard({
     const isDark = colorScheme === 'dark';
     const currentUser = useAuth();
     const [localPosts, setLocalPosts] = useState<Post[]>(posts);
+    const [reportModal, setReportModal] = useState<{ visible: boolean; postId: string | null }>({
+        visible: false,
+        postId: null,
+    });
 
     // Sincronizar localPosts cuando la prop posts cambie
     useEffect(() => {
@@ -41,7 +46,7 @@ export default function PostCard({
         if (Platform.OS === 'ios') {
             const options = ['Cancelar'];
             if (isOwner) options.unshift('Eliminar Publicación');
-            else options.unshift('Reportar');
+            else options.unshift('Reportar publicación');
 
             ActionSheetIOS.showActionSheetWithOptions(
                 {
@@ -53,6 +58,8 @@ export default function PostCard({
                 (buttonIndex) => {
                     if (isOwner && buttonIndex === 0) {
                         handleDelete(item.id);
+                    } else if (!isOwner && buttonIndex === 0) {
+                        setReportModal({ visible: true, postId: item.id });
                     }
                 }
             );
@@ -69,8 +76,8 @@ export default function PostCard({
                 });
             } else {
                 buttons.unshift({
-                    text: 'Reportar',
-                    onPress: () => console.log('Report post')
+                    text: 'Reportar publicación',
+                    onPress: () => setReportModal({ visible: true, postId: item.id })
                 });
             }
 
@@ -227,10 +234,26 @@ export default function PostCard({
     if (Platform.OS === 'ios' && FlatListComponent === FlatList) {
         return (
             <GlassContainer style={{ flex: 1 }}>
-                <FlatListComponent  {...listProps} />
+                <FlatListComponent {...listProps} />
+                <ReportModal
+                    visible={reportModal.visible}
+                    context="post"
+                    targetId={reportModal.postId ?? ''}
+                    onClose={() => setReportModal({ visible: false, postId: null })}
+                />
             </GlassContainer>
         );
     }
 
-    return <FlatListComponent {...listProps} />;
+    return (
+        <>
+            <FlatListComponent {...listProps} />
+            <ReportModal
+                visible={reportModal.visible}
+                context="post"
+                targetId={reportModal.postId ?? ''}
+                onClose={() => setReportModal({ visible: false, postId: null })}
+            />
+        </>
+    );
 }

@@ -53,15 +53,15 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
         <SafeAreaView style={{ flex: 1 }} className={isDark ? "bg-black" : "bg-white"}>
             
            
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+            >
             <ScrollView 
                 contentContainerStyle={{ flexGrow: 1 }}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
             >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    style={{ flex: 1 }}
-                >
                     
                     <View className="flex-1 justify-center p-6 overflow-hidden">
                         {Platform.OS === 'ios' ? (
@@ -150,8 +150,8 @@ export default function RegisterScreenForm({ onNavigateToLogin }: { onNavigateTo
                         </View>
 
                     </View>
-                </KeyboardAvoidingView>
-            </ScrollView>
+                </ScrollView>
+            </KeyboardAvoidingView>
             
                 
 

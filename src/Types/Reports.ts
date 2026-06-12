@@ -7,7 +7,8 @@ export interface Report {
     reporter_id: string;
     post_id?: string;       // solo si context = 'post'
     user_id?: string;       // solo si context = 'user'
-    description: string;
+    reason: string;         // motivo predefinido seleccionado
+    description: string;    // detalle adicional libre
     status: ReportStatus;
     created_at: string;
 }
@@ -25,11 +26,13 @@ export type CreateReportDTO =
     | {
           context: 'post';
           post_id: string;
+          reason: string;
           description: string;
       }
     | {
           context: 'user';
           user_id: string;
+          reason: string;
           description: string;
       };
 
