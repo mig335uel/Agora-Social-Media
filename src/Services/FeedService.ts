@@ -20,105 +20,139 @@ export interface RankedPost {
   is_liked?: boolean;
   is_reposted?: boolean;
   is_replied?: boolean;
-  user?: any; 
+  user?: any;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Mapea una fila del RPC combine_feed_and_viral a RankedPost.
+ *  No necesita fetch extra de users: el RPC ya incluye username/display_name/profile_picture_url. */
+function mapRpcRow(r: any): RankedPost {
+  return {
+    id: String(r.id),
+    content: r.content ?? '',
+    media: Array.isArray(r.media)
+      ? r.media.map((m: any) => ({
+          image: m.media_url || m.image || null,
+          post_id: String(m.post_id),
+          user_id: String(r.user_id),
+          created_at: String(r.created_at),
+        }))
+      : undefined,
+    created_at: String(r.created_at),
+    likes_count: Number(r.likes_count ?? 0),
+    reposts_count: Number(r.reposts_count ?? 0),
+    replies_count: Number(r.replies_count ?? 0),
+    shares_count: Number(r.shares_count ?? 0),
+    user_id: String(r.user_id),
+    username: r.username || '',
+    display_name: r.display_name || '',
+    profile_picture_url: r.profile_picture_url || null,
+    // Construimos el objeto user directamente con los datos del RPC
+    user: {
+      id: r.user_id,
+      username: r.username,
+      display_name: r.display_name,
+      profile_picture_url: r.profile_picture_url,
+    },
+    rank_score: Number(r.rank_score ?? 0),
+    viral_score: Number(r.viral_score ?? 0),
+    combined_score: Number(r.combined_score ?? 0),
+  };
+}
+
+/** Añade is_liked / is_reposted / is_replied a un array de posts en una sola tanda de 3 queries. */
+async function attachInteractions(posts: RankedPost[], userId: string): Promise<RankedPost[]> {
+  if (posts.length === 0) return posts;
+  const postIds = posts.map(p => p.id);
+
+  const [likesRes, repostsRes, repliesRes] = await Promise.all([
+    supabase.from('likes').select('post_id').eq('user_id', userId).in('post_id', postIds),
+    supabase.from('reposts').select('post_id').eq('user_id', userId).in('post_id', postIds),
+    supabase.from('posts').select('parent_post_id').eq('user_id', userId).in('parent_post_id', postIds),
+  ]);
+
+  const likedIds    = new Set(likesRes.data?.map(l => l.post_id));
+  const repostedIds = new Set(repostsRes.data?.map(r => r.post_id));
+  const repliedIds  = new Set(repliesRes.data?.map(r => r.parent_post_id));
+
+  return posts.map(p => ({
+    ...p,
+    is_liked:    likedIds.has(p.id),
+    is_reposted: repostedIds.has(p.id),
+    is_replied:  repliedIds.has(p.id),
+  }));
+}
+
+// ─── getForYouFeed ────────────────────────────────────────────────────────────
+
 /**
- * Obtiene el feed "Para Ti" utilizando el nuevo algoritmo que combina 
- * relevancia personal y viralidad global.
+ * Feed "Para Ti": mezcla relevancia personal y viralidad global.
+ *
+ * Optimizaciones respecto a la versión anterior:
+ *  • El RPC ya devuelve username/display_name/profile_picture_url → se elimina
+ *    el fetch extra de la tabla users (ahorramos 1 round-trip).
+ *  • El RPC y los posts propios del usuario se lanzan en paralelo.
+ *  • Los posts propios y el perfil+media también van en paralelo.
  */
-export async function getForYouFeed(limit: number = 20, offset: number = 0): Promise<RankedPost[]> {
+export async function getForYouFeed(limit = 20, offset = 0): Promise<RankedPost[]> {
   try {
-    // Obtenemos el usuario actual para la personalización del feed
     const { data: { user } } = await supabase.auth.getUser();
 
-    // 1. Obtener posts algorítmicos desde RPC
-    const { data: rpcData, error: rpcError } = await supabase.rpc('combine_feed_and_viral', {
-      p_user_id: user?.id || null,
-      p_limit: limit,
-      p_offset: offset,
-      p_personal_weight: 0.75,
-      p_viral_weight: 0.25
-    });
+    // 1. Lanzamos en paralelo: feed algorítmico + posts propios recientes
+    const [rpcResult, ownPostsResult] = await Promise.all([
+      supabase.rpc('combine_feed_and_viral', {
+        p_user_id: user?.id ?? null,
+        p_limit: limit,
+        p_offset: offset,
+        p_personal_weight: 0.75,
+        p_viral_weight: 0.25,
+      }),
+      user
+        ? supabase
+            .from('posts')
+            .select('*')
+            .eq('user_id', user.id)
+            .is('parent_post_id', null)
+            .order('created_at', { ascending: false })
+            .limit(3)
+        : Promise.resolve({ data: null, error: null }),
+    ]);
 
-    if (rpcError) { console.error('Error RPC:', rpcError); throw rpcError; }
-    const rows = (rpcData || []) as any[];
+    const { data: rpcData, error: rpcError } = rpcResult;
+    if (rpcError) throw rpcError;
 
-    // 2. Fetch all unique users for these posts in one batch
-    const uniqueUserIds = [...new Set(rows.map(r => String(r.user_id)))];
-    const { data: feedUsers } = await supabase
-      .from('users')
-      .select('*')
-      .in('id', uniqueUserIds);
+    const mapped = ((rpcData as any[]) ?? []).map(mapRpcRow);
 
-    const userMap = new Map((feedUsers || []).map(u => [String(u.id), u]));
+    // 2. Posts propios: se unen al feed con prioridad (sin duplicar los que ya trae el RPC)
+    const { data: ownPosts } = ownPostsResult as any;
+    let finalFeed = mapped;
 
-    const mapped: RankedPost[] = rows.map((r) => {
-      const postUser = userMap.get(String(r.user_id));
-      return {
-        id: String(r.id),
-        content: r.content ?? '',
-        media: Array.isArray(r.media)
-          ? r.media.map((m: any) => ({
-            image: m.media_url || m.image || null,
-            post_id: String(m.post_id),
-            user_id: String(r.user_id),
-            created_at: String(r.created_at)
-          }))
-          : undefined,
-        created_at: String(r.created_at),
-        likes_count: Number(r.likes_count ?? 0),
-        reposts_count: Number(r.reposts_count ?? 0),
-        replies_count: Number(r.replies_count ?? 0),
-        shares_count: Number(r.shares_count ?? 0),
-        user_id: String(r.user_id),
-        user: postUser,
-        username: postUser?.username || r.username || '',
-        display_name: postUser?.display_name || r.display_name || '',
-        profile_picture_url: postUser?.profile_picture_url || r.profile_picture_url || null,
-        rank_score: Number(r.rank_score ?? 0),
-        viral_score: Number(r.viral_score ?? 0),
-        combined_score: Number(r.combined_score ?? 0),
-      };
-    });
+    if (user && ownPosts?.length > 0) {
+      const ownPostIds = (ownPosts as any[]).map(p => String(p.id));
 
-    // 2. Obtener posts recientes del propio usuario directamente
-    const { data: userData, error: userError } = await supabase
-      .from('posts')
-      .select('*')
-      .eq('user_id', user?.id)
-      .order('created_at', { ascending: false })
-      .limit(3);
+      // Perfil + media del usuario propio → en paralelo
+      const [profileRes, mediaRes] = await Promise.all([
+        supabase
+          .from('users')
+          .select('id, username, display_name, profile_picture_url, is_verified')
+          .eq('id', user.id)
+          .single(),
+        supabase.from('media_feature').select('*').in('post_id', ownPostIds),
+      ]);
 
-    if (userError) { console.error('Error User Posts:', userError); }
+      const profile  = profileRes.data;
+      const allMedia = mediaRes.data ?? [];
 
-    let finalFeed = [...mapped];
-
-    if (userData && userData.length > 0) {
-      // Necesitamos el perfil del usuario actual para los campos display_name, etc.
-      const { data: profile } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user?.id)
-        .single();
-
-      // Fetch media for user posts
-      const userPostIds = userData.map(p => String(p.id));
-      const { data: userMedia } = await supabase
-        .from('media_feature')
-        .select('*')
-        .in('post_id', userPostIds);
-
-      const userPosts: RankedPost[] = userData.map(p => {
-        const postMedia = (userMedia || [])
+      const ownMapped: RankedPost[] = (ownPosts as any[]).map(p => {
+        const postMedia = allMedia
           .filter(m => String(m.post_id) === String(p.id))
           .map(m => ({
-            image: m.image || m.media_url || null,
+            image: m.image || null,
             post_id: String(m.post_id),
             user_id: String(p.user_id),
-            created_at: String(m.created_at || p.created_at)
+            created_at: String(m.created_at || p.created_at),
           }));
-
         return {
           id: String(p.id),
           content: p.content || '',
@@ -130,65 +164,46 @@ export async function getForYouFeed(limit: number = 20, offset: number = 0): Pro
           shares_count: Number(p.shares_count || 0),
           user_id: String(p.user_id),
           username: profile?.username || '',
-          user: profile,
           display_name: profile?.display_name || '',
           profile_picture_url: profile?.profile_picture_url || null,
+          user: profile,
           rank_score: 1.0,
           viral_score: 0,
-          combined_score: 1.0
+          combined_score: 1.0,
         };
       });
 
-      // Combinar y eliminar duplicados por ID
-      const combined = [...userPosts, ...mapped];
-      const uniqueIds = new Set();
-      finalFeed = combined.filter(post => {
-        if (uniqueIds.has(post.id)) return false;
-        uniqueIds.add(post.id);
-        return true;
-      });
+      // Eliminar duplicados (el RPC puede incluir posts propios si p_user_id era null)
+      const rpcIds = new Set(mapped.map(p => p.id));
+      const onlyNew = ownMapped.filter(p => !rpcIds.has(p.id));
 
-      // Ordenar por fecha descending (más reciente primero)
+      finalFeed = [...onlyNew, ...mapped];
       finalFeed.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
 
-    // 3. Obtener interacciones del usuario para estos posts (Likes, Reposts, Replies)
-    if (user && finalFeed.length > 0) {
-      const postIds = finalFeed.map(p => p.id);
-
-      const [likesRes, repostsRes, repliesRes] = await Promise.all([
-        supabase.from('likes').select('post_id').eq('user_id', user.id).in('post_id', postIds),
-        supabase.from('reposts').select('post_id').eq('user_id', user.id).in('post_id', postIds),
-        supabase.from('posts').select('parent_post_id').eq('user_id', user.id).in('parent_post_id', postIds)
-      ]);
-
-      const likedIds = new Set(likesRes.data?.map(l => l.post_id));
-      const repostedIds = new Set(repostsRes.data?.map(r => r.post_id));
-      const repliedIds = new Set(repliesRes.data?.map(r => r.parent_post_id));
-
-      finalFeed = finalFeed.map(p => ({
-        ...p,
-        is_liked: likedIds.has(p.id),
-        is_reposted: repostedIds.has(p.id),
-        is_replied: repliedIds.has(p.id)
-      }));
-    }
+    // 3. Interacciones (likes / reposts / replies)
+    if (user) finalFeed = await attachInteractions(finalFeed, user.id);
 
     return finalFeed;
-
   } catch (error) {
-    console.error("Error al obtener el feed algorithmic (viral):", error);
+    console.error('Error en getForYouFeed:', error);
     return [];
   }
 }
+
+// ─── getUserPosts ─────────────────────────────────────────────────────────────
+
 /**
- * Obtiene los posts de un usuario específico para su perfil.
+ * Posts de un usuario concreto (vista de perfil).
  */
-export async function getUserPosts(targetUserId: string, limit: number = 20, offset: number = 0): Promise<RankedPost[]> {
+export async function getUserPosts(
+  targetUserId: string,
+  limit = 20,
+  offset = 0,
+): Promise<RankedPost[]> {
   try {
     const { data: { user: currentUser } } = await supabase.auth.getUser();
 
-    // 1. Obtener los posts del usuario objetivo
     const { data: postsData, error: postsError } = await supabase
       .from('posts')
       .select('*')
@@ -197,47 +212,41 @@ export async function getUserPosts(targetUserId: string, limit: number = 20, off
       .range(offset, offset + limit - 1);
 
     if (postsError) throw postsError;
-    if (!postsData || postsData.length === 0) return [];
+    if (!postsData?.length) return [];
 
     const postIds = postsData.map(p => String(p.id));
 
-    // 2. Obtener media y perfil del usuario (una sola vez)
-    const [mediaRes, profileRes] = await Promise.all([
+    // Media + perfil en paralelo; interacciones solo si hay sesión
+    const parallelQueries: Promise<any>[] = [
       supabase.from('media_feature').select('*').in('post_id', postIds),
-      supabase.from('users').select('*').eq('id', targetUserId).single()
-    ]);
-
-    const profile = profileRes.data;
-    const allMedia = mediaRes.data || [];
-
-    // 3. Obtener interacciones del usuario actual (si existe)
-    let likedIds = new Set();
-    let repostedIds = new Set();
-    let repliedIds = new Set();
+      supabase.from('users').select('*').eq('id', targetUserId).single(),
+    ];
 
     if (currentUser) {
-      const [likesRes, repostsRes, repliesRes] = await Promise.all([
+      parallelQueries.push(
         supabase.from('likes').select('post_id').eq('user_id', currentUser.id).in('post_id', postIds),
         supabase.from('reposts').select('post_id').eq('user_id', currentUser.id).in('post_id', postIds),
-        supabase.from('posts').select('parent_post_id').eq('user_id', currentUser.id).in('parent_post_id', postIds)
-      ]);
-
-      likedIds = new Set(likesRes.data?.map(l => l.post_id));
-      repostedIds = new Set(repostsRes.data?.map(r => r.post_id));
-      repliedIds = new Set(repliesRes.data?.map(r => r.parent_post_id));
+        supabase.from('posts').select('parent_post_id').eq('user_id', currentUser.id).in('parent_post_id', postIds),
+      );
     }
 
-    // 4. Mapear todo a RankedPost
-    const result: RankedPost[] = postsData.map(p => {
+    const [mediaRes, profileRes, likesRes, repostsRes, repliesRes] = await Promise.all(parallelQueries);
+
+    const profile    = profileRes.data;
+    const allMedia   = mediaRes.data ?? [];
+    const likedIds   = new Set(likesRes?.data?.map((l: any) => l.post_id));
+    const repostedIds = new Set(repostsRes?.data?.map((r: any) => r.post_id));
+    const repliedIds  = new Set(repliesRes?.data?.map((r: any) => r.parent_post_id));
+
+    return postsData.map(p => {
       const postMedia = allMedia
         .filter(m => String(m.post_id) === String(p.id))
         .map(m => ({
-          image: m.image || m.media_url || null,
+          image: m.image || null,
           post_id: String(m.post_id),
           user_id: String(p.user_id),
-          created_at: String(m.created_at || p.created_at)
+          created_at: String(m.created_at || p.created_at),
         }));
-
       return {
         id: String(p.id),
         content: p.content || '',
@@ -249,34 +258,36 @@ export async function getUserPosts(targetUserId: string, limit: number = 20, off
         shares_count: Number(p.shares_count || 0),
         user_id: String(p.user_id),
         username: profile?.username || '',
-        user: profile,
         display_name: profile?.display_name || '',
         profile_picture_url: profile?.profile_picture_url || null,
+        user: profile,
         rank_score: 1.0,
         viral_score: 0,
         combined_score: 1.0,
-        is_liked: likedIds.has(p.id),
+        is_liked:    likedIds.has(p.id),
         is_reposted: repostedIds.has(p.id),
-        is_replied: repliedIds.has(p.id)
+        is_replied:  repliedIds.has(p.id),
       };
     });
-
-    return result;
   } catch (error) {
-    console.error("Error en getUserPosts:", error);
+    console.error('Error en getUserPosts:', error);
     return [];
   }
 }
 
+// ─── getFollowsFeed ───────────────────────────────────────────────────────────
+
 /**
- * Obtiene el feed de "Seguidos" (Follows) con toda la metadata necesaria.
+ * Feed de seguidos.
+ *
+ * Fix: la relación de media era `!id` (FK incorrecta) → ahora `!post_id`.
  */
-export async function getFollowsFeed(limit: number = 20, offset: number = 0): Promise<RankedPost[]> {
+export async function getFollowsFeed(limit = 20, offset = 0): Promise<RankedPost[]> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-    // 1. Obtener la lista de personas a las que sigo
+    // 1. IDs de seguidos
     const { data: follows, error: followsError } = await supabase
       .from('follows')
       .select('following_id')
@@ -286,62 +297,45 @@ export async function getFollowsFeed(limit: number = 20, offset: number = 0): Pr
     const followingIds = follows.map(f => f.following_id);
     if (followingIds.length === 0) return [];
 
-    // 2. Traer los posts de esas personas
+    // 2. Posts con user y media (FK correcta: post_id)
     const { data: postsData, error: postsError } = await supabase
       .from('posts')
       .select(`
-          *,
-          user:users!user_id(*),
-          media:media_feature!id(*)
+        *,
+        user:users!user_id(*),
+        media:media_feature!post_id(*)
       `)
       .in('user_id', followingIds)
+      .is('parent_post_id', null)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (postsError) throw postsError;
-    if (!postsData || postsData.length === 0) return [];
+    if (!postsData?.length) return [];
 
-    const postIds = postsData.map(p => String(p.id));
+    // 3. Mapear e incluir interacciones
+    const base: RankedPost[] = postsData.map(p => ({
+      id: String(p.id),
+      content: p.content || '',
+      media: p.media as any,
+      created_at: String(p.created_at),
+      likes_count: Number(p.likes_count || 0),
+      reposts_count: Number(p.reposts_count || 0),
+      replies_count: Number(p.replies_count || 0),
+      shares_count: Number(p.shares_count || 0),
+      user_id: String(p.user_id),
+      username: p.user?.username || '',
+      display_name: p.user?.display_name || '',
+      profile_picture_url: p.user?.profile_picture_url || null,
+      user: p.user,
+      rank_score: 1.0,
+      viral_score: 0,
+      combined_score: 1.0,
+    }));
 
-    // 3. Obtener interacciones del usuario actual para estos posts
-    const [likesRes, repostsRes, repliesRes] = await Promise.all([
-      supabase.from('likes').select('post_id').eq('user_id', user.id).in('post_id', postIds),
-      supabase.from('reposts').select('post_id').eq('user_id', user.id).in('post_id', postIds),
-      supabase.from('posts').select('parent_post_id').eq('user_id', user.id).in('parent_post_id', postIds)
-    ]);
-
-    const likedIds = new Set(likesRes.data?.map(l => l.post_id));
-    const repostedIds = new Set(repostsRes.data?.map(r => r.post_id));
-    const repliedIds = new Set(repliesRes.data?.map(r => r.parent_post_id));
-
-    // 4. Mapear todo a RankedPost (usando la estructura que espera la UI)
-    const result: RankedPost[] = postsData.map(p => {
-      return {
-        id: String(p.id),
-        content: p.content || '',
-        media: p.media as any,
-        created_at: String(p.created_at),
-        likes_count: Number(p.likes_count || 0),
-        reposts_count: Number(p.reposts_count || 0),
-        replies_count: Number(p.replies_count || 0),
-        shares_count: Number(p.shares_count || 0),
-        user_id: String(p.user_id),
-        username: p.user?.username || '',
-        user: p.user,
-        display_name: p.user?.display_name || '',
-        profile_picture_url: p.user?.profile_picture_url || null,
-        rank_score: 1.0, 
-        viral_score: 0,
-        combined_score: 1.0,
-        is_liked: likedIds.has(String(p.id)),
-        is_reposted: repostedIds.has(String(p.id)),
-        is_replied: repliedIds.has(String(p.id))
-      };
-    });
-
-    return result;
+    return await attachInteractions(base, user.id);
   } catch (error) {
-    console.error("Error en getFollowsFeed:", error);
+    console.error('Error en getFollowsFeed:', error);
     return [];
   }
 }
