@@ -1,35 +1,39 @@
-import { Ionicons } from "@expo/vector-icons";
-import { router, Stack } from "expo-router";
-import { TouchableOpacity, useColorScheme } from "react-native";
-
-
-
-
+import { useColorScheme } from "react-native";
+import { MaterialTopTabs } from "@/Components/TopBar/materialtopbars";
 
 export default function NotificationLayout() {
-
     const isDark = useColorScheme() === 'dark';
-    return (
-        <Stack screenOptions={{
-            headerShown: true,
-            headerTitle: "Ajustes",
-            headerBackButtonDisplayMode: "default",
-            headerBackTitle: "Perfil",
-            headerBackVisible: false,
-            headerStyle: {
-                backgroundColor: isDark ? '#000' : '#fff',
-            },
-            headerBackTitleStyle: {
-                fontSize: 16,
+    const bg = isDark ? '#000' : '#fff';
+    const activeColor = isDark ? '#fff' : '#000';
+    const inactiveColor = isDark ? '#555' : '#aaa';
 
-            },
-            headerTitleStyle: {
-                fontWeight: 'bold',
-                fontSize: 20,
-                color: isDark ? '#fff' : '#000',
-            },
-        }}>
-            <Stack.Screen name="index" options={{ headerTitle: "Notificaciones" }} />
-        </Stack>
+    return (
+        <MaterialTopTabs
+            screenOptions={{
+                tabBarStyle: {
+                    backgroundColor: bg,
+                    shadowOpacity: 0,
+                    elevation: 0,
+                    borderBottomWidth: 0.5,
+                    borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                },
+                tabBarLabelStyle: {
+                    fontSize: 14,
+                    fontWeight: '700',
+                    textTransform: 'none',
+                },
+                tabBarActiveTintColor: activeColor,
+                tabBarInactiveTintColor: inactiveColor,
+                tabBarIndicatorStyle: {
+                    backgroundColor: activeColor,
+                    height: 2,
+                    borderRadius: 1,
+                },
+                tabBarPressColor: 'transparent',
+            }}
+        >
+            <MaterialTopTabs.Screen name="index" options={{ title: 'Notificaciones' }} />
+            <MaterialTopTabs.Screen name="requests" options={{ title: 'Solicitudes' }} />
+        </MaterialTopTabs>
     );
 }

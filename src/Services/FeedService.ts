@@ -55,6 +55,7 @@ function mapRpcRow(r: any): RankedPost {
       username: r.username,
       display_name: r.display_name,
       profile_picture_url: r.profile_picture_url,
+      is_verified: r.is_verified || false,  // ← añade esto
     },
     rank_score: Number(r.rank_score ?? 0),
     viral_score: Number(r.viral_score ?? 0),

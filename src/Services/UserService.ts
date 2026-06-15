@@ -334,3 +334,69 @@ export async function getBlockedUserIds(userId: string): Promise<string[]> {
     return [];
   }
 }
+
+// ─── Solicitudes de seguimiento ───────────────────────────────────────────────
+
+export interface FollowRequest {
+  id: string;
+  requester_id: string;
+  requested_id: string;
+  created_at: string;
+  requester: {
+    id: string;
+    username: string;
+    display_name: string;
+    profile_picture_url: string | null;
+    is_verified?: boolean;
+  };
+}
+
+/**
+ * Obtiene todas las solicitudes de seguimiento pendientes para un usuario.
+ */
+export async function getFollowRequests(userId: string): Promise<FollowRequest[]> {
+  if (!userId) return [];
+  try {
+    const { data, error } = await supabase
+      .from('follow_requests')
+      .select(`
+        id,
+        requester_id,
+        requested_id,
+        created_at,
+        requester:users!requester_id (
+          id,
+          username,
+          display_name,
+          profile_picture_url,
+          is_verified
+        )
+      `)
+      .eq('requested_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return (data ?? []) as unknown as FollowRequest[];
+  } catch (error) {
+    console.error("Error en getFollowRequests:", error);
+    return [];
+  }
+}
+
+/**
+ * Rechaza una solicitud de seguimiento eliminándola de follow_requests.
+ */
+export async function rejectFollowRequest(requesterId: string, requestedId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('follow_requests')
+      .delete()
+      .eq('requester_id', requesterId)
+      .eq('requested_id', requestedId);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error("Error en rejectFollowRequest:", error);
+    throw error;
+  }
+}
