@@ -267,6 +267,7 @@ export async function toggleLike(postId: string): Promise<{ liked: boolean }> {
 export async function repostPost(postId: string): Promise<{ reposted: boolean }> {
   try {
     const { data, error } = await supabase.rpc('toggle_repost', { p_post_id: postId });
+    if (error) throw error; // ← comprobamos el error ANTES de usar data
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (data.reposted && currentUser) {
       const { data: postData } = await supabase.from('posts').select('user_id').eq('id', postId).single();
@@ -294,7 +295,6 @@ export async function repostPost(postId: string): Promise<{ reposted: boolean }>
         .eq('type', 'repost');
     }
     
-    if (error) throw error;
     return { reposted: data.reposted };
   } catch (error) {
     console.error("Error en repostPost:", error);

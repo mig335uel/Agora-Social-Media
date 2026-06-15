@@ -238,3 +238,99 @@ export async function cancelFollowRequest(requesterId: string, requestedId: stri
     throw error;
   }
 }
+
+// ─── Bloqueos ─────────────────────────────────────────────────────────────────
+
+/**
+ * Bloquea a un usuario.
+ * Al bloquear también se eliminan los follows mutuos y las solicitudes pendientes.
+ */
+export async function blockUser(blockerId: string, blockedId: string): Promise<void> {
+  try {
+    // 1. Insertar el bloqueo
+    const { error: blockError } = await supabase
+      .from('blocks')
+      .insert({ blocker_id: blockerId, blocked_id: blockedId });
+
+    // Ignorar el error de duplicado (ya bloqueado)
+    if (blockError && blockError.code !== '23505') throw blockError;
+
+    // 2. Eliminar follows mutuos en paralelo
+    await Promise.all([
+      supabase.from('follows')
+        .delete()
+        .eq('follower_id', blockerId)
+        .eq('following_id', blockedId),
+      supabase.from('follows')
+        .delete()
+        .eq('follower_id', blockedId)
+        .eq('following_id', blockerId),
+      // 3. Eliminar solicitudes de follow pendientes en ambas direcciones
+      supabase.from('follow_requests')
+        .delete()
+        .or(`and(requester_id.eq.${blockerId},requested_id.eq.${blockedId}),and(requester_id.eq.${blockedId},requested_id.eq.${blockerId})`),
+    ]);
+  } catch (error) {
+    console.error("Error en blockUser:", error);
+    throw error;
+  }
+}
+
+/**
+ * Desbloquea a un usuario.
+ */
+export async function unblockUser(blockerId: string, blockedId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('blocks')
+      .delete()
+      .eq('blocker_id', blockerId)
+      .eq('blocked_id', blockedId);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error("Error en unblockUser:", error);
+    throw error;
+  }
+}
+
+/**
+ * Verifica si el blocker ha bloqueado al blocked.
+ */
+export async function checkBlockStatus(blockerId: string, blockedId: string): Promise<boolean> {
+  if (!blockerId || !blockedId || blockerId === blockedId) return false;
+  try {
+    const { data, error } = await supabase
+      .from('blocks')
+      .select('blocker_id')
+      .eq('blocker_id', blockerId)
+      .eq('blocked_id', blockedId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data !== null;
+  } catch (error) {
+    console.error("Error en checkBlockStatus:", error);
+    return false;
+  }
+}
+
+/**
+ * Devuelve la lista de user_ids que el usuario actual ha bloqueado.
+ * Útil para filtrar feeds y búsquedas.
+ */
+export async function getBlockedUserIds(userId: string): Promise<string[]> {
+  if (!userId) return [];
+  try {
+    const { data, error } = await supabase
+      .from('blocks')
+      .select('blocked_id')
+      .eq('blocker_id', userId);
+
+    if (error) throw error;
+    return (data ?? []).map(row => row.blocked_id);
+  } catch (error) {
+    console.error("Error en getBlockedUserIds:", error);
+    return [];
+  }
+}

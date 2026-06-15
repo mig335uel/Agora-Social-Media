@@ -3,6 +3,7 @@ import { GlassContainer } from "expo-glass-effect";
 import { FlatList, View, StyleSheet, Platform, ActionSheetIOS, Alert, AlertButton, useColorScheme, RefreshControl } from "react-native";
 import useAuth from "@/hooks/useAuth";
 import { deletePost, toggleLike, repostPost, recordShare, createPost } from "@/Services/PostService";
+import { blockUser } from "@/Services/UserService";
 import { router } from "expo-router";
 import { useState, useEffect } from "react";
 import { ProcessedImage } from "@/Services/ImageService";
@@ -42,16 +43,21 @@ export default function PostCard({
 
     const handleOptionsPress = (item: Post) => {
         const isOwner = currentUser?.id === item.user_id;
+        const authorId = item.user_id || (item as any).user?.id;
 
         if (Platform.OS === 'ios') {
             const options = ['Cancelar'];
-            if (isOwner) options.unshift('Eliminar Publicación');
-            else options.unshift('Reportar publicación');
+            if (isOwner) {
+                options.unshift('Eliminar Publicación');
+            } else {
+                options.unshift('Bloquear usuario');
+                options.unshift('Reportar publicación');
+            }
 
             ActionSheetIOS.showActionSheetWithOptions(
                 {
                     options,
-                    destructiveButtonIndex: isOwner ? 0 : undefined,
+                    destructiveButtonIndex: isOwner ? 0 : 1,
                     cancelButtonIndex: options.length - 1,
                     title: 'Opciones de Publicación',
                 },
@@ -60,6 +66,8 @@ export default function PostCard({
                         handleDelete(item.id);
                     } else if (!isOwner && buttonIndex === 0) {
                         setReportModal({ visible: true, postId: item.id });
+                    } else if (!isOwner && buttonIndex === 1) {
+                        handleBlock(authorId);
                     }
                 }
             );
@@ -75,6 +83,11 @@ export default function PostCard({
                     onPress: () => handleDelete(item.id)
                 });
             } else {
+                buttons.unshift({
+                    text: 'Bloquear usuario',
+                    style: 'destructive',
+                    onPress: () => handleBlock(authorId)
+                });
                 buttons.unshift({
                     text: 'Reportar publicación',
                     onPress: () => setReportModal({ visible: true, postId: item.id })
@@ -100,6 +113,33 @@ export default function PostCard({
                             if (onRefresh) onRefresh();
                         } catch (error) {
                             Alert.alert("Error", "No se pudo eliminar la publicación.");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleBlock = (blockedUserId: string) => {
+        if (!currentUser?.id || !blockedUserId) return;
+        Alert.alert(
+            "Bloquear usuario",
+            "Esta persona no podrá ver tu perfil ni tus publicaciones. ¿Deseas continuar?",
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "Bloquear",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await blockUser(currentUser.id, blockedUserId);
+                            // Eliminar todos los posts de ese usuario del feed local
+                            setLocalPosts(prev => prev.filter(p =>
+                                p.user_id !== blockedUserId && (p as any).user?.id !== blockedUserId
+                            ));
+                            Alert.alert("Usuario bloqueado", "Ya no verás contenido de esta persona.");
+                        } catch (error) {
+                            Alert.alert("Error", "No se pudo bloquear al usuario.");
                         }
                     }
                 }

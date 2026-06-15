@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, ActivityIndicator, useColorScheme } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, ActivityIndicator, useColorScheme, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -8,8 +8,7 @@ import { Usuario } from '@/Types/Users';
 import { supabase } from '@/lib/supbase/supabase';
 import { useProfileRefresh } from '@/Controller/_context';
 
-
-import { toggleFollow } from '@/Services/UserService';
+import { toggleFollow, blockUser, unblockUser } from '@/Services/UserService';
 import useAuth from '@/hooks/useAuth';
 
 interface ProfileHeaderProps {
@@ -17,11 +16,13 @@ interface ProfileHeaderProps {
   isMe?: boolean;
   isFollowing?: boolean;
   isPending?: boolean;
+  isBlocked?: boolean;
   onFollowChange?: (following: boolean) => void;
   onPendingChange?: (pending: boolean) => void;
+  onBlockChange?: (blocked: boolean) => void;
 }
 
-export default function ProfileHeader({ user, isMe, isFollowing, isPending, onFollowChange, onPendingChange }: ProfileHeaderProps) {
+export default function ProfileHeader({ user, isMe, isFollowing, isPending, isBlocked, onFollowChange, onPendingChange, onBlockChange }: ProfileHeaderProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const currentUser = useAuth();
@@ -77,36 +78,74 @@ export default function ProfileHeader({ user, isMe, isFollowing, isPending, onFo
       const { toggleFollow, FollowsPrivateUsers, cancelFollowRequest } = require('@/Services/UserService');
 
       if (isFollowing) {
-        // Dejar de seguir (común para todos)
         const nowFollowing = await toggleFollow(currentUser.id, userId);
         if (onFollowChange) onFollowChange(nowFollowing);
-        
-        setStats(prev => ({
-          ...prev,
-          followers: Math.max(0, prev.followers - 1)
-        }));
+        setStats(prev => ({ ...prev, followers: Math.max(0, prev.followers - 1) }));
       } else if (isPending) {
-        // Cancelar solicitud pendiente
         await cancelFollowRequest(currentUser.id, userId);
         if (onPendingChange) onPendingChange(false);
       } else if (user?.is_private) {
-        // Enviar solicitud a usuario privado
         await FollowsPrivateUsers(currentUser.id, userId);
         if (onPendingChange) onPendingChange(true);
       } else {
-        // Seguir usuario público
         const nowFollowing = await toggleFollow(currentUser.id, userId);
         if (onFollowChange) onFollowChange(nowFollowing);
-        
-        setStats(prev => ({
-          ...prev,
-          followers: prev.followers + 1
-        }));
+        setStats(prev => ({ ...prev, followers: prev.followers + 1 }));
       }
     } catch (error) {
       console.error("Error en handleToggleFollow:", error);
     } finally {
       setFollowLoading(false);
+    }
+  };
+
+  const handleToggleBlock = () => {
+    if (!currentUser || !userId) return;
+    if (isBlocked) {
+      // Desbloquear
+      Alert.alert(
+        "Desbloquear usuario",
+        `¿Deseas desbloquear a @${user?.username}? Podrá volver a seguirte y ver tu contenido.`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Desbloquear",
+            onPress: async () => {
+              try {
+                await unblockUser(currentUser.id, userId);
+                if (onBlockChange) onBlockChange(false);
+              } catch (e) {
+                Alert.alert("Error", "No se pudo desbloquear al usuario.");
+              }
+            }
+          }
+        ]
+      );
+    } else {
+      // Bloquear
+      Alert.alert(
+        "Bloquear usuario",
+        `Esta persona no podrá ver tu perfil ni tus publicaciones. ¿Deseas bloquear a @${user?.username}?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Bloquear",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await blockUser(currentUser.id, userId);
+                if (onBlockChange) onBlockChange(true);
+                // Si lo seguia, el follow ya lo borra blockUser
+                if (isFollowing && onFollowChange) onFollowChange(false);
+                if (isPending && onPendingChange) onPendingChange(false);
+                Alert.alert("Usuario bloqueado", "Ya no verás contenido de esta persona.");
+              } catch (e) {
+                Alert.alert("Error", "No se pudo bloquear al usuario.");
+              }
+            }
+          }
+        ]
+      );
     }
   };
 
@@ -195,38 +234,67 @@ export default function ProfileHeader({ user, isMe, isFollowing, isPending, onFo
               <TouchableOpacity
                 className="p-3 bg-gray-100 dark:bg-gray-800 rounded-2xl"
                 activeOpacity={0.8}
+                onPress={() => { router.push('/(drawer)/settings') }}
               >
                 <Ionicons name="settings-outline" size={20} color={isDark ? '#fff' : '#000'} />
               </TouchableOpacity>
             </>
           ) : (
             <>
+              {/* Botón seguir/pendiente/dejar de seguir — oculto si está bloqueado */}
+              {!isBlocked && (
+                <TouchableOpacity
+                  className={`flex-row items-center gap-2 px-10 py-3 rounded-2xl ${isFollowing || isPending ? 'bg-gray-200 dark:bg-gray-800' : 'bg-black dark:bg-white'}`}
+                  activeOpacity={0.8}
+                  onPress={handleToggleFollow}
+                  disabled={followLoading}
+                >
+                  {followLoading ? (
+                    <ActivityIndicator size="small" color={isFollowing ? (isDark ? '#fff' : '#000') : (isDark ? '#000' : '#fff')} />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name={isFollowing ? "person-remove-outline" : (isPending ? "time-outline" : "person-add-outline")}
+                        size={20}
+                        color={isFollowing || isPending ? (isDark ? '#fff' : '#000') : (isDark ? '#000' : '#fff')}
+                      />
+                      <Text className={`font-bold ${isFollowing || isPending ? 'text-black dark:text-white' : 'text-white dark:text-black'}`}>
+                        {isFollowing ? 'dejar de seguir' : (isPending ? 'pendiente' : 'seguir')}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+
+              {/* Botón DM — solo si no está bloqueado */}
+              {!isBlocked && (
+                <TouchableOpacity
+                  className="p-3 bg-gray-100 dark:bg-gray-800 rounded-2xl"
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    // Navegar al chat con este usuario
+                    router.push(`/messaging` as any);
+                  }}
+                >
+                  <Ionicons name="mail-outline" size={20} color={isDark ? '#fff' : '#000'} />
+                </TouchableOpacity>
+              )}
+
+              {/* Botón bloquear/desbloquear */}
               <TouchableOpacity
-                className={`flex-row items-center gap-2 px-10 py-3 rounded-2xl ${isFollowing || isPending ? 'bg-gray-200 dark:bg-gray-800' : 'bg-black dark:bg-white'}`}
+                className={`p-3 rounded-2xl ${
+                  isBlocked
+                    ? 'bg-red-100 dark:bg-red-900/30'
+                    : 'bg-gray-100 dark:bg-gray-800'
+                }`}
                 activeOpacity={0.8}
-                onPress={handleToggleFollow}
-                disabled={followLoading}
+                onPress={handleToggleBlock}
               >
-                {followLoading ? (
-                  <ActivityIndicator size="small" color={isFollowing ? (isDark ? '#fff' : '#000') : (isDark ? '#000' : '#fff')} />
-                ) : (
-                  <>
-                    <Ionicons 
-                      name={isFollowing ? "person-remove-outline" : (isPending ? "time-outline" : "person-add-outline")} 
-                      size={20} 
-                      color={isFollowing || isPending ? (isDark ? '#fff' : '#000') : (isDark ? '#000' : '#fff')} 
-                    />
-                    <Text className={`font-bold ${isFollowing || isPending ? 'text-black dark:text-white' : 'text-white dark:text-black'}`}>
-                      {isFollowing ? 'dejar de seguir' : (isPending ? 'pendiente' : 'seguir')}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="p-3 bg-gray-100 dark:bg-gray-800 rounded-2xl"
-                activeOpacity={0.8}
-              >
-                <Ionicons name="mail-outline" size={20} color={isDark ? '#fff' : '#000'} />
+                <Ionicons
+                  name={isBlocked ? "lock-open-outline" : "ban-outline"}
+                  size={20}
+                  color={isBlocked ? '#ef4444' : (isDark ? '#fff' : '#000')}
+                />
               </TouchableOpacity>
             </>
           )}

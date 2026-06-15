@@ -23,10 +23,12 @@ export default function Perfil() {
         profileUser: user, 
         isFollowing, 
         isPending,
+        isBlocked,
         isMe, 
         loadingProfile, 
         setIsFollowing, 
         setIsPending,
+        setIsBlocked,
         fetchProfileData 
     } = useProfileData();
 
@@ -115,8 +117,10 @@ export default function Perfil() {
                     isMe={isMe}
                     isFollowing={isFollowing}
                     isPending={isPending}
+                    isBlocked={isBlocked}
                     onFollowChange={setIsFollowing}
                     onPendingChange={setIsPending}
+                    onBlockChange={setIsBlocked}
                 />
                 <ProfileCustomTabBar activeTab={activeTab} onTabChange={setActiveTab} />
             </View>

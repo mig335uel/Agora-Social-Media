@@ -5,7 +5,7 @@ import { Slot, useGlobalSearchParams } from "expo-router";
 import { ProfileRefreshContext } from "@/Controller/_context";
 import { supabase } from "@/lib/supbase/supabase";
 import useAuth from "@/hooks/useAuth";
-import { checkFollowStatus } from "@/Services/UserService";
+import { checkFollowStatus, checkBlockStatus } from "@/Services/UserService";
 import { Usuario } from "@/Types/Users";
 
 // 1. Crear el contexto para compartir los datos del perfil
@@ -13,10 +13,12 @@ export const ProfileDataContext = createContext<{
     profileUser: Usuario | null;
     isFollowing: boolean;
     isPending: boolean;
+    isBlocked: boolean;
     isMe: boolean;
     loadingProfile: boolean;
     setIsFollowing: (val: boolean) => void;
     setIsPending: (val: boolean) => void;
+    setIsBlocked: (val: boolean) => void;
     fetchProfileData: () => Promise<void>;
 } | null>(null);
 
@@ -39,6 +41,7 @@ export default function PerfilLayout() {
     const [profileUser, setProfileUser] = useState<Usuario | null>(null);
     const [isFollowing, setIsFollowing] = useState(false);
     const [isPending, setIsPending] = useState(false);
+    const [isBlocked, setIsBlocked] = useState(false);
     const [loadingProfile, setLoadingProfile] = useState(true);
 
     const isMe = currentUser?.id === id;
@@ -57,11 +60,16 @@ export default function PerfilLayout() {
             setProfileUser(userData);
 
             if (currentUser && currentUser.id !== id) {
-                const following = await checkFollowStatus(currentUser.id, id);
+                // Cargar follow, pending y block en paralelo
+                const [following, blocked] = await Promise.all([
+                    checkFollowStatus(currentUser.id, id),
+                    checkBlockStatus(currentUser.id, id),
+                ]);
                 setIsFollowing(following);
+                setIsBlocked(blocked);
 
                 // Si no lo sigue y el usuario es privado, verificar si hay solicitud pendiente
-                if (!following && (userData as Usuario).is_private) {
+                if (!following && (userData as Usuario).is_private && !blocked) {
                     const { checkFollowRequestStatus } = require("@/Services/UserService");
                     const pending = await checkFollowRequestStatus(currentUser.id, id);
                     setIsPending(pending);
@@ -82,7 +90,7 @@ export default function PerfilLayout() {
 
     return (
         <ProfileRefreshContext.Provider value={{ refreshStats: refreshStatsFn, setRefreshStats: setRefreshStatsFn }}>
-            <ProfileDataContext.Provider value={{ profileUser, isFollowing, isPending, isMe, loadingProfile, setIsFollowing, setIsPending, fetchProfileData }}>
+            <ProfileDataContext.Provider value={{ profileUser, isFollowing, isPending, isBlocked, isMe, loadingProfile, setIsFollowing, setIsPending, setIsBlocked, fetchProfileData }}>
                 <SafeAreaView style={{ flex: 1 }} className={isDark ? 'bg-black' : 'bg-white'} edges={['top']}>
                     <Slot />
                 </SafeAreaView>

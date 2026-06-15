@@ -1,6 +1,7 @@
 import { supabase } from "../lib/supbase/supabase";
 import { media_feature } from "@/Types/Posts";
-
+import { getBlockedUserIds } from "./UserService";
+// @ts-ignore 
 export interface RankedPost {
   id: string;
   content: string;
@@ -99,8 +100,8 @@ export async function getForYouFeed(limit = 20, offset = 0): Promise<RankedPost[
   try {
     const { data: { user } } = await supabase.auth.getUser();
 
-    // 1. Lanzamos en paralelo: feed algorítmico + posts propios recientes
-    const [rpcResult, ownPostsResult] = await Promise.all([
+    // 1. Lanzamos en paralelo: feed algorítmico + posts propios recientes + lista de bloqueados
+    const [rpcResult, ownPostsResult, blockedIds] = await Promise.all([
       supabase.rpc('combine_feed_and_viral', {
         p_user_id: user?.id ?? null,
         p_limit: limit,
@@ -117,12 +118,18 @@ export async function getForYouFeed(limit = 20, offset = 0): Promise<RankedPost[
             .order('created_at', { ascending: false })
             .limit(3)
         : Promise.resolve({ data: null, error: null }),
+      user ? getBlockedUserIds(user.id) : Promise.resolve([]),
     ]);
 
     const { data: rpcData, error: rpcError } = rpcResult;
     if (rpcError) throw rpcError;
 
-    const mapped = ((rpcData as any[]) ?? []).map(mapRpcRow);
+    const blockedSet = new Set(blockedIds as string[]);
+
+    // Filtrar posts de usuarios bloqueados
+    const mapped = ((rpcData as any[]) ?? [])
+      .filter(r => !blockedSet.has(String(r.user_id)))
+      .map(mapRpcRow);
 
     // 2. Posts propios: se unen al feed con prioridad (sin duplicar los que ya trae el RPC)
     const { data: ownPosts } = ownPostsResult as any;
@@ -217,7 +224,7 @@ export async function getUserPosts(
     const postIds = postsData.map(p => String(p.id));
 
     // Media + perfil en paralelo; interacciones solo si hay sesión
-    const parallelQueries: Promise<any>[] = [
+    const parallelQueries: PromiseLike<any>[] = [
       supabase.from('media_feature').select('*').in('post_id', postIds),
       supabase.from('users').select('*').eq('id', targetUserId).single(),
     ];
@@ -240,8 +247,8 @@ export async function getUserPosts(
 
     return postsData.map(p => {
       const postMedia = allMedia
-        .filter(m => String(m.post_id) === String(p.id))
-        .map(m => ({
+        .filter((m: any) => String(m.post_id) === String(p.id))
+        .map((m: any) => ({
           image: m.image || null,
           post_id: String(m.post_id),
           user_id: String(p.user_id),
@@ -287,14 +294,20 @@ export async function getFollowsFeed(limit = 20, offset = 0): Promise<RankedPost
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-    // 1. IDs de seguidos
-    const { data: follows, error: followsError } = await supabase
-      .from('follows')
-      .select('following_id')
-      .eq('follower_id', user.id);
+    // 1. IDs de seguidos + lista de bloqueados en paralelo
+    const [followsResult, blockedIds] = await Promise.all([
+      supabase.from('follows').select('following_id').eq('follower_id', user.id),
+      getBlockedUserIds(user.id),
+    ]);
 
+    const { data: follows, error: followsError } = followsResult;
     if (followsError) throw followsError;
-    const followingIds = follows.map(f => f.following_id);
+
+    const blockedSet = new Set(blockedIds);
+    const followingIds = follows
+      .map(f => f.following_id)
+      .filter(id => !blockedSet.has(id)); // excluir bloqueados
+
     if (followingIds.length === 0) return [];
 
     // 2. Posts con user y media (FK correcta: post_id)
