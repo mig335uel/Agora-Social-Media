@@ -31,6 +31,7 @@ export default function AyudaScreen() {
         }}
         >
             <Stack.Screen name="index"/>
+            <Stack.Screen name="reports"/>
             
         </Stack>
     );
