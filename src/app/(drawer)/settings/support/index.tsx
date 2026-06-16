@@ -130,18 +130,6 @@ export default function SoporteScreen() {
         <View style={[styles.screen, { backgroundColor: bg }]}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-            {/* Header */}
-            <View style={[styles.header, { borderBottomColor: border }]}>
-                <TouchableOpacity
-                    onPress={() => router.back()}
-                    style={styles.backBtn}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                    <Ionicons name="chevron-back" size={26} color={text} />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: text }]}>Soporte</Text>
-                <View style={{ width: 40 }} />
-            </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
