@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supbase/supabase";
 import { CreateReportDTO } from "../Types/Reports";
-
+import { Usuario } from "@/Types/Users";
 /**
  * Crea un reporte de post o usuario en la base de datos.
  * El reporter_id se obtiene automáticamente del usuario autenticado.
@@ -37,4 +37,19 @@ export async function createReport(dto: CreateReportDTO): Promise<void> {
         }
         throw error;
     }
+}
+
+
+
+export async function getReportByMe ({user}:{user: Usuario}){
+    try {
+        const {data, error} = await supabase.from('reports').select('*').eq('reporter_id', user.id);
+        if(error) throw error;
+        return data;
+    } catch (error) {
+        console.error("Error al obtener reportes", error);
+        return [];
+    }
+
+
 }

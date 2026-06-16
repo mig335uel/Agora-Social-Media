@@ -338,7 +338,6 @@ export async function getBlockedUserIds(userId: string): Promise<string[]> {
 // ─── Solicitudes de seguimiento ───────────────────────────────────────────────
 
 export interface FollowRequest {
-  id: string;
   requester_id: string;
   requested_id: string;
   created_at: string;
@@ -360,7 +359,6 @@ export async function getFollowRequests(userId: string): Promise<FollowRequest[]
     const { data, error } = await supabase
       .from('follow_requests')
       .select(`
-        id,
         requester_id,
         requested_id,
         created_at,

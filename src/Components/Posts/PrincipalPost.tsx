@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Platform, Modal, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Platform, Modal, useColorScheme, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -11,6 +11,14 @@ import { createPost, getTrendingTopics, toggleLike, repostPost, recordShare } fr
 import { searchUsers } from '@/Services/UserService';
 import { router } from 'expo-router';
 import ImageViewer from '../ImageViewer';
+import LinkPreviewCard from './LinkPreviewCard';
+
+// ─── Extrae la primera URL de un texto ────────────────────────────────────────
+const URL_REGEX = /https?:\/\/[^\s<>"]+/;
+function extractFirstUrl(text: string): string | null {
+  const match = text.match(URL_REGEX);
+  return match ? match[0] : null;
+}
 
 interface PrincipalPostProps {
   post: Post;
@@ -33,12 +41,23 @@ export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
   const borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
 
   const renderStyledContent = (content: string) => {
-    const regex = /([@#][\wñáéíóú]+)/g;
+    const regex = /(@[\w\u00f1\u00e1\u00e9\u00ed\u00f3\u00fa]+|#[\w\u00f1\u00e1\u00e9\u00ed\u00f3\u00fa]+|https?:\/\/[^\s<>"]+)/g;
     const parts = content.split(regex);
     return parts.map((part, index) => {
-      if (part.match(regex)) {
+      if (part.match(/^[@#]/)) {
         return (
           <Text key={index} style={styles.mention}>
+            {part}
+          </Text>
+        );
+      }
+      if (part.match(/^https?:\/\//)) {
+        return (
+          <Text
+            key={index}
+            style={[styles.linkText]}
+            onPress={() => Linking.openURL(part).catch(() => {})}
+          >
             {part}
           </Text>
         );
@@ -163,13 +182,19 @@ export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
           {renderStyledContent(postToRender.content)}
         </Text>
 
+        {/* ── Link Preview Card ── */}
+        {(() => {
+          const url = extractFirstUrl(postToRender.content);
+          return url ? <LinkPreviewCard url={url} isDark={isDark} /> : null;
+        })()}
+
         {postToRender.media && postToRender.media.length > 0 && (
-          <MediaGrid 
-            media={postToRender.media} 
+          <MediaGrid
+            media={postToRender.media}
             onImagePress={(index) => {
               setSelectedImageIndex(index);
               setIsImageViewerVisible(true);
-            }} 
+            }}
           />
         )}
       </View>
@@ -353,6 +378,11 @@ const styles = StyleSheet.create({
   mention: {
     color: '#3b82f6',
     fontWeight: '600',
+  },
+  linkText: {
+    color: '#3b82f6',
+    fontWeight: '400',
+    textDecorationLine: 'underline',
   },
   mediaContainer: {
     marginTop: 16,

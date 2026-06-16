@@ -121,7 +121,7 @@ export default function SettingsScreen() {
                 <SettingItem 
                     icon="help-buoy-outline" 
                     title="Ayuda y Soporte" 
-                    onPress={() => console.log("Soporte")}
+                    onPress={() =>router.push('/(drawer)/settings/support')}
                 />
                 <SettingItem 
                     icon="document-text-outline" 

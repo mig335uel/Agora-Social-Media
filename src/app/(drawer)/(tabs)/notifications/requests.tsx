@@ -162,7 +162,7 @@ export default function FollowRequestsScreen() {
         try {
             await FollowRequestAccept(req.requester_id, req.requested_id);
             // Quitar de la lista local
-            setRequests(prev => prev.filter(r => r.id !== req.id));
+            setRequests(prev => prev.filter(r => r.requester_id !== req.requester_id));
         } catch (e) {
             Alert.alert("Error", "No se pudo aceptar la solicitud.");
         }
@@ -171,7 +171,7 @@ export default function FollowRequestsScreen() {
     const handleReject = async (req: FollowRequest) => {
         try {
             await rejectFollowRequest(req.requester_id, req.requested_id);
-            setRequests(prev => prev.filter(r => r.id !== req.id));
+            setRequests(prev => prev.filter(r => r.requester_id !== req.requester_id));
         } catch (e) {
             Alert.alert("Error", "No se pudo rechazar la solicitud.");
         }
@@ -188,7 +188,7 @@ export default function FollowRequestsScreen() {
     return (
         <FlatList
             data={requests}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.requester_id}
             style={{ backgroundColor: bg }}
             contentContainerStyle={{ flexGrow: 1 }}
             refreshControl={

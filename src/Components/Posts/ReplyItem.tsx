@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Platform, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Platform, useColorScheme, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Post } from '@/Types/Posts';
 import MediaGrid from './MediaGrid';
 import { toggleLike, repostPost, recordShare } from '@/Services/PostService';
+import LinkPreviewCard from './LinkPreviewCard';
+
+// ─── Extrae la primera URL de un texto ────────────────────────────────────────
+const URL_REGEX = /https?:\/\/[^\s<>"]+/;
+function extractFirstUrl(text: string): string | null {
+    const match = text.match(URL_REGEX);
+    return match ? match[0] : null;
+}
 
 // Utilidades (reutilizadas de PostCard para consistencia)
 const formatCount = (n: number): string => {
@@ -89,11 +97,22 @@ export default function ReplyItem({ post, isLast = false, onRefresh }: ReplyItem
   };
 
   const renderStyledContent = (content: string) => {
-    const regex = /([@#][\wñáéíóú]+)/g;
+    const regex = /(@[\w\u00f1\u00e1\u00e9\u00ed\u00f3\u00fa]+|#[\w\u00f1\u00e1\u00e9\u00ed\u00f3\u00fa]+|https?:\/\/[^\s<>"]+)/g;
     const parts = content.split(regex);
     return parts.map((part, index) => {
-      if (part.match(regex)) {
+      if (part.match(/^[@#]/)) {
         return <Text key={index} style={styles.mention}>{part}</Text>;
+      }
+      if (part.match(/^https?:\/\//)) {
+        return (
+          <Text
+            key={index}
+            style={styles.linkText}
+            onPress={() => Linking.openURL(part).catch(() => {})}
+          >
+            {part}
+          </Text>
+        );
       }
       return <Text key={index}>{part}</Text>;
     });
@@ -135,6 +154,12 @@ export default function ReplyItem({ post, isLast = false, onRefresh }: ReplyItem
         <Text style={[styles.contentText, { color: textColor }]}>
           {renderStyledContent(localPost.content)}
         </Text>
+
+        {/* ── Link Preview Card ── */}
+        {(() => {
+          const url = extractFirstUrl(localPost.content);
+          return url ? <LinkPreviewCard url={url} isDark={isDark} /> : null;
+        })()}
 
         {localPost.media && localPost.media.length > 0 && (
           <MediaGrid media={localPost.media} />
@@ -233,6 +258,11 @@ const styles = StyleSheet.create({
   mention: {
     color: '#3b82f6',
     fontWeight: '600',
+  },
+  linkText: {
+    color: '#3b82f6',
+    fontWeight: '400',
+    textDecorationLine: 'underline',
   },
   media: {
     width: '100%',

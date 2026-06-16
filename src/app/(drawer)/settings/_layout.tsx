@@ -10,7 +10,7 @@ export default function SettingsLayout(){
         <Stack
         screenOptions={{
             headerShown: true,
-            headerTitle: "Ajustes",
+
             headerBackButtonDisplayMode: "default",
             headerBackTitle: "Perfil",
             headerBackVisible: false,
@@ -34,7 +34,9 @@ export default function SettingsLayout(){
         }}
         >
             <Stack.Screen name="index" options={{ title: "Ajustes" }} />
-        </Stack>
+            <Stack.Screen name="support" options={{ title: "Ayuda y Soporte" }} />
+            <Stack.Screen name="privacy" options={{ title: "Privacidad y Términos" }} />
+            </Stack>
     );
 
 }

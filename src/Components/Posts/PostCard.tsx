@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Image, Platform, TouchableOpacity, Modal, useColorScheme } from "react-native";
+import { View, Text, StyleSheet, Image, Platform, TouchableOpacity, Modal, useColorScheme, Linking } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { router } from "expo-router";
 import { Post } from "@/Types/Posts";
@@ -9,6 +9,15 @@ import { searchUsers } from "@/Services/UserService";
 import { getTrendingTopics } from "@/Services/PostService";
 import { ProcessedImage } from "@/Services/ImageService";
 import ImageViewer from "../ImageViewer";
+import LinkPreviewCard from "./LinkPreviewCard";
+
+// ─── Extrae la primera URL de un texto ────────────────────────────────────────
+const URL_REGEX = /https?:\/\/[^\s<>"]+/;
+
+function extractFirstUrl(text: string): string | null {
+    const match = text.match(URL_REGEX);
+    return match ? match[0] : null;
+}
 
 // ─── Utilidad: formatea números grandes (56000000 → 56M) ────────────────────
 const formatCount = (n: number | undefined | null): string => {
@@ -101,9 +110,9 @@ export default function PostCard({
             style={[styles.card, { backgroundColor: cardBg, borderColor }]}
         >
             {/* ── Header: Avatar + Nombre + Fecha ── */}
-            
+
             <View style={styles.header}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     onPress={() => router.push(`/perfil/${post.user?.id || (post as any).user_id}`)}
                     activeOpacity={0.7}
                     style={styles.avatarWrapper}
@@ -120,7 +129,7 @@ export default function PostCard({
                     )}
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.headerInfo}
                     onPress={() => router.push(`/perfil/${post.user?.id || (post as any).user_id}`)}
                     activeOpacity={0.7}
@@ -156,12 +165,12 @@ export default function PostCard({
 
             {/* ── Grilla de imágenes ── */}
             {post.media && (
-                <MediaGrid 
-                    media={post.media!} 
+                <MediaGrid
+                    media={post.media!}
                     onImagePress={(index) => {
                         setSelectedImageIndex(index);
                         setIsImageViewerVisible(true);
-                    }} 
+                    }}
                 />
             )}
 
@@ -169,29 +178,29 @@ export default function PostCard({
 
             {/* ── Barra de acciones ── */}
             <View style={styles.actions}>
-                <ActionButton 
-                    iconName={post.is_replied ? "chatbubble" : "chatbubble-outline"} 
-                    count={post.replies_count} 
-                    color={post.is_replied ? (isDark ? '#3b82f6' : '#1d4ed8') : iconColor} 
-                    onPress={() => setIsReplyModalVisible(true)} 
+                <ActionButton
+                    iconName={post.is_replied ? "chatbubble" : "chatbubble-outline"}
+                    count={post.replies_count}
+                    color={post.is_replied ? (isDark ? '#3b82f6' : '#1d4ed8') : iconColor}
+                    onPress={() => setIsReplyModalVisible(true)}
                 />
-                <ActionButton 
-                    iconName={post.is_reposted ? "repeat" : "repeat-outline"} 
-                    count={post.reposts_count} 
-                    color={post.is_reposted ? "#00BA7C" : iconColor} 
-                    onPress={() => onRepost?.(post.id)} 
+                <ActionButton
+                    iconName={post.is_reposted ? "repeat" : "repeat-outline"}
+                    count={post.reposts_count}
+                    color={post.is_reposted ? "#00BA7C" : iconColor}
+                    onPress={() => onRepost?.(post.id)}
                 />
-                <ActionButton 
-                    iconName={post.is_liked ? "heart" : "heart-outline"} 
-                    count={post.likes_count} 
-                    color={post.is_liked ? "#F91880" : iconColor} 
-                    onPress={() => onLike?.(post.id)} 
+                <ActionButton
+                    iconName={post.is_liked ? "heart" : "heart-outline"}
+                    count={post.likes_count}
+                    color={post.is_liked ? "#F91880" : iconColor}
+                    onPress={() => onLike?.(post.id)}
                 />
-                <ActionButton 
-                    iconName="arrow-redo-outline" 
-                    count={post.shares_count} 
-                    color={iconColor} 
-                    onPress={() => onShare?.(post.id)} 
+                <ActionButton
+                    iconName="arrow-redo-outline"
+                    count={post.shares_count}
+                    color={iconColor}
+                    onPress={() => onShare?.(post.id)}
                 />
             </View>
 
@@ -259,7 +268,7 @@ function ActionButton({ iconName, count, color, onPress }: { iconName: keyof typ
 
 const styles = StyleSheet.create({
     card: {
-        
+
         width: '100%', //
         borderRadius: 16,
         borderWidth: StyleSheet.hairlineWidth,
