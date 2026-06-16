@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supbase/supabase";
-import { CreateReportDTO } from "../Types/Reports";
+import { CreateReportDTO, Report } from "../Types/Reports";
 import { Usuario } from "@/Types/Users";
 /**
  * Crea un reporte de post o usuario en la base de datos.
@@ -41,15 +41,22 @@ export async function createReport(dto: CreateReportDTO): Promise<void> {
 
 
 
-export async function getReportByMe ({user}:{user: Usuario}){
+
+
+export async function getReportByMe({ user }: { user: Usuario }): Promise<Report[]> {
     try {
-        const {data, error} = await supabase.from('reports').select('*').eq('reporter_id', user.id);
-        if(error) throw error;
-        return data;
+        const { data, error } = await supabase
+            .from('reports')
+            .select('*')
+            .eq('reporter_id', user.id)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return (data ?? []) as Report[];
     } catch (error) {
-        console.error("Error al obtener reportes", error);
+        console.error('Error al obtener reportes', error);
         return [];
     }
-
-
 }
+
+
