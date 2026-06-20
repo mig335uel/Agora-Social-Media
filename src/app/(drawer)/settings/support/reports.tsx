@@ -157,7 +157,7 @@ export default function ReportesScreen() {
                             key={r.id}
                             report={r}
                             isDark={isDark}
-                            onPress={() => {/* navegar al detalle del ticket */}}
+                            onPress={() => router.push(`/(drawer)/settings/support/reports/${r.id}`)}
                         />
                     ))
                 )}
