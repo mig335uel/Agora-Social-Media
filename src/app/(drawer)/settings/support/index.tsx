@@ -4,7 +4,9 @@ import {
     useColorScheme, ScrollView, StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
+import TitleSupport from '@/Services/TitleSupport';
 
 // ─── Sección con ítems de navegación ────────────────────────────────────────
 
@@ -71,6 +73,12 @@ function Section({ title, items, isDark }: { title: string; items: SectionItem[]
 
 export default function SoporteScreen() {
     const isDark = useColorScheme() === 'dark';
+
+    useFocusEffect(
+        useCallback(() => {
+            TitleSupport.setTitle("Ayuda y Soporte");
+        }, [])
+    );
 
     const bg   = isDark ? '#000000' : '#F5F5F5';
     const text = isDark ? '#FFFFFF' : '#111111';

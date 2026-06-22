@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import useAuth from '@/hooks/useAuth';
 import { signOut } from '@/Services/authService';
+import TitleSupport from "@/Services/TitleSupport";
 
 // Componente para los encabezados de sección
 const SectionHeader = ({ title }: { title: string }) => {
@@ -55,7 +56,7 @@ const SettingItem = ({ icon, title, subtitle, onPress, isDestructive = false }: 
 export default function SettingsScreen() {
     const isDark = useColorScheme() === 'dark';
     const currentUser = useAuth();
-
+   
     const handleLogout = () => {
         Alert.alert(
             "Cerrar sesión",

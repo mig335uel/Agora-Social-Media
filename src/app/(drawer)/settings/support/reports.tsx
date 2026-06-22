@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    useColorScheme, ScrollView, StatusBar,
+    useColorScheme, ScrollView, StatusBar, RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Report, ReportStatus } from '@/Types/Reports';
-
+import useAuth from '@/hooks/useAuth';
+import { getReportByMe } from '@/Services/ReportService';
+import TitleSupport from '@/Services/TitleSupport';
+import { useCallback } from 'react';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function timeAgo(dateStr: string): string {
@@ -111,22 +114,50 @@ function EmptyState({ isDark }: { isDark: boolean }) {
 
 export default function ReportesScreen() {
     const isDark = useColorScheme() === 'dark';
-
+    
+    useFocusEffect(
+        useCallback(() => {
+            TitleSupport.setTitle("Reportes");
+        }, [])
+    );
     const bg     = isDark ? '#000000' : '#F7F7F7';
     const text   = isDark ? '#FFFFFF' : '#111111';
     const sub    = isDark ? '#666666' : '#888888';
     const border = isDark ? '#1C1C1C' : '#E8E8E8';
 
-    // TODO: sustituir con tu hook / llamada al servicio
-    const [reports] = useState<Report[]>([]);
-    const loading = false;
+    const usuario = useAuth();
+    const [reports, setReports] = useState<Report[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const fetchReports = async () => {
+        if (!usuario) return;
+        try {
+            const data = await getReportByMe({ user: usuario });
+            setReports(data);
+        } catch (err) {
+            console.error("Error fetching reports", err);
+        }
+    };
+
+    useEffect(() => {
+        if (!usuario) return;
+        setLoading(true);
+        fetchReports().finally(() => setLoading(false));
+    }, [usuario]);
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchReports();
+        setRefreshing(false);
+    };
 
     return (
         <View style={[styles.screen, { backgroundColor: bg }]}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
             {/* Header */}
-            <View style={[styles.header, { borderBottomColor: border }]}>
+            {/* <View style={[styles.header, { borderBottomColor: border }]}>
                 <TouchableOpacity
                     onPress={() => router.back()}
                     style={styles.backBtn}
@@ -143,11 +174,14 @@ export default function ReportesScreen() {
                     </Text>
                 </View>
                 <View style={{ width: 40 }} />
-            </View>
+            </View> */}
 
             <ScrollView
                 contentContainerStyle={styles.list}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? '#fff' : '#000'} />
+                }
             >
                 {loading ? null : reports.length === 0 ? (
                     <EmptyState isDark={isDark} />
@@ -157,7 +191,7 @@ export default function ReportesScreen() {
                             key={r.id}
                             report={r}
                             isDark={isDark}
-                            onPress={() => router.push(`/(drawer)/settings/support/reports/${r.id}`)}
+                            onPress={() => router.push({ pathname: '/(drawer)/settings/support/report/[id]', params: { id: r.id } })}
                         />
                     ))
                 )}

@@ -1,11 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, Stack } from "expo-router";
 import { TouchableOpacity, useColorScheme } from "react-native";
+import TitleSupport, { useSupportTitle } from "@/Services/TitleSupport";
 
 
 export default function SettingsLayout(){
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
+    const supportTitle = useSupportTitle();
+
     return (
         <Stack
         screenOptions={{
@@ -34,7 +37,7 @@ export default function SettingsLayout(){
         }}
         >
             <Stack.Screen name="index" options={{ title: "Ajustes" }} />
-            <Stack.Screen name="support" options={{ title: "Ayuda y Soporte" }} />
+            <Stack.Screen name="support" options={{ title: supportTitle }} />
             <Stack.Screen name="privacy" options={{ title: "Privacidad y Términos" }} />
             </Stack>
     );

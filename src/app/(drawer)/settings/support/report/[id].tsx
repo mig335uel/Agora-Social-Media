@@ -1,13 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
     useColorScheme, ScrollView, StatusBar, TextInput,
     KeyboardAvoidingView, Platform, Keyboard
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { ReportWithMessages, ReportStatus } from '@/Types/Reports';
 import useAuth from '@/hooks/useAuth';
+import { getReportById, addReportMessage } from '@/Services/ReportService';
+import TitleSupport from '@/Services/TitleSupport';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -24,50 +26,14 @@ function timeAgo(dateStr: string): string {
 }
 
 const STATUS_CONFIG: Record<ReportStatus, { label: string; color: string; bg: string; icon: any }> = {
-    pending:   { label: 'Pendiente',   color: '#F59E0B', bg: 'rgba(245,158,11,0.12)',  icon: 'time-outline' },
-    reviewed:  { label: 'Revisado',    color: '#10B981', bg: 'rgba(16,185,129,0.12)',  icon: 'checkmark-circle-outline' },
+    pending: { label: 'Pendiente', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', icon: 'time-outline' },
+    reviewed: { label: 'Revisado', color: '#10B981', bg: 'rgba(16,185,129,0.12)', icon: 'checkmark-circle-outline' },
     dismissed: { label: 'Desestimado', color: '#6B7280', bg: 'rgba(107,114,128,0.12)', icon: 'close-circle-outline' },
 };
 
 const CONTEXT_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
     post: { label: 'Publicación', icon: 'document-text-outline', color: '#3B82F6' },
-    user: { label: 'Usuario',     icon: 'person-outline',        color: '#8B5CF6' },
-};
-
-// ─── Mock Data ───────────────────────────────────────────────────────────────
-
-const MOCK_REPORT: ReportWithMessages = {
-    id: "rep_8f92j3b1k",
-    context: "post",
-    reporter_id: "user_123",
-    post_id: "post_xyz",
-    reason: "Contenido inapropiado",
-    description: "Este post contiene lenguaje ofensivo y falta el respeto a las normas de la comunidad, además fomenta el odio.",
-    status: "reviewed",
-    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-    messages: [
-        {
-            id: "msg_1",
-            report_id: "rep_8f92j3b1k",
-            content: "Hemos recibido tu reporte y estamos analizándolo. Gracias por mantener la comunidad segura.",
-            user_id: "system", // moderador
-            created_at: new Date(Date.now() - 86400000 * 1.9).toISOString(),
-        },
-        {
-            id: "msg_2",
-            report_id: "rep_8f92j3b1k",
-            content: "¿Tienen alguna novedad? El post sigue activo y generando interacciones negativas.",
-            user_id: "user_123", // reportero
-            created_at: new Date(Date.now() - 86400000 * 1).toISOString(),
-        },
-        {
-            id: "msg_3",
-            report_id: "rep_8f92j3b1k",
-            content: "Hola. El post ha sido revisado por nuestro equipo de moderación y eliminado de la plataforma. Agradecemos mucho tu reporte.",
-            user_id: "system", // moderador
-            created_at: new Date(Date.now() - 3600000).toISOString(),
-        }
-    ]
+    user: { label: 'Usuario', icon: 'person-outline', color: '#8B5CF6' },
 };
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -76,18 +42,32 @@ export default function ReportDetailScreen() {
     const { id } = useLocalSearchParams();
     const isDark = useColorScheme() === 'dark';
     const currentUser = useAuth();
-    
-    // TODO: Sustituir con llamada real para obtener el detalle del reporte usando el parámetro "id"
-    const [report, setReport] = useState<ReportWithMessages | null>(MOCK_REPORT);
+
+    const [report, setReport] = useState<ReportWithMessages | null>(null);
     const [newMessage, setNewMessage] = useState("");
     const scrollViewRef = useRef<ScrollView>(null);
 
-    const bg     = isDark ? '#000000' : '#F7F7F7';
-    const text   = isDark ? '#FFFFFF' : '#111111';
-    const sub    = isDark ? '#666666' : '#888888';
+    useEffect(() => {
+        if (!id) return;
+        getReportById(id as string).then((res) => {
+            setReport(res);
+            if (res) {
+                TitleSupport.setTitle(TitleSupport.titleTicket(res.id));
+            }
+        });
+
+        // Limpiar el título al salir de la pantalla
+        return () => {
+            TitleSupport.setTitle("Ayuda y Soporte");
+        };
+    }, [id]);
+
+    const bg = isDark ? '#000000' : '#F7F7F7';
+    const text = isDark ? '#FFFFFF' : '#111111';
+    const sub = isDark ? '#666666' : '#888888';
     const border = isDark ? '#1C1C1C' : '#E8E8E8';
-    const card   = isDark ? '#111111' : '#FFFFFF';
-    
+    const card = isDark ? '#111111' : '#FFFFFF';
+
     const inputBg = isDark ? '#1A1A1A' : '#FFFFFF';
     const myMsgBg = isDark ? '#2563EB' : '#3B82F6';
     const otherMsgBg = isDark ? '#1A1A1A' : '#E5E7EB';
@@ -95,53 +75,43 @@ export default function ReportDetailScreen() {
 
     if (!report) return null;
 
-    const status  = STATUS_CONFIG[report.status]   ?? STATUS_CONFIG.pending;
+    const status = STATUS_CONFIG[report.status] ?? STATUS_CONFIG.pending;
     const context = CONTEXT_CONFIG[report.context] ?? CONTEXT_CONFIG.post;
 
-    const handleSend = () => {
-        if (!newMessage.trim()) return;
-        const msg = {
-            id: Date.now().toString(),
-            report_id: report.id,
-            content: newMessage.trim(),
-            user_id: currentUser?.id || "user_123",
-            created_at: new Date().toISOString(),
-        };
-        setReport(prev => prev ? { ...prev, messages: [...prev.messages, msg] } : null);
+    const handleSend = async () => {
+        if (!newMessage.trim() || !currentUser) return;
+        const tempMsg = newMessage.trim();
         setNewMessage("");
         Keyboard.dismiss();
+
+        try {
+            const addedMsg = await addReportMessage(report.id, tempMsg);
+            if (addedMsg) {
+                setReport(prev => prev ? { ...prev, messages: [...prev.messages, addedMsg] } : null);
+            }
+        } catch (e) {
+            console.error("Error enviando mensaje", e);
+        }
+
         setTimeout(() => {
             scrollViewRef.current?.scrollToEnd({ animated: true });
         }, 100);
     };
 
     return (
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
             style={[styles.screen, { backgroundColor: bg }]}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={0}
         >
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-            {/* Header */}
-            {/* <View style={[styles.header, { borderBottomColor: border, backgroundColor: bg }]}>
-                <TouchableOpacity
-                    onPress={() => router.back()}
-                    style={styles.backBtn}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                    <Ionicons name="chevron-back" size={26} color={text} />
-                </TouchableOpacity>
-                <View style={styles.headerCenter}>
-                    <Text style={[styles.headerTitle, { color: text }]}>
-                        Ticket #{report.id.slice(0, 8).toUpperCase()}
-                    </Text>
-                    <Text style={[styles.headerSub, { color: sub }]}>
-                        {report.messages.length} mensaje{report.messages.length !== 1 && 's'}
-                    </Text>
-                </View>
-                <View style={{ width: 40 }} />
-            </View> */}
+            {/* <Stack.Screen 
+                options={{ 
+                    title: `Ticket #${report.id.slice(0, 8).toUpperCase()}`,
+                    headerShown: true
+                }} 
+            /> */}
 
             <ScrollView
                 ref={scrollViewRef}
@@ -173,17 +143,19 @@ export default function ReportDetailScreen() {
                 </View>
 
                 {/* Separador */}
-                <View style={styles.timelineDivider}>
-                    <View style={[styles.timelineLine, { backgroundColor: border }]} />
-                    <Text style={[styles.timelineText, { color: sub, backgroundColor: bg }]}>Actualizaciones</Text>
-                    <View style={[styles.timelineLine, { backgroundColor: border }]} />
-                </View>
+                {report.messages.length > 0 && (
+                    <View style={styles.timelineDivider}>
+                        <View style={[styles.timelineLine, { backgroundColor: border }]} />
+                        <Text style={[styles.timelineText, { color: sub, backgroundColor: bg }]}>Actualizaciones</Text>
+                        <View style={[styles.timelineLine, { backgroundColor: border }]} />
+                    </View>
+                )}
 
                 {/* Mensajes */}
                 {report.messages.map((msg, index) => {
-                    const isMe = msg.user_id === (currentUser?.id || "user_123");
+                    const isMe = msg.user_id === currentUser?.id;
                     const showAvatar = !isMe && (index === 0 || report.messages[index - 1].user_id !== msg.user_id);
-                    
+
                     return (
                         <View key={msg.id} style={[styles.messageRow, isMe ? styles.messageRowMe : styles.messageRowOther]}>
                             {!isMe && (
@@ -195,7 +167,7 @@ export default function ReportDetailScreen() {
                                     ) : <View style={styles.avatarSpacer} />}
                                 </View>
                             )}
-                            
+
                             <View style={[
                                 styles.messageBubble,
                                 isMe ? [styles.bubbleMe, { backgroundColor: myMsgBg }] : [styles.bubbleOther, { backgroundColor: otherMsgBg }]
@@ -225,11 +197,11 @@ export default function ReportDetailScreen() {
                             multiline
                             maxLength={500}
                         />
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={handleSend}
                             disabled={!newMessage.trim()}
                             style={[
-                                styles.sendBtn, 
+                                styles.sendBtn,
                                 { backgroundColor: newMessage.trim() ? '#3B82F6' : (isDark ? '#333' : '#E5E5E5') }
                             ]}
                         >
@@ -295,7 +267,7 @@ const styles = StyleSheet.create({
     messageRow: { flexDirection: 'row', marginBottom: 12, maxWidth: '85%' },
     messageRowMe: { alignSelf: 'flex-end', justifyContent: 'flex-end' },
     messageRowOther: { alignSelf: 'flex-start' },
-    
+
     avatarContainer: { width: 28, marginRight: 8, justifyContent: 'flex-end', paddingBottom: 2 },
     systemAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
     avatarSpacer: { width: 28 },
