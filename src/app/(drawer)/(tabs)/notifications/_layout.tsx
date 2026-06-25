@@ -1,14 +1,17 @@
-import { useColorScheme } from "react-native";
+import { useColorScheme, View } from "react-native";
 import { MaterialTopTabs } from "@/Components/TopBar/materialtopbars";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function NotificationLayout() {
     const isDark = useColorScheme() === 'dark';
     const bg = isDark ? '#000' : '#fff';
     const activeColor = isDark ? '#fff' : '#000';
     const inactiveColor = isDark ? '#555' : '#aaa';
+    const insets = useSafeAreaInsets();
 
     return (
-        <MaterialTopTabs
+        <View style={{ flex: 1, backgroundColor: bg, paddingTop: insets.top }}>
+            <MaterialTopTabs
             screenOptions={{
                 tabBarStyle: {
                     backgroundColor: bg,
@@ -35,5 +38,6 @@ export default function NotificationLayout() {
             <MaterialTopTabs.Screen name="index" options={{ title: 'Notificaciones' }} />
             <MaterialTopTabs.Screen name="requests" options={{ title: 'Solicitudes' }} />
         </MaterialTopTabs>
+        </View>
     );
 }

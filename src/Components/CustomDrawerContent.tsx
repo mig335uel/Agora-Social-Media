@@ -1,164 +1,356 @@
-import React from 'react';
-import { View, Text, Pressable, StyleSheet, Alert, useColorScheme } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  useColorScheme,
+  Image,
+} from 'react-native';
 import { DrawerContentScrollView, DrawerContentComponentProps } from '@react-navigation/drawer';
-import { BlurView } from 'expo-blur';
-import { router, useNavigation } from 'expo-router';
+import { router } from 'expo-router';
 import { signOut } from '@/Services/authService';
-import { Octicons } from '@expo/vector-icons';
-import { TouchableOpacity } from 'react-native';
-import ProfileLayout from '@/app/(drawer)/(tabs)/profile/_layout';
-import { PureNativeButton } from 'react-native-gesture-handler';
+import { Ionicons } from '@expo/vector-icons';
+import useAuth from '@/hooks/useAuth';
+import { supabase } from '@/lib/supbase/supabase';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-function DrawerButton({ label, onPress }: { label: string; onPress: () => void }) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+// ─────────────────────────────────────────────────────────────────────────────
+// Ítem de menú — mismo aspecto que SettingItem en settings/index.tsx
+// ─────────────────────────────────────────────────────────────────────────────
+function DrawerItem({
+  icon,
+  label,
+  onPress,
+  isDestructive = false,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  isDestructive?: boolean;
+}) {
+  const isDark = useColorScheme() === 'dark';
+  const textColor = isDestructive ? '#ef4444' : isDark ? '#e5e7eb' : '#1f2937';
+  const iconBg = isDestructive
+    ? isDark
+      ? 'rgba(239,68,68,0.15)'
+      : '#fee2e2'
+    : isDark
+      ? '#1f2937'
+      : '#f3f4f6';
 
   return (
-    <Pressable
+    <TouchableOpacity
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
-        pressed && { opacity: 0.7 },
+      activeOpacity={0.7}
+      style={[
+        styles.item,
+        { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' },
       ]}
     >
-      <Text style={[styles.buttonText, { color: isDark ? '#fff' : '#111' }]}>{label}</Text>
-    </Pressable>
+      {/* Ícono circular */}
+      <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
+        <Ionicons name={icon} size={20} color={textColor} />
+      </View>
+
+      {/* Texto */}
+      <Text style={[styles.itemLabel, { color: textColor, flex: 1 }]}>{label}</Text>
+
+      {/* Chevron (solo en no-destructivos) */}
+      {!isDestructive && (
+        <Ionicons
+          name="chevron-forward"
+          size={18}
+          color={isDark ? '#4b5563' : '#9ca3af'}
+        />
+      )}
+    </TouchableOpacity>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Drawer principal
+// ─────────────────────────────────────────────────────────────────────────────
 export default function CustomDrawerContent(props: DrawerContentComponentProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const handleGoHome = () => {
-    props.navigation.closeDrawer();
-    router.push('/'); // cae en /(drawer)/(tabs) por tu estructura
-  };
+  const isDark = useColorScheme() === 'dark';
+  const user = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [counts, setCounts] = useState<{ following: number; followers: number } | null>(null);
+  const insets = useSafeAreaInsets();
 
-  const handleSignOut = async () => {
-    try {
-      props.navigation.closeDrawer();
-      await signOut();
-      router.replace('/login');
-    } catch (e) {
-      Alert.alert('Error', 'No se pudo cerrar sesión.');
-    }
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Datos del perfil
+    supabase
+      .from('users')
+      .select('display_name, username, profile_picture_url')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) setProfile(data);
+      });
+
+    // Seguidores y seguidos en paralelo
+    Promise.all([
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', user.id),
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id),
+    ]).then(([following, followers]) => {
+      setCounts({
+        following: following.count ?? 0,
+        followers: followers.count ?? 0,
+      });
+    });
+  }, [user?.id]);
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Cerrar sesión',
+      '¿Seguro que quieres desconectar tu cuenta de este dispositivo?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Salir',
+          style: 'destructive',
+          onPress: async () => {
+            props.navigation.closeDrawer();
+            await signOut();
+            router.replace('/login');
+          },
+        },
+      ]
+    );
   };
 
   return (
-    <DrawerContentScrollView
-      {...props}
-      contentContainerStyle={[
-        styles.container,
-        { backgroundColor: isDark ? '#000' : '#fff' },
-      ]}
-    >
-      <View style={styles.headerWrap}>
-        <BlurView intensity={35} tint={isDark ? 'dark' : 'light'} style={styles.header}>
-          <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#111' }]}>Agora</Text>
-          <Text style={[styles.headerSubtitle, { color: isDark ? '#cfcfcf' : '#444' }]}>
-            Menú
-          </Text>
-        </BlurView>
-      </View>
+    <View style={[styles.root, { backgroundColor: isDark ? '#000' : '#fff' }]}>
 
-      <View>
-        <TouchableOpacity
-          onPress={() => {
-            router.push("/(tabs)/profile")
-            props.navigation.closeDrawer();
-          }}
-          className='flex-row p-4 gap-3 border rounded-full px-5 mx-5 shadow-current drop-shadow-sm'
-          style={[styles.ButtonProfile, isDark ? { borderColor: '#fff' } : { borderColor: '#000' } ]}
-        >
-          <Octicons name="person-fill" size={24} color={isDark ? '#fff' : '#000'} />
-          <Text className='font-bold text-xl' style={{ color: isDark ? '#fff' : '#000' }}>Perfil</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => {
-            router.push("/messaging" as any);
-            props.navigation.closeDrawer();
-          }}
-          className='flex-row p-4 gap-3 border rounded-full px-5 mx-5 mt-3 shadow-current drop-shadow-sm'
-          style={[styles.ButtonProfile, isDark ? { borderColor: '#fff' } : { borderColor: '#000' } ]}
-        >
-          <Octicons name="comment-discussion" size={24} color={isDark ? '#fff' : '#000'} />
-          <Text className='font-bold text-xl' style={{ color: isDark ? '#fff' : '#000' }}>Mensajes</Text>
-        </TouchableOpacity>
-
-      </View>
-      
-      <View className="">
-          <TouchableOpacity 
-            activeOpacity={0.7}
-            className={`border ${isDark ? 'border-white' : 'border-black'} rounded-full p-4 px-5 mx-5  mt-5 ${isDark ? 'bg-black' : 'bg-white'} items-center  active:bg-red-500`}
-            onPress={handleSignOut}
+      {/* ── Cabecera fija de perfil (FUERA del ScrollView) ── */}
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => {
+          router.push('/(drawer)/(tabs)/profile');
+          props.navigation.closeDrawer();
+        }}
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top + 16,
+            backgroundColor: isDark ? '#000' : '#fff',
+            borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+          },
+        ]}
+      >
+        {/* Avatar */}
+        {profile?.profile_picture_url ? (
+          <Image source={{ uri: profile.profile_picture_url }} style={styles.avatar} />
+        ) : (
+          <View
+            style={[
+              styles.avatar,
+              styles.avatarPlaceholder,
+              { backgroundColor: isDark ? '#1f2937' : '#f3f4f6' },
+            ]}
           >
-            <Text className={`font-bold text-xl ${isDark ? 'text-white' : 'text-black'}`}>Cerrar Sesión</Text>
-          </TouchableOpacity>
+            <Ionicons name="person" size={30} color={isDark ? '#4b5563' : '#9ca3af'} />
+          </View>
+        )}
+
+        {/* Nombre + username + stats */}
+        <View style={styles.headerTexts}>
+          {profile ? (
+            <>
+              <Text
+                style={[styles.displayName, { color: isDark ? '#fff' : '#000' }]}
+                numberOfLines={1}
+              >
+                {profile.display_name}
+              </Text>
+              <Text
+                style={[styles.username, { color: isDark ? '#9ca3af' : '#6b7280' }]}
+                numberOfLines={1}
+              >
+                @{profile.username}
+              </Text>
+
+              {counts !== null && (
+                <View style={styles.statsRow}>
+                  <Text style={[styles.statNumber, { color: isDark ? '#fff' : '#000' }]}>
+                    {counts.following.toLocaleString()}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: isDark ? '#9ca3af' : '#6b7280' }]}>
+                    {' '}Siguiendo{'  '}
+                  </Text>
+                  <Text style={[styles.statNumber, { color: isDark ? '#fff' : '#000' }]}>
+                    {counts.followers.toLocaleString()}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: isDark ? '#9ca3af' : '#6b7280' }]}>
+                    {' '}Seguidores
+                  </Text>
+                </View>
+              )}
+            </>
+          ) : (
+            <>
+              <View
+                style={[
+                  styles.skeleton,
+                  { width: 130, height: 17, marginBottom: 8, backgroundColor: isDark ? '#374151' : '#e5e7eb' },
+                ]}
+              />
+              <View
+                style={[
+                  styles.skeleton,
+                  { width: 85, height: 13, backgroundColor: isDark ? '#374151' : '#e5e7eb' },
+                ]}
+              />
+            </>
+          )}
+        </View>
+      </TouchableOpacity>
+
+      {/* ── Lista de opciones (scrollable) ── */}
+      <DrawerContentScrollView
+        {...props}
+       
+        contentContainerStyle={{ paddingTop: 3, paddingBottom: 0 }}
+      >
+        <View style={{ paddingTop: 0 }}>
+          <DrawerItem
+            icon="home-outline"
+            label="Inicio"
+            onPress={() => {
+              router.push('/(drawer)/(tabs)/index');
+              props.navigation.closeDrawer();
+            }}
+          />
+          <DrawerItem
+            icon="person-outline"
+            label="Mi Perfil"
+            onPress={() => {
+              router.push('/(drawer)/(tabs)/profile');
+              props.navigation.closeDrawer();
+            }}
+          />
+          <DrawerItem
+            icon="chatbubbles-outline"
+            label="Mensajes"
+            onPress={() => {
+              router.push('/messaging' as any);
+              props.navigation.closeDrawer();
+            }}
+          />
+          <DrawerItem
+            icon="settings-outline"
+            label="Ajustes y privacidad"
+            onPress={() => {
+              router.push('/(drawer)/settings');
+              props.navigation.closeDrawer();
+            }}
+          />
+        </View>
+      </DrawerContentScrollView>
+
+
+      {/* ── Footer fijo: Cerrar sesión ── */}
+      <View
+        style={[
+          styles.footer,
+          {
+            borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+            paddingBottom: insets.bottom || 24,
+          },
+        ]}
+      >
+        <DrawerItem
+          icon="log-out-outline"
+          label="Cerrar sesión"
+          isDestructive
+          onPress={handleSignOut}
+        />
       </View>
-    </DrawerContentScrollView>
+    </View>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    paddingBottom: 24,
+  root: {
+    flex: 1,
   },
-  headerWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
+  // Header
   header: {
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    overflow: 'hidden',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
-  headerSubtitle: {
-    marginTop: 4,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  
-  iconRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  iconRowText: {
-    fontSize: 15,
+  avatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+  },
+  avatarPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTexts: {
+    flex: 1,
+    marginLeft: 14,
+    justifyContent: 'center',
+  },
+  displayName: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 3,
+  },
+  username: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: 2,
+  },
+  statNumber: {
+    fontSize: 14,
     fontWeight: '700',
   },
-  button: {
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+  statLabel: {
+    fontSize: 14,
+    fontWeight: '400',
   },
-  buttonText: {
-    fontSize: 15,
-    fontWeight: '700',
+  skeleton: {
+    borderRadius: 4,
   },
-
-  ButtonProfile: {
-    borderWidth: 1,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    elevation: 2,
-
-  }
+  // Items
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 13,
+    paddingHorizontal: 20,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  iconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  itemLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Footer
+  footer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 4,
+  },
 });
-

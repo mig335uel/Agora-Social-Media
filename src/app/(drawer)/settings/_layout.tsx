@@ -37,6 +37,7 @@ export default function SettingsLayout(){
         }}
         >
             <Stack.Screen name="index" options={{ title: "Ajustes" }} />
+            <Stack.Screen name="Security" options={{ title: supportTitle }} />
             <Stack.Screen name="support" options={{ title: supportTitle }} />
             <Stack.Screen name="privacy" options={{ title: "Privacidad y Términos" }} />
             </Stack>

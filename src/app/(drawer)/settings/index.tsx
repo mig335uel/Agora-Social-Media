@@ -95,7 +95,7 @@ export default function SettingsScreen() {
                     icon="shield-checkmark-outline" 
                     title="Seguridad" 
                     subtitle="Contraseña y métodos de acceso"
-                    onPress={() => console.log("Seguridad")}
+                    onPress={() => router.push("/(drawer)/settings/Security")}
                 />
 
                 <SectionHeader title="Preferencias" />

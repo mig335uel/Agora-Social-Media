@@ -185,7 +185,7 @@ export const EditorDeTexto = ({
   // Renderizado con Highlighting (Overlay)
   return (
     <>
-      {appBar && <PostDetailAppBar />}
+      
       <View style={{ marginBottom: 20 }} />
       <View style={styles.container}>
         {showSuggestions && (
