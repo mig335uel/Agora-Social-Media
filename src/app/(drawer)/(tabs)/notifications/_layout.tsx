@@ -1,6 +1,7 @@
 import { useColorScheme, View } from "react-native";
 import { MaterialTopTabs } from "@/Components/TopBar/materialtopbars";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AppBar from "@/Components/AppBar";
 
 export default function NotificationLayout() {
     const isDark = useColorScheme() === 'dark';
@@ -11,6 +12,7 @@ export default function NotificationLayout() {
 
     return (
         <View style={{ flex: 1, backgroundColor: bg, paddingTop: insets.top }}>
+            <AppBar title="Agora" />
             <MaterialTopTabs
             screenOptions={{
                 tabBarStyle: {
