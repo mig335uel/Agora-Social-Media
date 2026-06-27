@@ -7,10 +7,11 @@ import { router } from 'expo-router';
 import { Usuario } from '@/Types/Users';
 import { supabase } from '@/lib/supbase/supabase';
 import { useProfileRefresh } from '@/Controller/_context';
-import Insignia from '../../../../assets/Insignia.svg';
+
 
 import { toggleFollow, blockUser, unblockUser } from '@/Services/UserService';
 import useAuth from '@/hooks/useAuth';
+import VerifiedBadge from '@/Components/verifiedBadge';
 
 interface ProfileHeaderProps {
   user?: Usuario;
@@ -202,7 +203,7 @@ export default function ProfileHeader({ user, isMe, isFollowing, isPending, isBl
               {user?.display_name || 'Agora User'}
             </Text>
             {user?.is_verified === true && (
-              <Insignia width={24} height={24} />
+              <VerifiedBadge width={24} height={24} />
             )}
           </View>
           <View className="flex-row items-center mt-1 bg-blue-100 dark:bg-blue-900/30 px-3 py-1 rounded-full">

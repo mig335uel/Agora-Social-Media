@@ -10,7 +10,7 @@ import { getTrendingTopics } from "@/Services/PostService";
 import { ProcessedImage } from "@/Services/ImageService";
 import ImageViewer from "../ImageViewer";
 import LinkPreviewCard from "./LinkPreviewCard";
-
+import VerifiedBadge from "../verifiedBadge";
 // ─── Extrae la primera URL de un texto ────────────────────────────────────────
 const URL_REGEX = /https?:\/\/[^\s<>"]+/;
 
@@ -139,7 +139,7 @@ export default function PostCard({
                             {post.user?.display_name || (post as any).display_name || "Agora User"}
                         </Text>
                         {post.user?.is_verified && (
-                            <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" />
+                            <VerifiedBadge width={16} height={16} />
                         )}
                         <Text style={[styles.timeAgo, { color: subColor }]}>
                             · {timeAgo(post.created_at)}
