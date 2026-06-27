@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import { Usuario } from '@/Types/Users';
 import { supabase } from '@/lib/supbase/supabase';
 import { useProfileRefresh } from '@/Controller/_context';
+import Insignia from '../../../../assets/Insignia.svg';
 
 import { toggleFollow, blockUser, unblockUser } from '@/Services/UserService';
 import useAuth from '@/hooks/useAuth';
@@ -201,7 +202,7 @@ export default function ProfileHeader({ user, isMe, isFollowing, isPending, isBl
               {user?.display_name || 'Agora User'}
             </Text>
             {user?.is_verified === true && (
-              <Ionicons name="checkmark-circle" size={24} color="#3b82f6" />
+              <Insignia width={24} height={24} />
             )}
           </View>
           <View className="flex-row items-center mt-1 bg-blue-100 dark:bg-blue-900/30 px-3 py-1 rounded-full">
@@ -282,11 +283,10 @@ export default function ProfileHeader({ user, isMe, isFollowing, isPending, isBl
 
               {/* Botón bloquear/desbloquear */}
               <TouchableOpacity
-                className={`p-3 rounded-2xl ${
-                  isBlocked
+                className={`p-3 rounded-2xl ${isBlocked
                     ? 'bg-red-100 dark:bg-red-900/30'
                     : 'bg-gray-100 dark:bg-gray-800'
-                }`}
+                  }`}
                 activeOpacity={0.8}
                 onPress={handleToggleBlock}
               >
