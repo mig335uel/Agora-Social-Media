@@ -539,7 +539,7 @@ export const MessageService = {
             const keyInserts: { chat_id: string; device_id: string; encripted_key: string }[] = [];
 
             await Promise.all(
-                (devices ?? []).map(async (device) => {
+                (devices ?? []).map(async (device: any) => {
                     // Omitir dispositivos sin clave pública o baneados (campo is_banned de la tabla devices)
                     if (!device.public_device_key || device.is_banned) return;
                     try {

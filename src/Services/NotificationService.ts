@@ -33,12 +33,12 @@ export async function requestNotificationPermission(): Promise<string | null> {
   }
 
   // Solicitar permiso al usuario
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  const { status: existingStatus } = await Notifications.getPermissionsAsync() as any;
   let finalStatus = existingStatus;
 
   if (existingStatus !== 'granted') {
     try {
-      const { status } = await Notifications.requestPermissionsAsync();
+      const { status } = await Notifications.requestPermissionsAsync() as any;
       finalStatus = status;
     } catch (permError) {
       console.warn("⚠️ Error solicitando permiso:", permError);
