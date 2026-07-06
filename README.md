@@ -12,6 +12,7 @@ Agora es una plataforma de red social moderna y dinámica desarrollada con **Exp
 -   **Sistema de Seguimiento**: Funcionalidad de seguir/unseguir integrada para construir tu propia red.
 -   **Interacciones en Tiempo Real**: Likes, reposts (quotes) y compartición de contenido.
 -   **Diseño Premium**: UI moderna con soporte para modo oscuro (Dark Mode) y efectos visuales avanzados (Glassmorphism).
+-   **Mensajes Directos**: Sistema de mensajería privada con cifrado de extremo a extremo y notificaciones en tiempo real.
 
 ## 🛠️ Stack Tecnológico
 
