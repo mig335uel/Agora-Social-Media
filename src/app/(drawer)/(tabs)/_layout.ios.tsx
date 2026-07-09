@@ -60,22 +60,22 @@ export default function TabLayout() {
 
   return (
     <>
-      <NativeTabs backgroundColor={isDark ? '#141414' : '#fff'}>
+      <NativeTabs backgroundColor={isDark ? '#141414' : '#fff'} labelVisibilityMode='unlabeled'>
         <NativeTabs.Trigger name="feed">
-          <NativeTabs.Trigger.Label>Inicio</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden>Inicio</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
         </NativeTabs.Trigger>
 
         <NativeTabs.Trigger name="search">
-          <NativeTabs.Trigger.Label>Explorar</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden>Explorar</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="newpost">
-          <NativeTabs.Trigger.Label>Publicar</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden>Publicar</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="plus.circle.fill" md="add" />
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="notifications">
-          <NativeTabs.Trigger.Label>Notificaciones</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden>Notificaciones</NativeTabs.Trigger.Label>
           {notificationNumber > 0 && (
             <NativeTabs.Trigger.Badge>{notificationNumber.toString()}</NativeTabs.Trigger.Badge>
           )}
@@ -83,7 +83,7 @@ export default function TabLayout() {
         </NativeTabs.Trigger>
 
         <NativeTabs.Trigger name="profile">
-          <NativeTabs.Trigger.Label>Cuenta</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden>Cuenta</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="person.fill" md="person" />
         </NativeTabs.Trigger>
       </NativeTabs >

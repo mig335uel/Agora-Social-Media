@@ -221,7 +221,7 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             icon="home-outline"
             label="Inicio"
             onPress={() => {
-              router.push('/(drawer)/(tabs)/index');
+              router.push('/(drawer)/(tabs)/feed');
               props.navigation.closeDrawer();
             }}
           />
