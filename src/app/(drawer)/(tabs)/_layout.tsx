@@ -243,6 +243,9 @@ export default function TabLayout() {
           <Octicons name="person-fill" size={size} color={color} />
         ),
       }} />
+      {/* Pantallas puente para iPad — ocultas en la tab bar de Android/iPhone */}
+      <Tabs.Screen name="messaging" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }

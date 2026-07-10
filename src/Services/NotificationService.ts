@@ -2,6 +2,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
 import { Platform, Alert } from 'react-native';
+import messaging from '@react-native-firebase/messaging';
 import { supabase } from "../lib/supbase/supabase";
 import { E2EEService } from './E2EEService';
 import { NativeModules } from 'react-native';
@@ -56,16 +57,54 @@ export async function requestNotificationPermission(): Promise<string | null> {
 
   // Obtener el token APN (iOS) o FCM (Android)
   try {
-    // @ts-ignore
-    const token = (await Notifications.getDevicePushTokenAsync({
-      projectId: "5daba5d2-4908-419a-9034-2e3ea691e59f"
-    })).data;
-    console.log("✅ Token push obtenido:", token);
+    let token: string;
+    
+    if (Platform.OS === 'ios') {
+      // Para obtener el token FCM en iOS (en lugar del APNs que da Expo por defecto)
+      // necesitamos usar la librería nativa de Firebase Messaging.
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+      if (!enabled) {
+        throw new Error("Permisos no concedidos en Firebase Messaging");
+      }
+
+      // Registramos el dispositivo para recibir mensajes remotos (necesario en iOS)
+      if (!messaging().isDeviceRegisteredForRemoteMessages) {
+        await messaging().registerDeviceForRemoteMessages();
+      }
+      
+      // FIX RACE CONDITION: Reintentamos obtener el token un par de veces si falla (muy común en Release iOS)
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          token = await messaging().getToken();
+          if (token) break;
+        } catch (e) {
+          if (retries === 1) throw e;
+          await new Promise(res => setTimeout(res, 1000)); // Esperar 1 segundo
+        }
+        retries--;
+      }
+    } else {
+      // En Android, podemos usar Expo (que devuelve FCM) o Firebase. Usamos Firebase por consistencia.
+      token = await messaging().getToken();
+    }
+    
+    console.log("✅ Token push (FCM) obtenido:", token);
     return token;
   } catch (error: any) {
     // Fallback: si falla el token real (configuración, red, etc.),
     // generamos un token de desarrollo para no bloquear el registro del Búnker E2EE.
     const devToken = `DEV_${Platform.OS.toUpperCase()}_${Device.osBuildId || Device.modelId || Date.now()}`;
+    
+    // Mostramos una alerta en pantalla para poder depurar en Release
+    if (Platform.OS === 'ios') {
+      Alert.alert("Error Push iOS", `Fallo al obtener token FCM: ${error.message}`);
+    }
+    
     console.warn("⚠️ Token push no disponible. Usando token de desarrollo:", devToken, error.message);
     return devToken;
   }

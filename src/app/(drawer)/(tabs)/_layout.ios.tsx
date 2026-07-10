@@ -11,6 +11,7 @@ import { BlurView } from 'expo-blur';
 import useAuth from '@/hooks/useAuth';
 import { useEffect, useState } from 'react';
 import { supabase } from '@lib/supbase/supabase'
+import * as Device from 'expo-device';
 
 export default function TabLayout() {
   const user = useAuth();
@@ -57,25 +58,26 @@ export default function TabLayout() {
   const isIOS = Platform.OS === 'ios';
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
+  const isTablet = Device.deviceType === Device.DeviceType.TABLET;
 
   return (
     <>
-      <NativeTabs backgroundColor={isDark ? '#141414' : '#fff'} labelVisibilityMode='unlabeled'>
+      <NativeTabs backgroundColor={isDark ? '#141414' : '#fff'} labelVisibilityMode={isTablet ? 'labeled' : 'unlabeled'} sidebarAdaptable>
         <NativeTabs.Trigger name="feed">
-          <NativeTabs.Trigger.Label hidden>Inicio</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden={!isTablet}>Inicio</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
         </NativeTabs.Trigger>
 
         <NativeTabs.Trigger name="search">
-          <NativeTabs.Trigger.Label hidden>Explorar</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden={!isTablet}>Explorar</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="newpost">
-          <NativeTabs.Trigger.Label hidden>Publicar</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden={!isTablet}>Publicar</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="plus.circle.fill" md="add" />
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="notifications">
-          <NativeTabs.Trigger.Label hidden>Notificaciones</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden={!isTablet}>Notificaciones</NativeTabs.Trigger.Label>
           {notificationNumber > 0 && (
             <NativeTabs.Trigger.Badge>{notificationNumber.toString()}</NativeTabs.Trigger.Badge>
           )}
@@ -83,9 +85,24 @@ export default function TabLayout() {
         </NativeTabs.Trigger>
 
         <NativeTabs.Trigger name="profile">
-          <NativeTabs.Trigger.Label hidden>Cuenta</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden={!isTablet}>Cuenta</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="person.fill" md="person" />
         </NativeTabs.Trigger>
+
+        {/* ── Solo iPad: items extra que en iPhone están en el Drawer ── */}
+        {isTablet && (
+          <NativeTabs.Trigger name="messaging">
+            <NativeTabs.Trigger.Label>Mensajes</NativeTabs.Trigger.Label>
+            <NativeTabs.Trigger.Icon sf="bubble.left.and.bubble.right.fill" md="chat" />
+          </NativeTabs.Trigger>
+        )}
+
+        {isTablet && (
+          <NativeTabs.Trigger name="settings">
+            <NativeTabs.Trigger.Label>Ajustes</NativeTabs.Trigger.Label>
+            <NativeTabs.Trigger.Icon sf="gearshape.fill" md="settings" />
+          </NativeTabs.Trigger>
+        )}
       </NativeTabs >
     </>
   );

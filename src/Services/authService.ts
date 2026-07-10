@@ -3,6 +3,7 @@ import { supabase } from "../lib/supbase/supabase";
 import { Usuario } from "../Types/Users";
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import { requestNotificationPermission, saveDeviceToken, unregisterDevice } from "./NotificationService";
 export async function RegisterAuth({ registerForm }: { registerForm: RegisterForm }) {
     try {
         // --- 1. VALIDACIÓN: ¿Existe ya el username? ---
@@ -90,7 +91,7 @@ export async function LoginAuth({ loginForm }: { loginForm: LoginForm }) {
 
 
 
-import { unregisterDevice } from "./NotificationService";
+
 import { MessageService } from "./MessageService";
 
 export async function signOut() {

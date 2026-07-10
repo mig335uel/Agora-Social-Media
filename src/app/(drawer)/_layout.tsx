@@ -9,11 +9,14 @@ import { supabase } from '@/lib/supbase/supabase';
 import useAuth from '@/hooks/useAuth';
 import * as SecureStore from 'expo-secure-store';
 
+import * as Device from 'expo-device';
+
 const AgoraBunker = NativeModules.AgoraBunker || NativeModules.AgoraBunkerModule;
 
 export default function DrawerLayout() {
   const user = useAuth();
   const keyDeliveryChannel = useRef<RealtimeChannel | null>(null);
+  const isTablet = Device.deviceType === Device.DeviceType.TABLET;
 
   // ── Registro del dispositivo ya se hace en _layout.tsx (raíz) ──────────────
   // NO duplicar aquí: en iOS, una doble llamada a requestPermissionsAsync()
@@ -125,12 +128,14 @@ export default function DrawerLayout() {
 
   return (
     <Drawer
-      drawerContent={(props) => <CustomDrawerContent {...props} />}
+      drawerContent={(props) => isTablet ? null : <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
-        drawerType: 'slide',
-        swipeEdgeWidth: 40,
-        overlayColor: 'rgba(0,0,0,0.35)',
+        drawerType: isTablet ? 'front' : 'slide',
+        swipeEnabled: !isTablet,
+        swipeEdgeWidth: isTablet ? 0 : 40,
+        drawerStyle: isTablet ? { width: 0 } : undefined,
+        overlayColor: isTablet ? 'transparent' : 'rgba(0,0,0,0.35)',
       }}
     >
       <Drawer.Screen name="(tabs)" options={{ drawerItemStyle: { display: 'none' } }} />
