@@ -172,15 +172,24 @@ export const MessageService = {
                 const otherParticipant = (chat.chat_participants as any[])
                     .find((p: any) => p.user_id !== myUserId);
 
-                if (!otherParticipant?.users) continue;
-
-                const contact = otherParticipant.users as {
-                    id: string;
-                    username: string;
-                    display_name: string;
-                    profile_picture_url: string | null;
-                    is_verified?: boolean;
-                };
+                let contact;
+                if (!otherParticipant?.users) {
+                    console.warn(`[getInbox] ⚠️ No se pudo obtener el otro participante para el chat ${chat.id}. ¿Problemas de RLS en chat_participants o users?`, chat.chat_participants);
+                    contact = {
+                        id: 'unknown',
+                        username: 'desconocido',
+                        display_name: 'Usuario Desconocido',
+                        profile_picture_url: null,
+                    };
+                } else {
+                    contact = otherParticipant.users as {
+                        id: string;
+                        username: string;
+                        display_name: string;
+                        profile_picture_url: string | null;
+                        is_verified?: boolean;
+                    };
+                }
 
                 // 3a. Último mensaje — query independiente por chat
                 //     (funciona correctamente aunque el chat no tenga mensajes)

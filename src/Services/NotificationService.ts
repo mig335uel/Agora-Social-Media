@@ -228,38 +228,67 @@ export async function unregisterDevice() {
  * =========================================================================
  * Iniciar este escuchador en tu Layout principal. Desencripta onTheFly
  */
+
+// 1. Manejador en SEGUNDO PLANO (Background / Quit) para notificaciones data-only de FCM.
+// Esto DEBE estar en un ámbito global (fuera del ciclo de vida de React).
+messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+  console.log('FCM [Background] Mensaje recibido:', remoteMessage.messageId);
+  await procesarPushCifrado(remoteMessage.data);
+});
+
 export function activarInterceptacionDecodificadora() {
-  // NOTA: El setNotificationHandler global está en _layout.tsx.
-  // No lo redefinimos aquí para no sobreescribirlo y perder flags como shouldSetBadge.
-
-  Notifications.addNotificationReceivedListener(async (notification) => {
-    // Revisamos si el objeto 'data' trae la carga militar de tu servidor NodeJS
-    const payloadExtra = notification.request.content.data as any;
-    const { encrypted_content, encrypted_symmetric_key } = payloadExtra;
-
-    if (encrypted_content && encrypted_symmetric_key) {
-      try {
-        console.log("🔒 Push Encriptado Detectado. Iniciando rotura de candado TEE...");
-        // 1. Despertamos al TEE para romper la llave RSA
-        const llaveAESBase64 = await AgoraBunker.descifrarLlaveDeChatR(encrypted_symmetric_key);
-
-        // 2. Desencriptamos el texto final
-        const mensajePlano = await AgoraBunker.descifrarMensajeTextoR(encrypted_content, llaveAESBase64);
-
-        // 3. Mostramos la Notificación limpia y segura en pantalla 
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Mensaje Confidencial",
-            body: mensajePlano
-          },
-          trigger: null // Disparador Inmediato
-        });
-        console.log("🔓 Push descifrado y mostrado exitosamente.");
-      } catch (e) {
-        console.error("❌ Catástrofe: No se pudo descifrar push:", e)
-      }
-    }
+  // 2. Manejador en PRIMER PLANO (Foreground) para notificaciones data-only de FCM.
+  const unsubscribe = messaging().onMessage(async (remoteMessage) => {
+    console.log('FCM [Foreground] Mensaje recibido:', remoteMessage.messageId);
+    await procesarPushCifrado(remoteMessage.data);
   });
+
+  // 3. (Opcional/Legacy) Mantener el listener de Expo por si llegan push por APNs directos (sin FCM data)
+  Notifications.addNotificationReceivedListener(async (notification) => {
+    const payloadExtra = notification.request.content.data as any;
+    await procesarPushCifrado(payloadExtra);
+  });
+
+  return unsubscribe;
+}
+
+async function procesarPushCifrado(payloadExtra: any) {
+  if (!payloadExtra) return;
+  const { encrypted_content, encrypted_symmetric_key } = payloadExtra;
+
+  if (encrypted_content && encrypted_symmetric_key) {
+    try {
+      console.log("🔒 Push Encriptado Detectado. Iniciando rotura de candado TEE...");
+      // 1. Despertamos al TEE para romper la llave RSA
+      const llaveAESBase64 = await AgoraBunker.descifrarLlaveDeChatR(encrypted_symmetric_key);
+
+      // 2. Desencriptamos el texto final
+      const mensajePlano = await AgoraBunker.descifrarMensajeTextoR(encrypted_content, llaveAESBase64);
+
+      // 3. Mostramos la Notificación limpia y segura en pantalla 
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: payloadExtra.title || "Mensaje Confidencial",
+          body: mensajePlano,
+          data: payloadExtra, // pasamos el resto de data para onResponse
+        },
+        trigger: null // Disparador Inmediato
+      });
+      console.log("🔓 Push descifrado y mostrado exitosamente.");
+    } catch (e) {
+      console.error("❌ Catástrofe: No se pudo descifrar push:", e)
+    }
+  } else if (payloadExtra.type === 'new_message' && payloadExtra.content_plain) {
+      // Fallback para mensajes no cifrados (si los hubiera)
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: payloadExtra.title || "Nuevo mensaje",
+          body: payloadExtra.content_plain,
+          data: payloadExtra,
+        },
+        trigger: null
+      });
+  }
 }
 
 

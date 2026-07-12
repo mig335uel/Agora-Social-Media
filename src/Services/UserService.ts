@@ -57,6 +57,15 @@ export async function toggleFollow(followerId: string, followingId: string): Pro
         .eq('following_id', followingId);
 
       if (deleteError) throw deleteError;
+
+      // Retiramos la notificación
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('receiver_id', followingId)
+        .eq('sender_id', followerId)
+        .eq('type', 'follow');
+
       return false;
     } else {
       // Seguir
@@ -67,12 +76,35 @@ export async function toggleFollow(followerId: string, followingId: string): Pro
           following_id: followingId
         });
 
-      // Si por una race condition ya se insertó, lo tratamos como "éxito" (ya lo sigue)
-      if (insertError) {
-        if (insertError.code === '23505') return true;
-        throw insertError;
+      // Si no hubo error, o si es un duplicate error pero consideramos éxito
+      if (!insertError || insertError.code === '23505') {
+        if (!insertError) {
+          // Insertar en la tabla de notificaciones y enviar Push si es nuevo
+          const { data: senderData } = await supabase.from('users').select('username').eq('id', followerId).single();
+          
+          await supabase.from('notifications').insert({
+            receiver_id: followingId,
+            sender_id: followerId,
+            type: 'follow'
+          });
+
+          if (senderData) {
+            const payload: Notifications = {
+              username: senderData.username || "Alguien",
+              title: "¡Nuevo Seguidor! 👤",
+              body: `${senderData.username || "Alguien"} ha comenzado a seguirte`,
+              user_id: followingId,
+            };
+            fetch("https://api.periodiconaranja.es/agoras/notificacion/follow", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
+            }).catch(() => null);
+          }
+        }
+        return true;
       }
-      return true;
+      throw insertError;
     }
   } catch (error) {
     console.error("Error en toggleFollow:", error);
