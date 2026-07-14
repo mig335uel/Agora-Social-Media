@@ -3,6 +3,7 @@ import {
     ActivityIndicator,
     FlatList,
     Image,
+    KeyboardAvoidingViewBase,
     Modal,
     Pressable,
     RefreshControl,
@@ -208,7 +209,7 @@ function NewChatModal({ visible, onClose, myUserId, isDark }: {
                 </View>
 
                 {/* Buscador */}
-                <View style={[styles.modalSearch, { backgroundColor: inputBg }]}>
+                <KeyboardAvoidingViewBase style={[styles.modalSearch, { backgroundColor: inputBg }]}>
                     <Ionicons name="search" size={16} color={subColor} />
                     <TextInput
                         style={[styles.modalSearchInput, { color: textColor }]}
@@ -218,7 +219,7 @@ function NewChatModal({ visible, onClose, myUserId, isDark }: {
                         onChangeText={handleSearch}
                         autoFocus
                     />
-                </View>
+                </KeyboardAvoidingViewBase>
 
                 {/* Lista */}
                 {loading ? (
