@@ -265,15 +265,15 @@ async function procesarPushCifrado(payloadExtra: any) {
       const myDeviceId = await SecureStore.getItemAsync('agora_device_identifier');
       if (!myDeviceId) return;
 
-      const llaveAESBase64 = await MessageService.getOrDecryptAesKey(chat_id, myDeviceId);
+      const secured = await MessageService.asegurarLlaveEnBunker(chat_id, myDeviceId);
       
-      if (!llaveAESBase64) {
-          console.log("No se pudo recuperar la llave AES para el push.");
+      if (!secured) {
+          console.log("No se pudo asegurar la llave AES para el push en el Búnker.");
           return;
       }
 
-      // Desencriptamos el texto final
-      const mensajePlano = await AgoraBunker.descifrarMensajeTextoR(encrypted_preview, llaveAESBase64);
+      // Desencriptamos el texto final sin ver la llave
+      const mensajePlano = await AgoraBunker.descifrarMensajeTextoConChat(chat_id, encrypted_preview);
 
       // Solo en Android lanzamos la notificación local para evitar duplicados en iOS
       if (Platform.OS === 'android') {
@@ -295,8 +295,8 @@ async function procesarPushCifrado(payloadExtra: any) {
   else if (encrypted_content && encrypted_symmetric_key) {
     try {
       console.log("🔒 Push Legacy Detectado...");
-      const llaveAESBase64 = await AgoraBunker.descifrarLlaveDeChatR(encrypted_symmetric_key);
-      const mensajePlano = await AgoraBunker.descifrarMensajeTextoR(encrypted_content, llaveAESBase64);
+      await AgoraBunker.descifrarYGuardarLlaveDeChat('legacy', encrypted_symmetric_key);
+      const mensajePlano = await AgoraBunker.descifrarMensajeTextoConChat('legacy', encrypted_content);
 
       if (Platform.OS === 'android') {
           await Notifications.scheduleNotificationAsync({

@@ -11,10 +11,10 @@ console.log('[DIAG] NativeModules.AgoraBunker:', NativeModules.AgoraBunker ? 'EX
 console.log('[DIAG] NativeModules.AgoraBunkerModule:', NativeModules.AgoraBunkerModule ? 'EXISTE' : 'undefined');
 console.log('[DIAG] AgoraBunker resuelto:', AgoraBunker ? JSON.stringify(Object.keys(AgoraBunker)) : 'NULL');
 
-// ─── Caché en RAM de llaves AES por chat ────────────────────────────────────
-// La llave AES se descifra una sola vez al entrar al chat y vive en RAM.
-// Al cerrar la app desaparece. Nunca se persiste en disco.
-const aesKeyCache = new Map<string, string>();
+// ─── Estado en RAM para la sesión actual ─────────────────────────────────────
+// Para no hacer pings continuos al Búnker, guardamos qué chats ya sabemos 
+// que tienen su llave cargada en la bóveda nativa.
+const chatsVerificadosEnBunker = new Set<string>();
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -32,33 +32,38 @@ function timeAgo(dateStr: string): string {
 
 // ─── Descifrado de un único mensaje ─────────────────────────────────────────
 
-async function decryptMessage(
-    encryptedContent: string,
-    aesKeyBase64: string,
-): Promise<string> {
+async function decryptMessage(encryptedContent: string, chatId: string): Promise<string> {
     if (!AgoraBunker) return '[E2EE no disponible]';
     try {
-        const plain = await AgoraBunker.descifrarMensajeTextoR(encryptedContent, aesKeyBase64);
+        const plain = await AgoraBunker.descifrarMensajeTextoConChat(chatId, encryptedContent);
         return plain ?? '[mensaje cifrado]';
     } catch {
         return '[mensaje cifrado]';
     }
 }
 
-// ─── Obtener o descifrar la llave AES del chat ──────────────────────────────
+// ─── Asegurar que la llave AES está en la Bóveda Nativa ─────────────────────
 
-async function getOrDecryptAesKey(chatId: string, myDeviceId: string): Promise<string | null> {
-    // 1. ¿Ya la tenemos en caché?
-    const cached = aesKeyCache.get(chatId);
-    if (cached) return cached;
-
-    if (!AgoraBunker) return null;
+async function asegurarLlaveEnBunker(chatId: string, myDeviceId: string): Promise<boolean> {
+    if (chatsVerificadosEnBunker.has(chatId)) return true;
+    if (!AgoraBunker) return false;
 
     try {
-        // El device_id en chat_encripted_key es el UUID de devices.id (generado por Postgres).
-        // Usamos agora_device_db_id que guardamos en SecureStore tras el registro.
-        const dbDeviceId = (await SecureStore.getItemAsync('agora_device_db_id') ?? myDeviceId).trim();
+        // 1. Hack rápido: probamos a cifrar un texto tonto para ver si el Búnker ya tiene la llave
+        // en su disco seguro de una sesión anterior.
+        try {
+            await AgoraBunker.cifrarMensajeTextoConChat(chatId, "ping");
+            chatsVerificadosEnBunker.add(chatId);
+            return true; // ¡La llave ya estaba guardada nativamente!
+        } catch {
+            // El Búnker rechazó el cifrado (probablemente no tiene la llave)
+            // Pasamos al paso 2.
+        }
 
+        // 2. Descargamos el candado RSA del servidor
+        const dbDeviceId = (await SecureStore.getItemAsync('agora_device_db_id') ?? myDeviceId).trim();
+        console.log(`[MessageService] 🌐 Descargando candado RSA desde servidor para chat: ${chatId} | device_id: ${dbDeviceId}`);
+        
         const { data, error } = await supabase
             .from('chat_encripted_key')
             .select('encripted_key')
@@ -67,28 +72,27 @@ async function getOrDecryptAesKey(chatId: string, myDeviceId: string): Promise<s
             .maybeSingle();
 
         if (error || !data?.encripted_key) {
-            console.warn('[MessageService] No se encontró llave cifrada para el chat:', chatId, '| device_id:', dbDeviceId);
-            return null;
+            console.warn('[MessageService] ⚠️ No se encontró llave cifrada en el servidor para el chat:', chatId);
+            return false;
         }
 
-        // Abrir el candado RSA con la llave privada del hardware (TEE/Keychain)
-        const aesKeyBase64: string = await AgoraBunker.descifrarLlaveDeChatR(data.encripted_key);
-
-        aesKeyCache.set(chatId, aesKeyBase64);
-        return aesKeyBase64;
+        // 3. Entregamos el candado RSA al Búnker nativo para que lo abra y guarde el AES
+        await AgoraBunker.descifrarYGuardarLlaveDeChat(chatId, data.encripted_key);
+        
+        chatsVerificadosEnBunker.add(chatId);
+        return true;
     } catch (e) {
-        console.error('[MessageService] Error obteniendo llave AES:', e);
-        return null;
+        console.error('[MessageService] Error asegurando llave en el búnker:', e);
+        return false;
     }
 }
 
 // ─── Cifrar un mensaje para enviar ──────────────────────────────────────────
 
-async function encryptMessage(plainText: string, aesKeyBase64: string): Promise<string | null> {
+async function encryptMessage(plainText: string, chatId: string): Promise<string | null> {
     if (!AgoraBunker) return null;
     try {
-        // Android: cifrarMensajeTextoR | iOS: cifrarMensajeTextoR
-        const encrypted: string = await AgoraBunker.cifrarMensajeTextoR(plainText, aesKeyBase64);
+        const encrypted: string = await AgoraBunker.cifrarMensajeTextoConChat(chatId, plainText);
         return encrypted;
     } catch (e) {
         console.error('[MessageService] Error cifrando mensaje:', e);
@@ -101,25 +105,34 @@ async function encryptMessage(plainText: string, aesKeyBase64: string): Promise<
 export const MessageService = {
 
     /**
-     * Limpia el caché de llaves AES (llamar en logout).
+     * Asegura que la llave AES está en el Búnker Nativo
      */
-    clearKeyCache(): void {
-        aesKeyCache.clear();
+    asegurarLlaveEnBunker,
+
+    /**
+     * Limpia la bóveda de llaves AES del Búnker Nativo (llamar en logout).
+     */
+    async clearKeyCache(): Promise<void> {
+        chatsVerificadosEnBunker.clear();
+        if (AgoraBunker && AgoraBunker.borrarTodasLasLlavesLocales) {
+            await AgoraBunker.borrarTodasLasLlavesLocales().catch((e: any) => console.warn(e));
+        }
     },
 
     /**
-     * Inyecta una llave AES ya descifrada en el caché en RAM.
+     * Inyecta un candado RSA descargado en tiempo real en la bóveda.
      * Lo llama el listener global de Realtime cuando llega un INSERT en chat_encripted_key.
      */
-    precalentarLlave(chatId: string, aesKeyBase64: string): void {
-        aesKeyCache.set(chatId, aesKeyBase64);
-        // Persistir en disco para que sobreviva al reinicio
-        SecureStore.getItemAsync('agora_device_db_id').then(dbDeviceId => {
-            if (dbDeviceId) {
-                SecureStore.setItemAsync(`aes_chat_${chatId}_${dbDeviceId.trim()}`, aesKeyBase64).catch(e => console.warn(e));
+    async asimilarCandadoRealtime(chatId: string, candadoBase64: string): Promise<void> {
+        try {
+            if (AgoraBunker && candadoBase64) {
+                await AgoraBunker.descifrarYGuardarLlaveDeChat(chatId, candadoBase64);
+                chatsVerificadosEnBunker.add(chatId);
+                console.log(`[MessageService] 🔑 Candado RSA asimilado en tiempo real para chat: ${chatId}`);
             }
-        });
-        console.log(`[MessageService] 🔑 Llave precalentada y guardada en disco para chat: ${chatId}`);
+        } catch (e) {
+            console.error(`[MessageService] Fallo asimilando candado realtime para chat ${chatId}:`, e);
+        }
     },
 
     /**
@@ -527,10 +540,7 @@ export const MessageService = {
                 throw new Error('AgoraBunker no disponible');
             }
 
-            const aesKeyBase64: string = await AgoraBunker.generarLlaveAESR();
-            console.log(`[createChat] 2. AES generada: ${aesKeyBase64.substring(0, 8)}...`);
-
-            // Crear el chat — solo type (el diagrama de BD no incluye created_by en chats)
+            // Crear el chat primero para tener el ID, ya que la llave AES ahora se ancla al ID
             const { data: chat, error: chatErr } = await supabase
                 .from('chats')
                 .insert({ type: 'direct' })
@@ -541,7 +551,12 @@ export const MessageService = {
                 console.error('[createChat] ❌ Error creando chat:', chatErr?.message);
                 throw chatErr ?? new Error('No se pudo crear el chat');
             }
-            console.log(`[createChat] 3. Chat creado: ${chat.id}`);
+            console.log(`[createChat] 2. Chat creado: ${chat.id}`);
+
+            // Ahora le pedimos al Búnker que genere una llave y se la guarde para este chat
+            await AgoraBunker.generarLlaveAESParaChat(chat.id);
+            chatsVerificadosEnBunker.add(chat.id);
+            console.log(`[createChat] 3. Llave AES generada en Búnker Nativo.`);
 
             // Añadir participantes
             const { error: partErr } = await supabase.from('chat_participants').insert([
@@ -555,14 +570,12 @@ export const MessageService = {
             console.log(`[createChat] 4. Participantes insertados OK`);
 
             // Distribución de llaves E2EE
-            // Usamos una función RPC (Security Definer) para evitar que el RLS
-            // nos oculte los dispositivos del otro usuario, ya que necesitamos su clave pública.
             const { data: devices, error: rpcError } = await supabase
                 .rpc('get_public_keys_for_users', {
                     target_user_ids: [myUserId, targetUserId]
                 });
             if (rpcError) {
-                 console.error("[createChat] Error en el RPC get_public_keys_for_users:", rpcError);
+                console.error("[createChat] Error en el RPC get_public_keys_for_users:", rpcError);
             }
 
             console.log(`[createChat] 5. Dispositivos con public_key: ${devices?.length ?? 0}`);
@@ -571,11 +584,10 @@ export const MessageService = {
 
             await Promise.all(
                 (devices ?? []).map(async (device: any) => {
-                    // Omitir dispositivos sin clave pública o baneados (campo is_banned de la tabla devices)
                     if (!device.public_device_key || device.is_banned) return;
                     try {
-                        const encryptedKey: string = await AgoraBunker.cifrarLlaveConPublicKeyR(
-                            aesKeyBase64,
+                        const encryptedKey: string = await AgoraBunker.exportarLlaveAESCifrada(
+                            chat.id,
                             device.public_device_key,
                         );
                         keyInserts.push({
@@ -584,7 +596,7 @@ export const MessageService = {
                             encripted_key: encryptedKey,
                         });
                     } catch (e) {
-                        console.warn(`[createChat] ⚠️ Fallo cifrando llave para device ${device.id}:`, e);
+                        console.warn(`[createChat] ⚠️ Fallo exportando llave cifrada para device ${device.id}:`, e);
                     }
                 })
             );
@@ -594,12 +606,6 @@ export const MessageService = {
                 if (keyErr) console.error('[createChat] ❌ Error insertando llaves:', keyErr.message);
                 else console.log(`[createChat] 6. Llaves distribuidas: ${keyInserts.length}`);
             }
-
-            // Pre-calentar la llave en RAM y persistirla en disco del dispositivo creador
-            aesKeyCache.set(chat.id, aesKeyBase64);
-            const dbDeviceId = (await SecureStore.getItemAsync('agora_device_db_id') ?? myDeviceId).trim();
-            await SecureStore.setItemAsync(`aes_chat_${chat.id}_${dbDeviceId}`, aesKeyBase64).catch(e => console.warn('Error guardando llave E2EE localmente', e));
-            console.log(`[createChat] Llave AES guardada en el disco local para reinicios.`);
 
             // ── 3. Si NO es mutuo → además meter en chat_requests ───────────
             //   Si el receptor rechaza → se borra el chat entero (DELETE cascade)
@@ -644,7 +650,7 @@ export const MessageService = {
                 .select('chat_id')
                 .eq('user_id', myUserId)
                 .is('left_at', null);
-            
+
             if (error || !participations?.length) return;
 
             const keyInserts: { chat_id: string; device_id: string; encripted_key: string }[] = [];
