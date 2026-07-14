@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
     Image,
     KeyboardAvoidingView,
@@ -246,6 +247,20 @@ export default function ChatScreen() {
         setSending(false);
     }, [inputText, chatId, user?.id, sending]);
 
+    // ── Descarga manual de llave (fallback) ───────────────────────────────────
+    const handleManualKeyDownload = useCallback(async () => {
+        if (!chatId || !user?.id) return;
+        setLoading(true);
+        const success = await MessageService.downloadChatKey(chatId);
+        if (success) {
+            const msgs = await MessageService.getMessages(chatId, user.id);
+            setMessages(msgs);
+        } else {
+            Alert.alert('Error', 'No se pudo obtener la llave de cifrado. Puede que aún no se haya distribuido a este dispositivo.');
+        }
+        setLoading(false);
+    }, [chatId, user?.id]);
+
     // ── Render ──────────────────────────────────────────────────────────────────
     const renderItem = useCallback(
         ({ item }: { item: DecryptedMessage }) => (
@@ -295,10 +310,10 @@ export default function ChatScreen() {
                         <Text style={[styles.headerName, { color: isDark ? '#fff' : '#0a0a0a' }]} numberOfLines={1}>
                             {contactName || '...'}
                         </Text>
-                        <View style={styles.e2eeIndicator}>
+                        <TouchableOpacity style={styles.e2eeIndicator} onPress={handleManualKeyDownload} activeOpacity={0.7}>
                             <Ionicons name="lock-closed" size={9} color="#00BA7C" />
                             <Text style={styles.e2eeText}>cifrado extremo a extremo</Text>
-                        </View>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </BlurView>

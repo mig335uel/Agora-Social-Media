@@ -57,7 +57,7 @@ async function getOrDecryptAesKey(chatId: string, myDeviceId: string): Promise<s
     try {
         // El device_id en chat_encripted_key es el UUID de devices.id (generado por Postgres).
         // Usamos agora_device_db_id que guardamos en SecureStore tras el registro.
-        const dbDeviceId = await SecureStore.getItemAsync('agora_device_db_id') ?? myDeviceId;
+        const dbDeviceId = (await SecureStore.getItemAsync('agora_device_db_id') ?? myDeviceId).trim();
 
         const { data, error } = await supabase
             .from('chat_encripted_key')
@@ -141,22 +141,10 @@ export const MessageService = {
 
             const chatIds = participations.map((p) => p.chat_id);
 
-            // 2. Obtener datos base de los chats + participantes
-            //    IMPORTANTE: NO incluir chat_content aquí. El uso de
-            //    .order/.limit con referencedTable en PostgREST devuelve []
-            //    cuando un chat no tiene mensajes, rompiendo el inbox entero.
+            // 2. Obtener datos base de los chats de forma independiente
             const { data: chatsRaw, error: chatErr } = await supabase
                 .from('chats')
-                .select(`
-                    id,
-                    type,
-                    name,
-                    created_at,
-                    chat_participants!inner(
-                        user_id,
-                        users!chat_participants_user_id_fkey(id, username, display_name, profile_picture_url, is_verified)
-                    )
-                `)
+                .select('id, type, name')
                 .in('id', chatIds);
 
             if (chatErr || !chatsRaw) {
@@ -164,10 +152,38 @@ export const MessageService = {
                 return [];
             }
 
+            // Obtener participantes de forma independiente
+            const { data: allParticipants } = await supabase
+                .from('chat_participants')
+                .select('chat_id, user_id')
+                .in('chat_id', chatIds);
+
+            // Obtener usuarios de forma independiente
+            const userIds = [...new Set(allParticipants?.map((p) => p.user_id) || [])];
+            const { data: usersData } = await supabase
+                .from('users')
+                .select('id, username, display_name, profile_picture_url, is_verified')
+                .in('id', userIds);
+
+            const usersMap = new Map();
+            usersData?.forEach((u) => usersMap.set(u.id, u));
+
+            // Ensamblar los chats para compatibilidad con el resto del código
+            const assembledChats = chatsRaw.map((c) => {
+                const parts = allParticipants?.filter((p) => p.chat_id === c.id) || [];
+                return {
+                    ...c,
+                    chat_participants: parts.map((p) => ({
+                        user_id: p.user_id,
+                        users: usersMap.get(p.user_id)
+                    }))
+                };
+            });
+
             // 3. Construir los items desencryptando el último mensaje
             const items: ChatInboxItem[] = [];
 
-            for (const chat of chatsRaw) {
+            for (const chat of assembledChats) {
                 // El "contacto" es el otro participante (no yo)
                 const otherParticipant = (chat.chat_participants as any[])
                     .find((p: any) => p.user_id !== myUserId);
@@ -249,8 +265,8 @@ export const MessageService = {
                     contact,
                     last_message: lastMessage,
                     unread_count: unread,
-                    // Chats sin mensajes van al final usando la fecha de creación del chat
-                    updated_at: lastRaw?.created_at ?? chat.created_at ?? '',
+                    // Chats sin mensajes van al final usando la fecha actual como fallback
+                    updated_at: lastRaw?.created_at ?? new Date(0).toISOString(),
                 });
             }
 
@@ -603,5 +619,62 @@ export const MessageService = {
         }
     },
 
+    /**
+     * Sincroniza (cifra y envía) las llaves AES de todos mis chats a un dispositivo nuevo de mi propia cuenta.
+     */
+    async syncKeysToNewDevice(myUserId: string, newDbDeviceId: string, newDevicePublicKey: string): Promise<void> {
+        if (!AgoraBunker) return;
+        try {
+            console.log(`[MessageService] Iniciando sincronización de llaves para el nuevo dispositivo: ${newDbDeviceId}`);
+            const myDeviceId = await SecureStore.getItemAsync('agora_device_identifier');
+            if (!myDeviceId) return;
+
+            // 1. Obtener todos los chats activos en los que participo
+            const { data: participations, error } = await supabase
+                .from('chat_participants')
+                .select('chat_id')
+                .eq('user_id', myUserId)
+                .is('left_at', null);
+            
+            if (error || !participations?.length) return;
+
+            const keyInserts: { chat_id: string; device_id: string; encripted_key: string }[] = [];
+
+            // 2. Iterar sobre cada chat y cifrar la llave
+            for (const p of participations) {
+                // Obtener llave (desde caché o descifrando desde la BD usando el dispositivo ACTUAL)
+                const aesKey = await getOrDecryptAesKey(p.chat_id, myDeviceId);
+                if (!aesKey) continue; // Si no tengo acceso a este chat, lo salto
+
+                try {
+                    // Cifrar la llave AES usando la clave pública RSA del dispositivo NUEVO
+                    const encryptedKey = await AgoraBunker.cifrarLlaveConPublicKeyR(aesKey, newDevicePublicKey);
+                    keyInserts.push({
+                        chat_id: p.chat_id,
+                        device_id: newDbDeviceId,
+                        encripted_key: encryptedKey,
+                    });
+                } catch (e) {
+                    console.warn(`[MessageService] Error cifrando llave para el chat ${p.chat_id}:`, e);
+                }
+            }
+
+            // 3. Subir las llaves para el nuevo dispositivo
+            if (keyInserts.length > 0) {
+                const { error: insErr } = await supabase.from('chat_encripted_key').insert(keyInserts);
+                if (insErr) {
+                    console.error('[MessageService] Error subiendo llaves sincronizadas:', insErr.message);
+                } else {
+                    console.log(`[MessageService] ✅ Sincronización exitosa: ${keyInserts.length} llaves enviadas al dispositivo ${newDbDeviceId}`);
+                }
+            } else {
+                console.log(`[MessageService] No hubo llaves para sincronizar.`);
+            }
+        } catch (e) {
+            console.error('[MessageService] Error general en syncKeysToNewDevice:', e);
+        }
+    },
+
     timeAgo,
 };
+

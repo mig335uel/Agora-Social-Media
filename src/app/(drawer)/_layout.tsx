@@ -16,6 +16,7 @@ const AgoraBunker = NativeModules.AgoraBunker || NativeModules.AgoraBunkerModule
 export default function DrawerLayout() {
   const user = useAuth();
   const keyDeliveryChannel = useRef<RealtimeChannel | null>(null);
+  const newDeviceSyncChannel = useRef<RealtimeChannel | null>(null);
   const isTablet = Device.deviceType === Device.DeviceType.TABLET;
 
   // ── Registro del dispositivo ya se hace en _layout.tsx (raíz) ──────────────
@@ -114,7 +115,51 @@ export default function DrawerLayout() {
         });
     };
 
+    const subscribeToNewDevices = async () => {
+      if (!isMounted) return;
+
+      if (newDeviceSyncChannel.current) {
+        supabase.removeChannel(newDeviceSyncChannel.current);
+        newDeviceSyncChannel.current = null;
+      }
+
+      const myDbDeviceId = await SecureStore.getItemAsync('agora_device_db_id');
+      if (!myDbDeviceId) return;
+
+      console.log(`[Búnker] Iniciando listener de nuevos dispositivos propios para sync...`);
+
+      newDeviceSyncChannel.current = supabase
+        .channel(`new-devices-sync-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'devices',
+            filter: `user_id=eq.${user.id}`,
+          },
+          async (payload) => {
+            const { id: newDeviceId, public_device_key } = payload.new as any;
+            
+            // Ignorar si el dispositivo insertado es este mismo
+            if (newDeviceId === myDbDeviceId.trim()) return;
+            
+            if (!public_device_key) return; // Si no soporta E2EE
+
+            console.log(`[Búnker] 📱 Nuevo dispositivo detectado en mi cuenta: ${newDeviceId}. Sincronizando llaves...`);
+            await MessageService.syncKeysToNewDevice(user.id, newDeviceId, public_device_key);
+          }
+        )
+        .subscribe((status) => {
+          if ((status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') && isMounted) {
+            console.warn('[Búnker] Error en canal de sync devices — reconectando en 5s...');
+            setTimeout(subscribeToNewDevices, 5000);
+          }
+        });
+    };
+
     subscribeToKeyDelivery();
+    subscribeToNewDevices();
 
     return () => {
       isMounted = false;
@@ -122,6 +167,10 @@ export default function DrawerLayout() {
       if (keyDeliveryChannel.current) {
         supabase.removeChannel(keyDeliveryChannel.current);
         keyDeliveryChannel.current = null;
+      }
+      if (newDeviceSyncChannel.current) {
+        supabase.removeChannel(newDeviceSyncChannel.current);
+        newDeviceSyncChannel.current = null;
       }
     };
   }, [user]);
