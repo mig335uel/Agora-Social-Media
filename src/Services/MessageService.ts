@@ -113,7 +113,13 @@ export const MessageService = {
      */
     precalentarLlave(chatId: string, aesKeyBase64: string): void {
         aesKeyCache.set(chatId, aesKeyBase64);
-        console.log(`[MessageService] 🔑 Llave precalentada para chat: ${chatId}`);
+        // Persistir en disco para que sobreviva al reinicio
+        SecureStore.getItemAsync('agora_device_db_id').then(dbDeviceId => {
+            if (dbDeviceId) {
+                SecureStore.setItemAsync(`aes_chat_${chatId}_${dbDeviceId.trim()}`, aesKeyBase64).catch(e => console.warn(e));
+            }
+        });
+        console.log(`[MessageService] 🔑 Llave precalentada y guardada en disco para chat: ${chatId}`);
     },
 
     /**
@@ -589,8 +595,11 @@ export const MessageService = {
                 else console.log(`[createChat] 6. Llaves distribuidas: ${keyInserts.length}`);
             }
 
-            // Pre-calentar la llave en RAM del dispositivo creador
+            // Pre-calentar la llave en RAM y persistirla en disco del dispositivo creador
             aesKeyCache.set(chat.id, aesKeyBase64);
+            const dbDeviceId = (await SecureStore.getItemAsync('agora_device_db_id') ?? myDeviceId).trim();
+            await SecureStore.setItemAsync(`aes_chat_${chat.id}_${dbDeviceId}`, aesKeyBase64).catch(e => console.warn('Error guardando llave E2EE localmente', e));
+            console.log(`[createChat] Llave AES guardada en el disco local para reinicios.`);
 
             // ── 3. Si NO es mutuo → además meter en chat_requests ───────────
             //   Si el receptor rechaza → se borra el chat entero (DELETE cascade)
