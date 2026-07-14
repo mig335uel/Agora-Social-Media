@@ -5,6 +5,7 @@ import { Platform, Alert } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 import { supabase } from "../lib/supbase/supabase";
 import { E2EEService } from './E2EEService';
+import { MessageService } from './MessageService';
 import { NativeModules } from 'react-native';
 
 const { AgoraBunker } = NativeModules;
@@ -254,40 +255,75 @@ export function activarInterceptacionDecodificadora() {
 
 async function procesarPushCifrado(payloadExtra: any) {
   if (!payloadExtra) return;
-  const { encrypted_content, encrypted_symmetric_key } = payloadExtra;
+  const { encrypted_preview, encrypted_content, encrypted_symmetric_key, chat_id, title } = payloadExtra;
 
-  if (encrypted_content && encrypted_symmetric_key) {
+  // NUEVO FLUJO E2EE (Solo Datos / Background)
+  if (encrypted_preview && chat_id) {
     try {
-      console.log("🔒 Push Encriptado Detectado. Iniciando rotura de candado TEE...");
-      // 1. Despertamos al TEE para romper la llave RSA
-      const llaveAESBase64 = await AgoraBunker.descifrarLlaveDeChatR(encrypted_symmetric_key);
+      console.log("🔒 Push Encriptado Detectado. Obteniendo llave local...");
+      
+      const myDeviceId = await SecureStore.getItemAsync('agora_device_identifier');
+      if (!myDeviceId) return;
 
-      // 2. Desencriptamos el texto final
-      const mensajePlano = await AgoraBunker.descifrarMensajeTextoR(encrypted_content, llaveAESBase64);
+      const llaveAESBase64 = await MessageService.getOrDecryptAesKey(chat_id, myDeviceId);
+      
+      if (!llaveAESBase64) {
+          console.log("No se pudo recuperar la llave AES para el push.");
+          return;
+      }
 
-      // 3. Mostramos la Notificación limpia y segura en pantalla 
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: payloadExtra.title || "Mensaje Confidencial",
-          body: mensajePlano,
-          data: payloadExtra, // pasamos el resto de data para onResponse
-        },
-        trigger: null // Disparador Inmediato
-      });
+      // Desencriptamos el texto final
+      const mensajePlano = await AgoraBunker.descifrarMensajeTextoR(encrypted_preview, llaveAESBase64);
+
+      // Solo en Android lanzamos la notificación local para evitar duplicados en iOS
+      if (Platform.OS === 'android') {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: title || "Mensaje Confidencial",
+              body: mensajePlano,
+              data: payloadExtra, 
+            },
+            trigger: null 
+          });
+      }
       console.log("🔓 Push descifrado y mostrado exitosamente.");
     } catch (e) {
       console.error("❌ Catástrofe: No se pudo descifrar push:", e)
     }
-  } else if (payloadExtra.type === 'new_message' && payloadExtra.content_plain) {
-      // Fallback para mensajes no cifrados (si los hubiera)
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: payloadExtra.title || "Nuevo mensaje",
-          body: payloadExtra.content_plain,
-          data: payloadExtra,
-        },
-        trigger: null
-      });
+  } 
+  // FLUJO LEGACY (Antiguo)
+  else if (encrypted_content && encrypted_symmetric_key) {
+    try {
+      console.log("🔒 Push Legacy Detectado...");
+      const llaveAESBase64 = await AgoraBunker.descifrarLlaveDeChatR(encrypted_symmetric_key);
+      const mensajePlano = await AgoraBunker.descifrarMensajeTextoR(encrypted_content, llaveAESBase64);
+
+      if (Platform.OS === 'android') {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: title || "Mensaje Confidencial",
+              body: mensajePlano,
+              data: payloadExtra, 
+            },
+            trigger: null 
+          });
+      }
+    } catch (e) {
+      console.error("❌ Error en push legacy:", e)
+    }
+  } 
+  // FALLBACK NO CIFRADO
+  else if (payloadExtra.type === 'new_message' && payloadExtra.content_plain) {
+      if (Platform.OS === 'android') {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: payloadExtra.title || "Nuevo mensaje",
+              body: payloadExtra.content_plain,
+              data: payloadExtra,
+            },
+            trigger: null
+          });
+      }
   }
 }
 
