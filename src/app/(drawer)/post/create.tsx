@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View } from 'react-native';
+import { View, TouchableOpacity, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import useAuth from "@/hooks/useAuth";
 import { useColorScheme } from "react-native";
 import { EditorDeTexto } from "@/Components/EditorDeTexto";
@@ -28,6 +29,13 @@ export default function CreatePostScreen() {
     return (
 
         <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? 'black' : 'white' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: isDark ? '#333' : '#eee' }}>
+                <TouchableOpacity onPress={() => router.back()}>
+                    <Ionicons name="close" size={28} color={isDark ? 'white' : 'black'} />
+                </TouchableOpacity>
+                <Text style={{ color: isDark ? 'white' : 'black', fontSize: 18, fontWeight: 'bold' }}>Nuevo Post</Text>
+                <View style={{ width: 28 }} />
+            </View>
             <View style={{ flex: 1, padding: 10, backgroundColor: isDark ? 'black' : 'white' }}>
                 <EditorDeTexto
                     value={content}

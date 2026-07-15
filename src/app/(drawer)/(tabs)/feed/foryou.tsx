@@ -12,7 +12,7 @@ import useAuth from '@/hooks/useAuth';
 import { Usuario } from '@/Types/Users';
 import UserAvatar from '@/Components/UserAvatar';
 import AppBar from '@/Components/AppBar';
-import {posts} from '@/Components/Prueba.json';
+
 import PostCard from '@/Components/Posts/PostsCard';
 import { Post } from '@/Types/Posts';
 

@@ -76,6 +76,13 @@ export default function SettingsScreen() {
         );
     };
 
+    const handleComingSoon = (feature: string) => {
+        Alert.alert(
+            "Próximamente",
+            `La función de ${feature} estará disponible en una futura actualización.`
+        );
+    };
+
     return (
         <ScrollView className={`flex-1 ${isDark ? 'bg-black' : 'bg-[#f9fafb]'}`}>
             <View className="pb-10 pt-2">
@@ -103,19 +110,19 @@ export default function SettingsScreen() {
                     icon="notifications-outline" 
                     title="Notificaciones" 
                     subtitle="Mensajes, likes y menciones"
-                    onPress={() => console.log("Notificaciones")}
+                    onPress={() => handleComingSoon("Notificaciones")}
                 />
                 <SettingItem 
                     icon="moon-outline" 
                     title="Apariencia" 
                     subtitle="Modo oscuro automático"
-                    onPress={() => console.log("Apariencia")}
+                    onPress={() => handleComingSoon("Apariencia")}
                 />
                 <SettingItem 
                     icon="language-outline" 
                     title="Idioma" 
                     subtitle="Español"
-                    onPress={() => console.log("Idioma")}
+                    onPress={() => handleComingSoon("Idioma")}
                 />
 
                 <SectionHeader title="Información y Soporte" />
@@ -133,7 +140,7 @@ export default function SettingsScreen() {
                     icon="information-circle-outline" 
                     title="Acerca de Agora" 
                     subtitle="Versión 1.0.0 (Búnker Activo)"
-                    onPress={() => console.log("Versión")}
+                    onPress={() => handleComingSoon("Detalles de versión")}
                 />
 
                 <SectionHeader title="Acciones" />

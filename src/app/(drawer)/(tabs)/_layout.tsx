@@ -1,4 +1,4 @@
-import { Tabs, useNavigation } from 'expo-router';
+import { Tabs, useNavigation, useRouter } from 'expo-router';
 import { Ionicons, Octicons } from '@expo/vector-icons';
 import {
   StyleSheet,
@@ -18,6 +18,7 @@ const VISIBLE_TABS = ['feed', 'search', 'newpost', 'notifications', 'profile'];
 export default function TabLayout() {
   const user = useAuth();
   const navigation = useNavigation();
+  const router = useRouter();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
@@ -225,7 +226,14 @@ export default function TabLayout() {
         tabBarIcon: ({ color, size }) => (
           <Ionicons name="add-circle" size={size} color={color} />
         ),
-      }} />
+      }} 
+      listeners={{
+        tabPress: (e) => {
+          e.preventDefault();
+          router.push('/post/create');
+        },
+      }}
+      />
       <Tabs.Screen name="notifications" options={{
         title: 'Notificaciones',
         tabBarIcon: ({ color, size }) => (

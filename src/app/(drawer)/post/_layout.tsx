@@ -10,6 +10,7 @@ export default function PostLayout() {
             headerShown: false,
         }}>
             <Stack.Screen name="[id]" />
+            <Stack.Screen name="create" options={{ presentation: 'modal' }} />
         </Stack>
     );
 }
