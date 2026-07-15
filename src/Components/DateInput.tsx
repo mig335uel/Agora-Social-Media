@@ -50,6 +50,7 @@ export default function BirthDateSelector({ value, onChange }: Props) {
           mode="date"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={handleDateChange}
+          locale='es-ES'
           maximumDate={new Date(new Date().setFullYear(new Date().getFullYear() - 16))} // 16 años de máxima
           // Estilos específicos para iOS si quieres que sea un modal
           style={Platform.OS === 'ios' ? { backgroundColor: isDark ? "#000" : "#fff" } : {}}
