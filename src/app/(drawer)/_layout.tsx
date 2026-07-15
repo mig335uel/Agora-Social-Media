@@ -97,7 +97,7 @@ export default function DrawerLayout() {
               const aesKeyBase64: string = await AgoraBunker.descifrarLlaveDeChatR(encripted_key);
 
               // Guardamos en el cache en RAM — el chat está listo al instante
-              MessageService.precalentarLlave(chat_id, aesKeyBase64);
+              MessageService.asimilarCandadoRealtime(chat_id, aesKeyBase64);
 
               console.log(`[Búnker] ✅ Llave del chat ${chat_id} descifrada y lista.`);
             } catch (e) {
@@ -140,10 +140,10 @@ export default function DrawerLayout() {
           },
           async (payload) => {
             const { id: newDeviceId, public_device_key } = payload.new as any;
-            
+
             // Ignorar si el dispositivo insertado es este mismo
             if (newDeviceId === myDbDeviceId.trim()) return;
-            
+
             if (!public_device_key) return; // Si no soporta E2EE
 
             console.log(`[Búnker] 📱 Nuevo dispositivo detectado en mi cuenta: ${newDeviceId}. Sincronizando llaves...`);
