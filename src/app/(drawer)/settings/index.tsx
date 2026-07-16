@@ -94,7 +94,9 @@ export default function SettingsScreen() {
                     subtitle="Cambia tu foto, nombre o biografía"
                     onPress={() => {
                         if (currentUser?.id) {
-                            router.push(`/editar/${currentUser.id}`);
+                            router.push({ pathname: '/(drawer)/editar/[id]', params: { id: currentUser.id } });
+                        } else {
+                            Alert.alert("Cargando", "Por favor, espera un momento mientras obtenemos tus datos.");
                         }
                     }}
                 />

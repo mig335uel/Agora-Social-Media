@@ -225,7 +225,11 @@ export default function ProfileHeader({ user, isMe, isFollowing, isPending, isBl
             <>
               <TouchableOpacity
                 onPress={() => {
-                  if (user?.id) router.push(`/editar/${user.id}`);
+                  if (user?.id) {
+                    router.push({ pathname: '/(drawer)/editar/[id]', params: { id: user.id } });
+                  } else {
+                    Alert.alert("Cargando", "Por favor, espera un momento mientras cargamos tus datos.");
+                  }
                 }}
                 className="flex-row items-center gap-2 px-6 py-3 bg-black dark:bg-white rounded-2xl"
                 activeOpacity={0.8}

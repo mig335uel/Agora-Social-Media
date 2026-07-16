@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { View, useColorScheme, ActivityIndicator, FlatList } from "react-native";
+import { useFocusEffect } from "expo-router";
 import { Post } from "@/Types/Posts";
 import { supabase } from "@/lib/supbase/supabase";
 import useAuth from "@/hooks/useAuth";
@@ -55,9 +56,11 @@ export default function Profile() {
         }
     }, [user?.id]);
 
-    useEffect(() => {
-        fetchPosts();
-    }, [fetchPosts]);
+    useFocusEffect(
+        useCallback(() => {
+            fetchPosts();
+        }, [fetchPosts])
+    );
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
