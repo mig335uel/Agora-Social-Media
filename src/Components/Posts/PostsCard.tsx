@@ -1,6 +1,6 @@
 import { Post } from "@/Types/Posts";
 import { GlassContainer } from "expo-glass-effect";
-import { FlatList, View, StyleSheet, Platform, ActionSheetIOS, Alert, AlertButton, useColorScheme, RefreshControl } from "react-native";
+import { FlatList, View, StyleSheet, Platform, ActionSheetIOS, Alert, AlertButton, useColorScheme, RefreshControl, Share } from "react-native";
 import useAuth from "@/hooks/useAuth";
 import { deletePost, toggleLike, repostPost, recordShare, createPost } from "@/Services/PostService";
 import { blockUser } from "@/Services/UserService";
@@ -228,6 +228,11 @@ export default function PostCard({
 
         try {
             await recordShare(postId);
+
+            await Share.share({
+                url: `https://agoras.es/posts/${postId}`,
+                title: `¡Mira esta publicación en Ágoras!`
+            });
         } catch (error) {
             console.error("Error al compartir:", error);
         }

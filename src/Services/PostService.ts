@@ -305,7 +305,11 @@ export async function repostPost(postId: string): Promise<{ reposted: boolean }>
 export async function recordShare(postId: string) {
   try {
     await supabase.rpc('record_post_share', { p_post_id: postId });
+    
   } catch (error) {
     console.error("Error en recordShare:", error);
   }
 }
+
+
+

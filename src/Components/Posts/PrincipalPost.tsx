@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Platform, Modal, useColorScheme, Linking } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Platform, Modal, useColorScheme, Linking, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -131,6 +131,10 @@ export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
 
     try {
       await recordShare(localPost.id);
+      await Share.share({
+        url:`https://agoras.es/posts/${localPost.id}`,
+        title: `Mira esta publicación en Agora!`
+    });
     } catch (error) {
       console.error("Error al compartir:", error);
     }
