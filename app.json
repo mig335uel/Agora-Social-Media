@@ -23,7 +23,7 @@
       "iosDisplayInForeground": true
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.agora.social",
       "googleServicesFile": "./GoogleService-Info.plist",
       "entitlements": {
