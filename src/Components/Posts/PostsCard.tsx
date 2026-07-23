@@ -17,7 +17,10 @@ export default function PostCard({
     refreshing,
     FlatListComponent = FlatList,
     onViewableItemsChanged,
-    viewabilityConfig
+    viewabilityConfig,
+    onEndReached,
+    onEndReachedThreshold,
+    loadingMore
 }: {
     posts: Post[] | any[],
     ListHeaderComponent?: React.ReactElement,
