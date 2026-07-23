@@ -365,7 +365,7 @@ BEGIN
             w.rank_score::double precision,
             w.v_score::double precision as viral_score,
             (COALESCE(p_personal_weight, 0.75) * COALESCE(w.rank_score, 0) +
-             COALESCE(p_viral_weight, 0.25) * COALESCE(w.v_score, 0))::double precision as combined_score
+             COALESCE(p_viral_weight, 0.25) * (COALESCE(w.v_score, 0) * 20.0))::double precision as combined_score
         FROM with_media w
         ORDER BY combined_score DESC
         LIMIT p_limit OFFSET p_offset;
