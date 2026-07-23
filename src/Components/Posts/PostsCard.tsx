@@ -1,6 +1,6 @@
 import { Post } from "@/Types/Posts";
 import { GlassContainer } from "expo-glass-effect";
-import { FlatList, View, StyleSheet, Platform, ActionSheetIOS, Alert, AlertButton, useColorScheme, RefreshControl, Share } from "react-native";
+import { FlatList, View, StyleSheet, Platform, ActionSheetIOS, Alert, AlertButton, useColorScheme, RefreshControl, Share, ActivityIndicator } from "react-native";
 import useAuth from "@/hooks/useAuth";
 import { deletePost, toggleLike, repostPost, recordShare, createPost } from "@/Services/PostService";
 import { blockUser } from "@/Services/UserService";
@@ -17,7 +17,11 @@ export default function PostCard({
     refreshing,
     FlatListComponent = FlatList,
     onViewableItemsChanged,
-    viewabilityConfig
+    viewabilityConfig,
+    onEndReached,
+    onEndReachedThreshold = 0.5,
+    ListFooterComponent,
+    loadingMore,
 }: {
     posts: Post[] | any[],
     ListHeaderComponent?: React.ReactElement,
@@ -25,7 +29,11 @@ export default function PostCard({
     refreshing?: boolean,
     FlatListComponent?: any,
     onViewableItemsChanged?: (info: any) => void,
-    viewabilityConfig?: any
+    viewabilityConfig?: any,
+    onEndReached?: () => void,
+    onEndReachedThreshold?: number,
+    ListFooterComponent?: React.ReactElement,
+    loadingMore?: boolean,
 }) {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
@@ -258,8 +266,15 @@ export default function PostCard({
         showsVerticalScrollIndicator: false,
         ItemSeparatorComponent: () => <View style={{ height: 8 }} />,
         ListHeaderComponent: ListHeaderComponent,
+        ListFooterComponent: ListFooterComponent || (loadingMore ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="#1DA1F2" />
+            </View>
+        ) : undefined),
         onViewableItemsChanged,
         viewabilityConfig,
+        onEndReached,
+        onEndReachedThreshold: onEndReached ? onEndReachedThreshold : undefined,
         
         // Usamos refreshControl en vez de onRefresh/refreshing porque
         // Tabs.FlatList (react-native-collapsible-tab-view) solo acepta refreshControl
