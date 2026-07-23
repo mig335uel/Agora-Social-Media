@@ -1,6 +1,6 @@
 import { Post } from "@/Types/Posts";
 import { GlassContainer } from "expo-glass-effect";
-import { FlatList, View, StyleSheet, Platform, ActionSheetIOS, Alert, AlertButton, useColorScheme, RefreshControl, Share } from "react-native";
+import { FlatList, View, StyleSheet, Platform, ActionSheetIOS, Alert, AlertButton, useColorScheme, RefreshControl, Share, ActivityIndicator } from "react-native";
 import useAuth from "@/hooks/useAuth";
 import { deletePost, toggleLike, repostPost, recordShare, createPost } from "@/Services/PostService";
 import { blockUser } from "@/Services/UserService";
