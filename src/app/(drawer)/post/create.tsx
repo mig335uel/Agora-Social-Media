@@ -16,9 +16,9 @@ export default function CreatePostScreen() {
     const [content, setContent] = useState('');
 
     // Función que se dispara al pulsar "Publicar" en el editor
-    const handlePublish = async (text: string, images: any[]) => {
+    const handlePublish = async (text: string, images: any[], videoUri?: string | null) => {
         try {
-            await createPost(text, images);
+            await createPost(text, images, null, videoUri);
             // Una vez publicado, volvemos atrás
             router.back();
         } catch (error) {

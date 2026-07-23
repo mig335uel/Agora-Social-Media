@@ -94,7 +94,9 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      "react-native-compressor",
+      "expo-video"
     ]
   }
 }

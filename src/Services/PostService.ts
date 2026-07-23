@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supbase/supabase";
 import { ProcessedImage, uploadPostImage } from "./ImageService";
+import { uploadPostVideo } from "./VideoService";
 import { Platform } from "react-native";
 
 interface Notifications {
@@ -13,7 +14,12 @@ interface Notifications {
 /**
  * Servicio para gestionar la creación de publicaciones y temas relacionados.
  */
-export async function createPost(content: string, localImages: ProcessedImage[] = [], parentPostId: string | null = null) {
+export async function createPost(
+  content: string, 
+  localImages: ProcessedImage[] = [], 
+  parentPostId: string | null = null,
+  videoUri: string | null = null
+) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Usuario no autenticado");
@@ -63,37 +69,37 @@ export async function createPost(content: string, localImages: ProcessedImage[] 
     }
 
     // Subir imágenes
-    // Subir imágenes
     if (localImages.length > 0) {
       console.log(`Subiendo ${localImages.length} imágenes...`);
       
-      // 1. Subir las imágenes en paralelo para mayor velocidad
       const uploadPromises = localImages.map(localImg => uploadPostImage(post.id, localImg));
       const results = await Promise.all(uploadPromises);
-      
-      // 2. Filtrar las URLs válidas (ignorando las que hayan fallado y devuelto null)
       const mediaUrls = results.filter(url => url !== null) as string[];
 
       if (mediaUrls.length > 0) {
-        // PRECAUCIÓN: Asegúrate de que tu columna en Supabase se llame exactamente 'image'
-        // A veces se suele llamar 'media_url'. Si es así, cámbialo aquí abajo.
         const mediaInserts = mediaUrls.map(url => ({
           post_id: post.id,
           user_id: user.id,
           image: url 
         }));
 
-        console.log("Insertando en media_feature:", mediaInserts);
-
-        // 3. ¡IMPORTANTE! Capturar el error del insert
         const { error: mediaError } = await supabase.from('media_feature').insert(mediaInserts);
-        
-        if (mediaError) {
-          console.error("❌ Error al vincular las imágenes con el post en la tabla media_feature:", mediaError);
-          throw mediaError; // Hacemos que la función falle y el usuario sepa que algo fue mal
-        } else {
-          console.log("✅ Imágenes insertadas correctamente en la base de datos.");
-        }
+        if (mediaError) throw mediaError;
+      }
+    }
+
+    // Subir vídeo comprimido
+    if (videoUri) {
+      console.log("Subiendo vídeo comprimido al servidor...");
+      const videoPublicUrl = await uploadPostVideo(post.id, videoUri);
+      if (videoPublicUrl) {
+        const { error: videoInsertError } = await supabase.from('media_feature').insert({
+          post_id: post.id,
+          user_id: user.id,
+          image: videoPublicUrl,
+        });
+        if (videoInsertError) console.error("Error al vincular vídeo en media_feature:", videoInsertError);
+        else console.log("✅ Vídeo vinculado correctamente en la base de datos.");
       }
     }
 

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { pickAndProcessImage, ProcessedImage } from '../Services/ImageService';
+import { pickAndCompressVideo } from '../Services/VideoService';
 import PostDetailAppBar from './Posts/PostDetailAppBar';
 import AppBar from './AppBar';
 
@@ -21,7 +22,7 @@ interface EditorDeTextoProps {
   onChange: (text: string) => void;
   onSearchMention: (query: string) => Promise<any[]>;
   onSearchHashtag: (query: string) => Promise<any[]>;
-  onPublish: (content: string, images: ProcessedImage[]) => Promise<void>;
+  onPublish: (content: string, images: ProcessedImage[], videoUri?: string | null) => Promise<void>;
   placeholder?: string;
   isDark?: boolean;
   hashtagMandatory?: boolean;
@@ -45,7 +46,9 @@ export const EditorDeTexto = ({
   const [triggerType, setTriggerType] = useState<'@' | '#' | null>(null);
   const [query, setQuery] = useState('');
   const [images, setImages] = useState<ProcessedImage[]>([]);
+  const [videoUri, setVideoUri] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isCompressingVideo, setIsCompressingVideo] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
 
   const inputRef = useRef<TextInput>(null);
@@ -134,23 +137,37 @@ export const EditorDeTexto = ({
     }
   };
 
+  const handleAddVideo = async () => {
+    setIsCompressingVideo(true);
+    try {
+      const processedVideo = await pickAndCompressVideo();
+      if (processedVideo) {
+        setVideoUri(processedVideo.uri);
+      }
+    } catch (error) {
+      console.error("Error picking/compressing video:", error);
+    } finally {
+      setIsCompressingVideo(false);
+    }
+  };
+
   const handlePublish = async () => {
     // Validación de hashtag obligatorio
     const hashtagRegex = /#[\wñáéíóú]+/g;
     const hasHashtags = hashtagRegex.test(value);
 
     if (hashtagMandatory && !hasHashtags) {
-      // Solo bloqueamos si es obligatorio
       return;
     }
 
-    if ((!value.trim() && images.length === 0) || isPublishing) return;
+    if ((!value.trim() && images.length === 0 && !videoUri) || isPublishing) return;
     setIsPublishing(true);
     try {
-      await onPublish(value, images);
+      await onPublish(value, images, videoUri);
       // Limpiamos el editor después de publicar con éxito
       onChange('');
       setImages([]);
+      setVideoUri(null);
       setShowSuggestions(false);
     } catch (error) {
       console.error("Error publishing:", error);
@@ -161,6 +178,10 @@ export const EditorDeTexto = ({
 
   const removeImage = (index: number) => {
     setImages(images.filter((_, i) => i !== index));
+  };
+
+  const removeVideo = () => {
+    setVideoUri(null);
   };
 
   /**
@@ -284,14 +305,40 @@ export const EditorDeTexto = ({
           </View>
         )}
 
+        {/* Vista previa de vídeo comprimido */}
+        {videoUri && (
+          <View style={styles.imagesContainer}>
+            <View style={styles.imageWrapper}>
+              <View style={[styles.imageThumbnail, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="videocam" size={36} color="#2563eb" />
+                <Text style={{ color: 'white', fontSize: 10, marginTop: 4, fontWeight: 'bold' }}>Vídeo listo</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.removeImageBtn}
+                onPress={removeVideo}
+              >
+                <Ionicons name="close-circle" size={20} color="red" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Barra de herramientas */}
         <View style={[styles.toolbar, isDark && styles.darkToolbar]}>
           <View style={styles.leftTools}>
-            <TouchableOpacity onPress={handleAddImage} disabled={isUploading}>
+            <TouchableOpacity onPress={handleAddImage} disabled={isUploading || isCompressingVideo}>
               {isUploading ? (
                 <ActivityIndicator size="small" color="#2563eb" />
               ) : (
                 <Ionicons name="image-outline" size={24} color="#2563eb" />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleAddVideo} disabled={isUploading || isCompressingVideo} style={{ marginLeft: 16 }}>
+              {isCompressingVideo ? (
+                <ActivityIndicator size="small" color="#2563eb" />
+              ) : (
+                <Ionicons name="videocam-outline" size={24} color="#2563eb" />
               )}
             </TouchableOpacity>
 
@@ -305,8 +352,12 @@ export const EditorDeTexto = ({
 
           <TouchableOpacity
             onPress={handlePublish}
-            disabled={isPublishing || (!value.trim() && images.length === 0) || (hashtagMandatory && !/#[\wñáéíóú]+/g.test(value))}
+            disabled={isPublishing || (!value.trim() && images.length === 0 && !videoUri) || (hashtagMandatory && !/#[\wñáéíóú]+/g.test(value))}
             style={[
+              styles.publishBtn,
+              (isPublishing || (!value.trim() && images.length === 0 && !videoUri) || (hashtagMandatory && !/#[\wñáéíóú]+/g.test(value))) && styles.disabledBtn
+            ]}
+          >
               styles.publishBtn,
               (isPublishing || (!value.trim() && images.length === 0) || (hashtagMandatory && !/#[\wñáéíóú]+/g.test(value))) && styles.disabledBtn
             ]}

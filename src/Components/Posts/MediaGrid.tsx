@@ -1,6 +1,7 @@
 import { media_feature } from '@/Types/Posts';
 import React from 'react';
 import { View, Image, StyleSheet, Dimensions, Pressable } from 'react-native';
+import PostVideoPlayer from './PostVideoPlayer';
 
 interface MediaGridProps {
     media: media_feature[];
@@ -8,8 +9,12 @@ interface MediaGridProps {
 }
 
 const { width } = Dimensions.get('window');
-const GRID_PADDING = 32; // Ajuste según el contenedor
-const GRID_WIDTH = width - GRID_PADDING;
+
+const IS_VIDEO_REGEX = /\.(mp4|mov|m4v|webm)(\?.*)?$/i;
+function isVideoUrl(url: string | null | undefined): boolean {
+    if (!url) return false;
+    return IS_VIDEO_REGEX.test(url);
+}
 
 export default function MediaGrid({ media, onImagePress }: MediaGridProps) {
     if (!media || media.length === 0) return null;
@@ -18,9 +23,13 @@ export default function MediaGrid({ media, onImagePress }: MediaGridProps) {
         const count = media.length;
 
         if (count === 1) {
+            const itemUrl = media[0].image;
+            if (isVideoUrl(itemUrl)) {
+                return <PostVideoPlayer videoUrl={itemUrl!} />;
+            }
             return (
                 <Pressable onPress={() => onImagePress?.(0)} style={styles.singleImageContainer}>
-                    <Image source={{ uri: media[0].image! }} style={styles.image} resizeMode="cover" />
+                    <Image source={{ uri: itemUrl! }} style={styles.image} resizeMode="cover" />
                 </Pressable>
             );
         }
