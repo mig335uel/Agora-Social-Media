@@ -21,6 +21,8 @@ export default function ForYou() {
     const [posts, setPosts] = useState<RankedPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
     // Tracking de dwell time
     const visibleItems = useRef<Set<string>>(new Set());
     const dwellBuffer = useRef<{ [postId: string]: number }>({});
@@ -28,11 +30,13 @@ export default function ForYou() {
     const scheme = useColorScheme();
     const isDark = scheme === 'dark';
 
-    
+    const PAGE_SIZE = 20;
+
     const fetchFeed = useCallback(async () => {
         try {
-            const feed = await getForYouFeed();
+            const feed = await getForYouFeed(PAGE_SIZE, 0);
             setPosts(feed);
+            setHasMore(feed.length >= PAGE_SIZE);
         } catch (error) {
             console.error("Error fetching feed:", error);
         } finally {
@@ -40,6 +44,32 @@ export default function ForYou() {
             setRefreshing(false);
         }
     }, []);
+
+    const fetchMorePosts = useCallback(async () => {
+        if (loadingMore || !hasMore || loading || refreshing) return;
+
+        setLoadingMore(true);
+        try {
+            const nextOffset = posts.length;
+            const newPosts = await getForYouFeed(PAGE_SIZE, nextOffset);
+            if (!newPosts || newPosts.length === 0) {
+                setHasMore(false);
+            } else {
+                setPosts(prevPosts => {
+                    const existingIds = new Set(prevPosts.map(p => p.id));
+                    const uniqueNewPosts = newPosts.filter(p => !existingIds.has(p.id));
+                    return [...prevPosts, ...uniqueNewPosts];
+                });
+                if (newPosts.length < PAGE_SIZE) {
+                    setHasMore(false);
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching more posts:", error);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [loadingMore, hasMore, loading, refreshing, posts.length]);
 
     useFocusEffect(
         useCallback(() => {
@@ -137,6 +167,9 @@ export default function ForYou() {
                     refreshing={refreshing} 
                     onViewableItemsChanged={onViewableItemsChanged}
                     viewabilityConfig={viewabilityConfig}
+                    onEndReached={fetchMorePosts}
+                    onEndReachedThreshold={0.5}
+                    loadingMore={loadingMore}
                 />
             )}
         </View>

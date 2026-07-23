@@ -25,7 +25,10 @@ export default function PostCard({
     refreshing?: boolean,
     FlatListComponent?: any,
     onViewableItemsChanged?: (info: any) => void,
-    viewabilityConfig?: any
+    viewabilityConfig?: any,
+    onEndReached?: () => void,
+    onEndReachedThreshold?: number,
+    loadingMore?: boolean
 }) {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
@@ -270,6 +273,13 @@ export default function PostCard({
                 tintColor="#1DA1F2"
                 colors={["#1DA1F2"]}
             />
+        ) : undefined,
+        onEndReached,
+        onEndReachedThreshold,
+        ListFooterComponent: loadingMore ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="#1DA1F2" />
+            </View>
         ) : undefined,
     };
 
