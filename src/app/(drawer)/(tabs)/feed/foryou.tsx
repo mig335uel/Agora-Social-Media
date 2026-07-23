@@ -104,7 +104,8 @@ export default function ForYou() {
     }, []);
 
     const viewabilityConfig = useRef({
-        itemVisiblePercentThreshold: 50 // Se considera visible si aparece el 50%
+        itemVisiblePercentThreshold: 70, // Se considera visible si aparece el 70% del post
+        minimumViewTime: 1500,           // Exige al menos 1.5s antes de considerar el post como visto
     }).current;
 
     return (

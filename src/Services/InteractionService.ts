@@ -15,20 +15,11 @@ export async function recordInteractions(interactions: InteractionPayload[]) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // El sistema sugiere usar 'increment_user_interests_for_post' con p_post_id y p_user_id
-    const promises = interactions.map(item => 
-      supabase.rpc('increment_user_interests_for_post', { 
-        p_post_id: item.post_id,
-        p_user_id: user.id
-      })
-    );
+    const { error } = await supabase.rpc('registrar_retencion_lote', { 
+      payload: interactions 
+    });
 
-    const results = await Promise.all(promises);
-    const firstError = results.find(r => r.error)?.error;
-    
-    if (firstError) throw firstError;
-
-    
+    if (error) throw error;
   } catch (error) {
     console.error("❌ [InteractionService] Error registrando interacciones:", error);
   }

@@ -100,26 +100,15 @@ export async function createPost(content: string, localImages: ProcessedImage[] 
     // Hashtags
     const hashtags = extractHashtags(content);
     if (hashtags.length > 0) {
-      for (const tag of hashtags) {
-        const normalizedTag = tag.toLowerCase();
-        const { data: topicData } = await supabase
-          .from('trending_topics')
-          .upsert({
-            topic_name: normalizedTag,
-            category: 'General',
-            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-          }, { onConflict: 'topic_name' })
-          .select().single();
+      const trendPayload = hashtags.map(tag => ({
+        topic_name: tag.toLowerCase(),
+        category: 'General',
+        expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+      }));
 
-        if (topicData) {
-          await supabase.from('trending_hashtags').upsert({
-            trend_id: topicData.id,
-            hashtag: normalizedTag,
-            is_custom: true,
-            created_by: user.id
-          }, { onConflict: 'hashtag' });
-        }
-      }
+      // Registrar tendencias mediante la RPC centralizada
+      await supabase.rpc('upsert_trend', { trends: trendPayload });
+
       const topicInserts = hashtags.map(topic => ({ post_id: post.id, topic: topic.toLowerCase() }));
       await supabase.from('post_topics').insert(topicInserts);
     }
