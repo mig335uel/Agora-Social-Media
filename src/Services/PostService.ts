@@ -150,19 +150,29 @@ export async function createPost(content: string, localImages: ProcessedImage[] 
 export async function deletePost(postId: string) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: postData } = await supabase.from('posts').select('parent_post_id').eq('id', postId).single();
-      if (postData?.parent_post_id) {
-        await supabase
-          .from('notifications')
-          .delete()
-          .eq('post_id', postData.parent_post_id)
-          .eq('sender_id', user.id)
-          .eq('type', 'comment');
-      }
+    if (!user) throw new Error("Usuario no autenticado");
+
+    // Eliminar relaciones secundarias para evitar bloqueos por clave foránea (FK)
+    await supabase.from('media_feature').delete().eq('post_id', postId);
+    await supabase.from('post_topics').delete().eq('post_id', postId);
+    await supabase.from('likes').delete().eq('post_id', postId);
+    await supabase.from('reposts').delete().eq('post_id', postId);
+    await supabase.from('user_interactions').delete().eq('post_id', postId);
+
+    const { data: postData } = await supabase.from('posts').select('parent_post_id').eq('id', postId).single();
+    if (postData?.parent_post_id) {
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('post_id', postData.parent_post_id)
+        .eq('user_id', user.id);
     }
 
-    await supabase.from('posts').delete().eq('id', postId);
+    const { error } = await supabase.from('posts').delete().eq('id', postId).eq('user_id', user.id);
+    if (error) {
+      console.error("Error al borrar el post:", error.message);
+      throw error;
+    }
     return true;
   } catch (error) {
     console.error("Error eliminando post:", error);
