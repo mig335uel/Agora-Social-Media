@@ -353,3 +353,23 @@ export async function getFollowsFeed(limit = 20, offset = 0): Promise<RankedPost
     return [];
   }
 }
+
+// ─── getActiveTrends ─────────────────────────────────────────────────────────
+
+/**
+ * Obtiene la lista de tendencias activas para la pantalla de búsqueda/exploración.
+ */
+export async function getActiveTrends(limit = 10, region = 'Tendencia en España') {
+  try {
+    const { data, error } = await supabase.rpc('get_active_trends', {
+      p_limit: limit,
+      p_region: region,
+    });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error al obtener tendencias activas:', error);
+    return [];
+  }
+}
