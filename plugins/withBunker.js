@@ -29,7 +29,7 @@ const withBunker = (config) => {
         val builder = OkHttpClientProvider.createClientBuilder()
         return builder.addInterceptor { chain ->
             val request = chain.request()
-            if (request.url.host.contains("supabase.co")) {
+            if (request.url.host.contains("supabase.co") || request.url.host.contains("database.agoras.es")) {
               val apiKeyReal = AgoraKeyManager.extraerClaveDelBunker(applicationContext) ?: ""
               if (apiKeyReal.isNotEmpty()) {
                   android.util.Log.i("Bunker", "Bunker: Petición a Supabase detectada. Inyectando llave...")
