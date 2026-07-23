@@ -16,7 +16,14 @@ export default function useAuth() {
                     .eq('id', userId)
                     .maybeSingle();
 
-                if (error) console.error("Error fetching user data:", error);
+                if (error) {
+                    console.error("Error fetching user data:", error);
+                    if (error.code === 'PGRST301' || (error as any).status === 401) {
+                        console.warn("⚠️ Token JWT inválido detectado (PGRST301). Cerrando sesión para renovar credenciales...");
+                        await supabase.auth.signOut({ scope: 'local' });
+                        setUsuario(null);
+                    }
+                }
                 if (data) setUsuario(data);
             } catch (err) {
                 console.error("Unexpected error in useAuth:", err);

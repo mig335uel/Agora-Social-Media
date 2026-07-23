@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { pickAndProcessImage, ProcessedImage } from '../Services/ImageService';
-import { pickAndCompressVideo } from '../Services/VideoService';
+import { pickAndCompressVideo, uploadVideoPreload } from '../Services/VideoService';
 import PostDetailAppBar from './Posts/PostDetailAppBar';
 import AppBar from './AppBar';
 
@@ -47,8 +47,11 @@ export const EditorDeTexto = ({
   const [query, setQuery] = useState('');
   const [images, setImages] = useState<ProcessedImage[]>([]);
   const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [preuploadedVideoUrl, setPreuploadedVideoUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isCompressingVideo, setIsCompressingVideo] = useState(false);
+  const [isPreuploadingVideo, setIsPreuploadingVideo] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isPublishing, setIsPublishing] = useState(false);
 
   const inputRef = useRef<TextInput>(null);
@@ -69,25 +72,36 @@ export const EditorDeTexto = ({
     onChange(text);
 
     // Detectar qué hay justo antes del cursor
-    const cursorPosition = selection.start;
+    const cursorPosition = selection.start > 0 ? selection.start : text.length;
     const textBeforeCursor = text.slice(0, cursorPosition);
 
-    // Regex para encontrar "@usuario" o "#hashtag" al final de lo escrito
-    const lastWordMatch = textBeforeCursor.match(/[@#](\w*)$/);
+    // Regex para encontrar "@usuario" o "#hashtag" al final de lo escrito antes del cursor
+    const lastWordMatch = textBeforeCursor.match(/([@#][\wñáéíóú]*)$/i);
 
     if (lastWordMatch) {
-      const trigger = textBeforeCursor[lastWordMatch.index!];
-      const currentQuery = lastWordMatch[1];
+      const matchText = lastWordMatch[1];
+      const trigger = matchText[0] as '@' | '#';
+      const currentQuery = matchText.slice(1);
 
-      setTriggerType(trigger as '@' | '#');
+      setTriggerType(trigger);
       setQuery(currentQuery);
 
       // Llamada a las funciones de búsqueda pasadas por props
-      let results = [];
+      let results: any[] = [];
       if (trigger === '@') {
         results = await onSearchMention(currentQuery);
       } else {
         results = await onSearchHashtag(currentQuery);
+        // Si el usuario escribe un hashtag y no hay coincidencias exactas en la BD, lo ofrecemos como sugerencia
+        if (currentQuery.trim().length > 0) {
+          const hasExactMatch = results.some((item: any) => {
+            const str = typeof item === 'string' ? item : (item?.name || item?.hashtag || '');
+            return str.toLowerCase() === currentQuery.toLowerCase();
+          });
+          if (!hasExactMatch) {
+            results = [currentQuery, ...results];
+          }
+        }
       }
 
       setSuggestions(results);
@@ -102,16 +116,21 @@ export const EditorDeTexto = ({
    * Realiza un "corte" del string original para reemplazar solo la parte de la búsqueda.
    */
   const handleSelectSuggestion = (suggestion: any) => {
-    const cursorPosition = selection.start;
+    const cursorPosition = selection.start > 0 ? selection.start : value.length;
     const textBeforeCursor = value.slice(0, cursorPosition);
     const textAfterCursor = value.slice(cursorPosition);
 
     // Buscamos el inicio del trigger (@ o #) para saber desde dónde borrar
     const lastTriggerIndex = textBeforeCursor.lastIndexOf(triggerType!);
+    if (lastTriggerIndex === -1) return;
     const newTextBefore = value.slice(0, lastTriggerIndex);
 
     // El nombre a insertar (depende de si es usuario o hashtag)
-    const insertion = `${triggerType}${suggestion.username || suggestion.name || suggestion} `;
+    const suggestionText = typeof suggestion === 'string'
+      ? suggestion
+      : (suggestion.username || suggestion.name || suggestion.hashtag || suggestion);
+      
+    const insertion = `${triggerType}${suggestionText} `;
     const newValue = newTextBefore + insertion + textAfterCursor;
 
     onChange(newValue);
@@ -139,15 +158,51 @@ export const EditorDeTexto = ({
 
   const handleAddVideo = async () => {
     setIsCompressingVideo(true);
+    setUploadProgress(15);
     try {
       const processedVideo = await pickAndCompressVideo();
       if (processedVideo) {
         setVideoUri(processedVideo.uri);
+        setPreuploadedVideoUrl(null);
+        setIsPreuploadingVideo(true);
+        setIsCompressingVideo(false);
+        setUploadProgress(40);
+
+        // Simulamos un incremento fluido de la barra de progreso mientras se procesa la pre-subida
+        const interval = setInterval(() => {
+          setUploadProgress((prev) => {
+            if (prev >= 92) {
+              clearInterval(interval);
+              return 92;
+            }
+            return prev + 6;
+          });
+        }, 300);
+
+        console.log("⚡ Iniciando pre-subida de vídeo en segundo plano...");
+        uploadVideoPreload(processedVideo.uri)
+          .then((publicUrl) => {
+            clearInterval(interval);
+            setUploadProgress(100);
+            setIsPreuploadingVideo(false);
+            if (publicUrl) {
+              setPreuploadedVideoUrl(publicUrl);
+              console.log("⚡ Vídeo pre-subido con éxito en segundo plano:", publicUrl);
+            }
+          })
+          .catch(() => {
+            clearInterval(interval);
+            setIsPreuploadingVideo(false);
+          });
+      } else {
+        setIsCompressingVideo(false);
+        setUploadProgress(0);
       }
     } catch (error) {
       console.error("Error picking/compressing video:", error);
-    } finally {
       setIsCompressingVideo(false);
+      setIsPreuploadingVideo(false);
+      setUploadProgress(0);
     }
   };
 
@@ -160,14 +215,18 @@ export const EditorDeTexto = ({
       return;
     }
 
-    if ((!value.trim() && images.length === 0 && !videoUri) || isPublishing) return;
+    const effectiveVideo = preuploadedVideoUrl || videoUri;
+    if ((!value.trim() && images.length === 0 && !effectiveVideo) || isPublishing) return;
     setIsPublishing(true);
     try {
-      await onPublish(value, images, videoUri);
+      await onPublish(value, images, effectiveVideo);
       // Limpiamos el editor después de publicar con éxito
       onChange('');
       setImages([]);
       setVideoUri(null);
+      setPreuploadedVideoUrl(null);
+      setIsPreuploadingVideo(false);
+      setUploadProgress(0);
       setShowSuggestions(false);
     } catch (error) {
       console.error("Error publishing:", error);
@@ -182,6 +241,10 @@ export const EditorDeTexto = ({
 
   const removeVideo = () => {
     setVideoUri(null);
+    setPreuploadedVideoUrl(null);
+    setIsPreuploadingVideo(false);
+    setIsCompressingVideo(false);
+    setUploadProgress(0);
   };
 
   /**
@@ -189,12 +252,12 @@ export const EditorDeTexto = ({
    */
   const renderHighlightedText = (text: string) => {
     if (!text) return null;
-    const regex = /([@#][\wñáéíóú]+)/g;
-    const parts = text.split(regex);
+    const splitRegex = /([@#][\wñáéíóú]+)/gi;
+    const parts = text.split(splitRegex);
     return parts.map((part, index) => {
-      if (part.match(regex)) {
+      if (/^[@#][\wñáéíóú]+$/i.test(part)) {
         return (
-          <Text key={index} style={{ color: '#2563eb' }}>
+          <Text key={index} style={{ color: '#2563eb', fontWeight: '600' }}>
             {part}
           </Text>
         );
@@ -305,19 +368,51 @@ export const EditorDeTexto = ({
           </View>
         )}
 
-        {/* Vista previa de vídeo comprimido */}
-        {videoUri && (
-          <View style={styles.imagesContainer}>
-            <View style={styles.imageWrapper}>
-              <View style={[styles.imageThumbnail, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
-                <Ionicons name="videocam" size={36} color="#2563eb" />
-                <Text style={{ color: 'white', fontSize: 10, marginTop: 4, fontWeight: 'bold' }}>Vídeo listo</Text>
+        {/* Vista previa de vídeo comprimido y Barrita de progreso estilo Apple */}
+        {(isCompressingVideo || isPreuploadingVideo || videoUri) && (
+          <View style={styles.uploadProgressCard}>
+            <View style={styles.uploadHeaderRow}>
+              <View style={styles.uploadTitleGroup}>
+                <Ionicons
+                  name={preuploadedVideoUrl ? "checkmark-circle" : "cloud-upload"}
+                  size={18}
+                  color={preuploadedVideoUrl ? "#10b981" : "#2563eb"}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={[styles.uploadTitleText, preuploadedVideoUrl && { color: "#10b981" }]}>
+                  {isCompressingVideo
+                    ? "Comprimiendo y optimizando vídeo..."
+                    : isPreuploadingVideo
+                    ? "Subiendo vídeo a la nube de Agora..."
+                    : preuploadedVideoUrl
+                    ? "⚡ Vídeo listo para publicación instantánea"
+                    : "Procesando vídeo..."}
+                </Text>
               </View>
-              <TouchableOpacity
-                style={styles.removeImageBtn}
-                onPress={removeVideo}
-              >
-                <Ionicons name="close-circle" size={20} color="red" />
+              <Text style={[styles.uploadPercentText, preuploadedVideoUrl && { color: "#10b981" }]}>
+                {Math.round(uploadProgress)}%
+              </Text>
+            </View>
+
+            {/* Barrita de progreso */}
+            <View style={styles.progressBarBg}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { width: `${uploadProgress}%` },
+                  preuploadedVideoUrl && { backgroundColor: "#10b981" },
+                ]}
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+              <Text style={styles.uploadSubtext}>
+                {preuploadedVideoUrl
+                  ? "Subida completada en segundo plano"
+                  : "Subiendo Archivo en segundo plano"}
+              </Text>
+              <TouchableOpacity onPress={removeVideo} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Text style={{ fontSize: 11, color: '#ef4444', fontWeight: 'bold' }}>Eliminar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -356,10 +451,6 @@ export const EditorDeTexto = ({
             style={[
               styles.publishBtn,
               (isPublishing || (!value.trim() && images.length === 0 && !videoUri) || (hashtagMandatory && !/#[\wñáéíóú]+/g.test(value))) && styles.disabledBtn
-            ]}
-          >
-              styles.publishBtn,
-              (isPublishing || (!value.trim() && images.length === 0) || (hashtagMandatory && !/#[\wñáéíóú]+/g.test(value))) && styles.disabledBtn
             ]}
           >
             {isPublishing ? (
@@ -526,4 +617,51 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
+  uploadProgressCard: {
+    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+    borderColor: 'rgba(37, 99, 235, 0.25)',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 16,
+    marginVertical: 10,
+  },
+  uploadHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  uploadTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  uploadTitleText: {
+    fontWeight: '600',
+    fontSize: 13,
+    color: '#2563eb',
+  },
+  uploadPercentText: {
+    fontWeight: 'bold',
+    fontSize: 13,
+    color: '#2563eb',
+  },
+  progressBarBg: {
+    height: 6,
+    width: '100%',
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#2563eb',
+    borderRadius: 3,
+  },
+  uploadSubtext: {
+    fontSize: 11,
+    color: '#6b7280',
+  },
 });
+

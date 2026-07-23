@@ -195,6 +195,12 @@ export default function PrincipalPost({ post, onRefresh }: PrincipalPostProps) {
         {postToRender.media && postToRender.media.length > 0 && (
           <MediaGrid
             media={postToRender.media}
+            post={postToRender}
+            onLike={() => handleLike()}
+            onRepost={() => handleRepost()}
+            onShare={() => handleShare()}
+            onReply={handlePublishReply}
+            onOpenReplyModal={() => setIsReplyModalVisible(true)}
             onImagePress={(index) => {
               setSelectedImageIndex(index);
               setIsImageViewerVisible(true);

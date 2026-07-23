@@ -1,4 +1,4 @@
-import { media_feature } from '@/Types/Posts';
+import { media_feature, Post } from '@/Types/Posts';
 import React from 'react';
 import { View, Image, StyleSheet, Dimensions, Pressable } from 'react-native';
 import PostVideoPlayer from './PostVideoPlayer';
@@ -6,42 +6,77 @@ import PostVideoPlayer from './PostVideoPlayer';
 interface MediaGridProps {
     media: media_feature[];
     onImagePress?: (index: number) => void;
+    post?: Post;
+    isVisible?: boolean;
+    onLike?: (postId: string) => void;
+    onRepost?: (postId: string) => void;
+    onShare?: (postId: string) => void;
+    onReply?: (content: string, images: any[], postId: string) => Promise<void>;
+    onOpenReplyModal?: () => void;
 }
 
 const { width } = Dimensions.get('window');
 
-const IS_VIDEO_REGEX = /\.(mp4|mov|m4v|webm)(\?.*)?$/i;
+const IS_VIDEO_REGEX = /\.(mp4|mov|m4v|webm|m3u8)(\?.*)?$/i;
 function isVideoUrl(url: string | null | undefined): boolean {
     if (!url) return false;
-    return IS_VIDEO_REGEX.test(url);
+    return IS_VIDEO_REGEX.test(url) || url.includes('/video/') || url.includes('.mp4');
 }
 
-export default function MediaGrid({ media, onImagePress }: MediaGridProps) {
+export default function MediaGrid({
+    media,
+    onImagePress,
+    post,
+    isVisible = true,
+    onLike,
+    onRepost,
+    onShare,
+    onReply,
+    onOpenReplyModal,
+}: MediaGridProps) {
     if (!media || media.length === 0) return null;
+
+    const renderItem = (item: media_feature, index: number, containerStyle: any) => {
+        const itemUrl = item.image;
+        if (!itemUrl) return null;
+
+        if (isVideoUrl(itemUrl)) {
+            return (
+                <View key={index} style={containerStyle}>
+                    <PostVideoPlayer
+                        videoUrl={itemUrl}
+                        style={styles.image}
+                        post={post}
+                        isVisible={isVisible}
+                        onLike={onLike}
+                        onRepost={onRepost}
+                        onShare={onShare}
+                        onReply={onReply}
+                        onOpenReplyModal={onOpenReplyModal}
+                    />
+                </View>
+            );
+        }
+
+        return (
+            <Pressable key={index} onPress={() => onImagePress?.(index)} style={containerStyle}>
+                <Image source={{ uri: itemUrl }} style={styles.image} resizeMode="cover" />
+            </Pressable>
+        );
+    };
 
     const renderImages = () => {
         const count = media.length;
 
         if (count === 1) {
-            const itemUrl = media[0].image;
-            if (isVideoUrl(itemUrl)) {
-                return <PostVideoPlayer videoUrl={itemUrl!} />;
-            }
-            return (
-                <Pressable onPress={() => onImagePress?.(0)} style={styles.singleImageContainer}>
-                    <Image source={{ uri: itemUrl! }} style={styles.image} resizeMode="cover" />
-                </Pressable>
-            );
+            return renderItem(media[0], 0, styles.singleImageContainer);
         }
 
         if (count === 2) {
             return (
                 <View style={styles.gridContainer}>
-                    {media.map((item, index) => (
-                        <Pressable key={index} onPress={() => onImagePress?.(index)} style={styles.halfImage}>
-                            <Image source={{ uri: item.image! }} style={styles.image} resizeMode="cover" />
-                        </Pressable>
-                    ))}
+                    {renderItem(media[0], 0, styles.halfImage)}
+                    {renderItem(media[1], 1, styles.halfImage)}
                 </View>
             );
         }
@@ -49,16 +84,10 @@ export default function MediaGrid({ media, onImagePress }: MediaGridProps) {
         if (count === 3) {
             return (
                 <View style={styles.gridContainer}>
-                    <Pressable onPress={() => onImagePress?.(0)} style={styles.halfImage}>
-                        <Image source={{ uri: media[0].image! }} style={styles.image} resizeMode="cover" />
-                    </Pressable>
+                    {renderItem(media[0], 0, styles.halfImage)}
                     <View style={styles.columnContainer}>
-                        <Pressable onPress={() => onImagePress?.(1)} style={styles.quarterImage}>
-                            <Image source={{ uri: media[1].image! }} style={styles.image} resizeMode="cover" />
-                        </Pressable>
-                        <Pressable onPress={() => onImagePress?.(2)} style={styles.quarterImage}>
-                            <Image source={{ uri: media[2].image! }} style={styles.image} resizeMode="cover" />
-                        </Pressable>
+                        {renderItem(media[1], 1, styles.quarterImage)}
+                        {renderItem(media[2], 2, styles.quarterImage)}
                     </View>
                 </View>
             );
@@ -68,20 +97,12 @@ export default function MediaGrid({ media, onImagePress }: MediaGridProps) {
             return (
                 <View style={styles.gridContainer}>
                     <View style={styles.columnContainer}>
-                        <Pressable onPress={() => onImagePress?.(0)} style={styles.quarterImage}>
-                            <Image source={{ uri: media[0].image! }} style={styles.image} resizeMode="cover" />
-                        </Pressable>
-                        <Pressable onPress={() => onImagePress?.(1)} style={styles.quarterImage}>
-                            <Image source={{ uri: media[1].image! }} style={styles.image} resizeMode="cover" />
-                        </Pressable>
+                        {renderItem(media[0], 0, styles.quarterImage)}
+                        {renderItem(media[1], 1, styles.quarterImage)}
                     </View>
                     <View style={styles.columnContainer}>
-                        <Pressable onPress={() => onImagePress?.(2)} style={styles.quarterImage}>
-                            <Image source={{ uri: media[2].image! }} style={styles.image} resizeMode="cover" />
-                        </Pressable>
-                        <Pressable onPress={() => onImagePress?.(3)} style={styles.quarterImage}>
-                            <Image source={{ uri: media[3].image! }} style={styles.image} resizeMode="cover" />
-                        </Pressable>
+                        {renderItem(media[2], 2, styles.quarterImage)}
+                        {renderItem(media[3], 3, styles.quarterImage)}
                     </View>
                 </View>
             );

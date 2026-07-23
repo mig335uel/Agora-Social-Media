@@ -156,19 +156,29 @@ export async function createPost(
 export async function deletePost(postId: string) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: postData } = await supabase.from('posts').select('parent_post_id').eq('id', postId).single();
-      if (postData?.parent_post_id) {
-        await supabase
-          .from('notifications')
-          .delete()
-          .eq('post_id', postData.parent_post_id)
-          .eq('sender_id', user.id)
-          .eq('type', 'comment');
-      }
+    if (!user) throw new Error("Usuario no autenticado");
+
+    // Eliminar relaciones secundarias para evitar bloqueos por clave foránea (FK)
+    await supabase.from('media_feature').delete().eq('post_id', postId);
+    await supabase.from('post_topics').delete().eq('post_id', postId);
+    await supabase.from('likes').delete().eq('post_id', postId);
+    await supabase.from('reposts').delete().eq('post_id', postId);
+    await supabase.from('user_interactions').delete().eq('post_id', postId);
+
+    const { data: postData } = await supabase.from('posts').select('parent_post_id').eq('id', postId).single();
+    if (postData?.parent_post_id) {
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('post_id', postData.parent_post_id)
+        .eq('user_id', user.id);
     }
 
-    await supabase.from('posts').delete().eq('id', postId);
+    const { error } = await supabase.from('posts').delete().eq('id', postId).eq('user_id', user.id);
+    if (error) {
+      console.error("Error al borrar el post:", error.message);
+      throw error;
+    }
     return true;
   } catch (error) {
     console.error("Error eliminando post:", error);
@@ -178,20 +188,57 @@ export async function deletePost(postId: string) {
 
 export async function getTrendingTopics(query: string = ''): Promise<string[]> {
   try {
-    let request = supabase.from('trending_topics').select('topic_name, trending_hashtags(hashtag)').gt('expires_at', new Date().toISOString()).order('volume_score', { ascending: false }).limit(10);
-    if (query) request = request.or(`topic_name.ilike.%${query}%,trending_hashtags.hashtag.ilike.%${query}%`);
-    const { data } = await request;
-    if (!data) return [];
+    const cleanQuery = query ? query.replace(/^#/, '').trim() : '';
+
+    let request = supabase
+      .from('trending_topics')
+      .select('topic_name')
+      .order('volume_score', { ascending: false })
+      .limit(15);
+
+    if (cleanQuery) {
+      request = request.ilike('topic_name', `%${cleanQuery}%`);
+    }
+
+    const { data, error } = await request;
+
     const hashtags: string[] = [];
-    data.forEach(item => {
-      const nested = (item as any).trending_hashtags;
-      if (nested && Array.isArray(nested) && nested.length > 0) {
-        nested.forEach((h: any) => hashtags.push(h.hashtag));
-      } else {
-        hashtags.push(item.topic_name.replace(/\s+/g, ''));
+    if (!error && data && data.length > 0) {
+      data.forEach((item: any) => {
+        if (item && item.topic_name) {
+          hashtags.push(item.topic_name.replace(/\s+/g, ''));
+        }
+      });
+    }
+
+    // Fallback: Si no hay temas en trending_topics o faltan resultados, buscar en los últimos posts
+    if (hashtags.length < 5) {
+      let postQuery = supabase
+        .from('posts')
+        .select('content')
+        .ilike('content', cleanQuery ? `%#${cleanQuery}%` : '%#%')
+        .order('created_at', { ascending: false })
+        .limit(25);
+
+      const { data: recentPosts } = await postQuery;
+      if (recentPosts) {
+        recentPosts.forEach((p: any) => {
+          if (p.content) {
+            const matches = p.content.match(/#([\wñáéíóú]+)/gi);
+            if (matches) {
+              matches.forEach((m: string) => {
+                const tag = m.substring(1);
+                if (!cleanQuery || tag.toLowerCase().includes(cleanQuery.toLowerCase())) {
+                  hashtags.push(tag);
+                }
+              });
+            }
+          }
+        });
       }
-    });
-    return Array.from(new Set(hashtags));
+    }
+
+    return Array.from(new Set(hashtags)).slice(0, 10);
   } catch (error) {
     console.error("Error en getTrendingTopics:", error);
     return [];

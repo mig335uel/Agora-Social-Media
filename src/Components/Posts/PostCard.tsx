@@ -39,6 +39,7 @@ const timeAgo = (dateStr: string): string => {
 
 interface PostCardProps {
     post: Post;
+    isVisible?: boolean;
     onLike?: (postId: string) => void;
     onRepost?: (postId: string) => void;
     onShare?: (postId: string) => void;
@@ -49,6 +50,7 @@ interface PostCardProps {
 
 export default function PostCard({
     post,
+    isVisible = true,
     onLike,
     onRepost,
     onShare,
@@ -163,10 +165,17 @@ export default function PostCard({
                 {renderStyledContent(post.content)}
             </Text>
 
-            {/* ── Grilla de imágenes ── */}
+            {/* ── Grilla de imágenes y vídeo ── */}
             {post.media && (
                 <MediaGrid
                     media={post.media!}
+                    post={post}
+                    isVisible={isVisible}
+                    onLike={onLike}
+                    onRepost={onRepost}
+                    onShare={onShare}
+                    onReply={onReply}
+                    onOpenReplyModal={() => setIsReplyModalVisible(true)}
                     onImagePress={(index) => {
                         setSelectedImageIndex(index);
                         setIsImageViewerVisible(true);

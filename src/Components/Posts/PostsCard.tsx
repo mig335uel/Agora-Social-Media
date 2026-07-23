@@ -5,7 +5,7 @@ import useAuth from "@/hooks/useAuth";
 import { deletePost, toggleLike, repostPost, recordShare, createPost } from "@/Services/PostService";
 import { blockUser } from "@/Services/UserService";
 import { router } from "expo-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ProcessedImage } from "@/Services/ImageService";
 import PostCardItem from "./PostCard";
 import ReportModal from "@/Components/ReportModal";
@@ -39,10 +39,34 @@ export default function PostCard({
     const isDark = colorScheme === 'dark';
     const currentUser = useAuth();
     const [localPosts, setLocalPosts] = useState<Post[]>(posts);
+    const [visiblePostIds, setVisiblePostIds] = useState<Set<string>>(new Set());
     const [reportModal, setReportModal] = useState<{ visible: boolean; postId: string | null }>({
         visible: false,
         postId: null,
     });
+
+    const onViewableItemsChangedRef = useRef(onViewableItemsChanged);
+    useEffect(() => {
+        onViewableItemsChangedRef.current = onViewableItemsChanged;
+    }, [onViewableItemsChanged]);
+
+    // Tracking interno de posts visibles en el viewport para pausar los vídeos fuera de vista
+    const handleInternalViewableItemsChanged = useCallback(({ viewableItems }: any) => {
+        const visible = new Set<string>();
+        viewableItems?.forEach((v: any) => {
+            if (v.item && v.item.id) {
+                visible.add(v.item.id);
+            }
+        });
+        setVisiblePostIds(visible);
+        if (onViewableItemsChangedRef.current) {
+            onViewableItemsChangedRef.current({ viewableItems });
+        }
+    }, []);
+
+    const defaultViewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 60,
+    }).current;
 
     // Sincronizar localPosts cuando la prop posts cambie
     useEffect(() => {
@@ -246,17 +270,21 @@ export default function PostCard({
         }
     };
 
-    const renderCard = ({ item }: { item: Post }) => (
-        <PostCardItem
-            post={item}
-            onLike={handleLike}
-            onRepost={handleRepost}
-            onShare={handleShare}
-            onReply={handlePublishReply}
-            onOptionsPress={handleOptionsPress}
-            onPress={handlePostPress}
-        />
-    );
+    const renderCard = ({ item, index }: { item: Post; index: number }) => {
+        const isVisible = visiblePostIds.size === 0 ? index === 0 : visiblePostIds.has(item.id);
+        return (
+            <PostCardItem
+                post={item}
+                isVisible={isVisible}
+                onLike={handleLike}
+                onRepost={handleRepost}
+                onShare={handleShare}
+                onReply={handlePublishReply}
+                onOptionsPress={handleOptionsPress}
+                onPress={handlePostPress}
+            />
+        );
+    };
 
     const listProps = {
         data: localPosts,
@@ -271,11 +299,11 @@ export default function PostCard({
                 <ActivityIndicator size="small" color="#1DA1F2" />
             </View>
         ) : undefined),
-        onViewableItemsChanged,
-        viewabilityConfig,
+        onViewableItemsChanged: handleInternalViewableItemsChanged,
+        viewabilityConfig: viewabilityConfig || defaultViewabilityConfig,
         onEndReached,
         onEndReachedThreshold: onEndReached ? onEndReachedThreshold : undefined,
-        
+
         // Usamos refreshControl en vez de onRefresh/refreshing porque
         // Tabs.FlatList (react-native-collapsible-tab-view) solo acepta refreshControl
         refreshControl: onRefresh ? (

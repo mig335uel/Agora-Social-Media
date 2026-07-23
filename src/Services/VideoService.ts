@@ -1,7 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
-import { Video } from 'react-native-compressor';
+import { Alert } from 'react-native';
 import { supabase } from '../lib/supbase/supabase';
-import { decode } from 'base64-arraybuffer';
 
 export interface ProcessedVideo {
   uri: string;
@@ -9,13 +8,13 @@ export interface ProcessedVideo {
 }
 
 /**
- * Abre la librería para seleccionar un vídeo y lo comprime sin pérdida de calidad visual.
- * Utiliza react-native-compressor para reducir drásticamente los MB manteniendo la nitidez.
+ * Abre la librería para seleccionar un vídeo (máximo 3 minutos de duración).
  */
 export const pickAndCompressVideo = async (): Promise<ProcessedVideo | null> => {
   const pickerResult = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+    mediaTypes: ['videos'],
     allowsEditing: true,
+    videoMaxDuration: 180, // Máximo 3 minutos (180 segundos)
     quality: 1,
   });
 
@@ -25,52 +24,93 @@ export const pickAndCompressVideo = async (): Promise<ProcessedVideo | null> => 
 
   const selectedAsset = pickerResult.assets[0];
 
+  // Validación de la duración del vídeo seleccionado
+  if (selectedAsset.duration) {
+    const durationInSeconds = selectedAsset.duration > 1000 ? selectedAsset.duration / 1000 : selectedAsset.duration;
+    if (durationInSeconds > 180) {
+      Alert.alert("Vídeo demasiado largo", "Los vídeos en Agora no pueden superar los 3 minutos de duración.");
+      return null;
+    }
+  }
+
+  console.log("Vídeo seleccionado (máx 3 mins):", selectedAsset.uri);
+
+  return {
+    uri: selectedAsset.uri,
+    type: 'video',
+  };
+};
+
+/**
+ * Pre-sube un vídeo en segundo plano al seleccionar para publicación instantánea.
+ */
+export const uploadVideoPreload = async (videoUri: string): Promise<string | null> => {
   try {
-    console.log("Comprimiendo vídeo sin pérdida de calidad...", selectedAsset.uri);
+    const { data: { user } } = await supabase.auth.getUser();
+    const folder = user?.id || 'temp';
+    const fileExt = videoUri.split('.').pop()?.toLowerCase() || 'mp4';
+    const isMov = fileExt === 'mov';
+    const finalExt = isMov ? 'mp4' : fileExt;
+    const fileName = `preload_${Date.now()}_${Math.random().toString(36).substring(7)}.${finalExt}`;
+    const filePath = `${folder}/${fileName}`;
 
-    // Compresión inteligente de vídeo H.264/MP4 manteniendo resolución óptima
-    const compressedUri = await Video.compress(
-      selectedAsset.uri,
-      {
-        compressionMethod: 'auto',
-        bitrate: 6000 // Bitrate óptimo para HD móvil sin artefactos visuales
-      },
-      (progress) => {
-        console.log(`Progreso de compresión de vídeo: ${Math.round(progress * 100)}%`);
-      }
-    );
+    console.log("⚡ Pre-subiendo vídeo en segundo plano...", videoUri);
 
-    console.log("✅ Vídeo comprimido correctamente:", compressedUri);
+    const formData = new FormData();
+    formData.append('file', {
+      uri: videoUri,
+      name: fileName,
+      type: isMov ? 'video/mp4' : `video/${finalExt}`,
+    } as any);
 
-    return {
-      uri: compressedUri,
-      type: 'video',
-    };
+    const { error } = await supabase.storage
+      .from('post_media')
+      .upload(filePath, formData, {
+        contentType: isMov ? 'video/mp4' : `video/${finalExt}`,
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (error) {
+      console.error("Error en pre-subida de vídeo:", error.message);
+      return null;
+    }
+
+    const { data: publicUrlData } = supabase.storage.from('post_media').getPublicUrl(filePath);
+    return publicUrlData?.publicUrl ?? null;
   } catch (error) {
-    console.error("❌ Error al comprimir el vídeo, usando original:", error);
-    return {
-      uri: selectedAsset.uri,
-      type: 'video',
-    };
+    console.error("Error en pre-subida de vídeo:", error);
+    return null;
   }
 };
 
 /**
- * Sube un vídeo comprimido al bucket 'post_media' en Supabase.
+ * Sube el archivo de vídeo directamente al bucket 'post_media' en Supabase como MP4.
  */
 export const uploadPostVideo = async (postId: string, videoUri: string): Promise<string | null> => {
+  if (videoUri.startsWith('http')) {
+    return videoUri;
+  }
   try {
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.mp4`;
+    const fileExt = videoUri.split('.').pop()?.toLowerCase() || 'mp4';
+    const isMov = fileExt === 'mov';
+    const finalExt = isMov ? 'mp4' : fileExt;
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${finalExt}`;
     const filePath = `${postId}/${fileName}`;
 
-    // Leemos el archivo en Blob / ArrayBuffer para la subida
-    const response = await fetch(videoUri);
-    const blob = await response.blob();
+    console.log("Subiendo vídeo directamente a post_media...", videoUri);
+
+    const formData = new FormData();
+    formData.append('file', {
+      uri: videoUri,
+      name: fileName,
+      type: isMov ? 'video/mp4' : `video/${finalExt}`,
+    } as any);
 
     const { error } = await supabase.storage
       .from('post_media')
-      .upload(filePath, blob, {
-        contentType: 'video/mp4',
+      .upload(filePath, formData, {
+        contentType: isMov ? 'video/mp4' : `video/${finalExt}`,
         cacheControl: '3600',
         upsert: false,
       });
