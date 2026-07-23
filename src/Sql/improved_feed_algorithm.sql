@@ -241,6 +241,29 @@ BEGIN
         JOIN public.users u ON p.user_id = u.id
         WHERE p.parent_post_id IS NULL
     ),
+    social_boosts AS (
+        SELECT 
+            bp.*,
+            (
+                bp.rank_score 
+                *
+                -- Multiplicador Social Directo: x10 si sigo al creador del post
+                COALESCE((
+                    SELECT 10.0 FROM public.follows f 
+                    WHERE f.follower_id = v_user_id AND f.following_id = bp.user_id
+                    LIMIT 1
+                ), 1.0)
+                *
+                -- Multiplicador Colaborativo: x3 si un amigo le ha dado Like al post
+                COALESCE((
+                    SELECT 3.0 FROM public.likes l
+                    JOIN public.follows f ON f.following_id = l.user_id
+                    WHERE f.follower_id = v_user_id AND l.post_id = bp.id
+                    LIMIT 1
+                ), 1.0)
+            ) as boosted_rank_score
+        FROM base_posts bp
+    ),
     media_agg AS (
       SELECT mf.post_id,
         jsonb_agg(
@@ -254,21 +277,21 @@ BEGIN
       GROUP BY mf.post_id
     )
     SELECT
-        bp.id,
-        bp.content,
+        sb.id,
+        sb.content,
         COALESCE(ma.media, '[]'::jsonb) AS media,
-        bp.created_at,
-        bp.likes_count,
-        bp.reposts_count,
-        bp.replies_count,
-        bp.user_id,
-        bp.username,
-        bp.display_name,
-        bp.profile_picture_url,
-        bp.rank_score
-    FROM base_posts bp
-    LEFT JOIN media_agg ma ON bp.id = ma.post_id
-    ORDER BY bp.rank_score DESC
+        sb.created_at,
+        sb.likes_count,
+        sb.reposts_count,
+        sb.replies_count,
+        sb.user_id,
+        sb.username,
+        sb.display_name,
+        sb.profile_picture_url,
+        sb.boosted_rank_score AS rank_score
+    FROM social_boosts sb
+    LEFT JOIN media_agg ma ON sb.id = ma.post_id
+    ORDER BY sb.boosted_rank_score DESC
     LIMIT p_limit OFFSET p_offset;
 END;
 $$;
