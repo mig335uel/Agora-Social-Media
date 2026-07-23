@@ -66,25 +66,37 @@ export const EditorDeTexto = ({
     onChange(text);
 
     // Detectar qué hay justo antes del cursor
-    const cursorPosition = selection.start;
+    const cursorPosition = selection.start > 0 ? selection.start : text.length;
     const textBeforeCursor = text.slice(0, cursorPosition);
 
-    // Regex para encontrar "@usuario" o "#hashtag" al final de lo escrito
-    const lastWordMatch = textBeforeCursor.match(/[@#](\w*)$/);
+    // Regex para encontrar "@usuario" o "#hashtag" al final de lo escrito antes del cursor
+    const lastWordMatch = textBeforeCursor.match(/([@#][\wñáéíóú]*)$/i);
 
     if (lastWordMatch) {
-      const trigger = textBeforeCursor[lastWordMatch.index!];
-      const currentQuery = lastWordMatch[1];
+      const matchText = lastWordMatch[1];
+      const trigger = matchText[0] as '@' | '#';
+      const currentQuery = matchText.slice(1);
 
-      setTriggerType(trigger as '@' | '#');
+      setTriggerType(trigger);
       setQuery(currentQuery);
 
       // Llamada a las funciones de búsqueda pasadas por props
-      let results = [];
+      let results: any[] = [];
       if (trigger === '@') {
         results = await onSearchMention(currentQuery);
       } else {
         results = await onSearchHashtag(currentQuery);
+        
+        // Si el usuario escribe un hashtag y no hay coincidencias exactas en la BD, lo ofrecemos como sugerencia
+        if (currentQuery.trim().length > 0) {
+          const hasExactMatch = results.some((item: any) => {
+            const str = typeof item === 'string' ? item : (item?.name || item?.hashtag || '');
+            return str.toLowerCase() === currentQuery.toLowerCase();
+          });
+          if (!hasExactMatch) {
+            results = [currentQuery, ...results];
+          }
+        }
       }
 
       setSuggestions(results);
@@ -99,16 +111,21 @@ export const EditorDeTexto = ({
    * Realiza un "corte" del string original para reemplazar solo la parte de la búsqueda.
    */
   const handleSelectSuggestion = (suggestion: any) => {
-    const cursorPosition = selection.start;
+    const cursorPosition = selection.start > 0 ? selection.start : value.length;
     const textBeforeCursor = value.slice(0, cursorPosition);
     const textAfterCursor = value.slice(cursorPosition);
 
     // Buscamos el inicio del trigger (@ o #) para saber desde dónde borrar
     const lastTriggerIndex = textBeforeCursor.lastIndexOf(triggerType!);
+    if (lastTriggerIndex === -1) return;
     const newTextBefore = value.slice(0, lastTriggerIndex);
 
     // El nombre a insertar (depende de si es usuario o hashtag)
-    const insertion = `${triggerType}${suggestion.username || suggestion.name || suggestion} `;
+    const suggestionText = typeof suggestion === 'string'
+      ? suggestion
+      : (suggestion.username || suggestion.name || suggestion.hashtag || suggestion);
+      
+    const insertion = `${triggerType}${suggestionText} `;
     const newValue = newTextBefore + insertion + textAfterCursor;
 
     onChange(newValue);
@@ -168,12 +185,12 @@ export const EditorDeTexto = ({
    */
   const renderHighlightedText = (text: string) => {
     if (!text) return null;
-    const regex = /([@#][\wñáéíóú]+)/g;
-    const parts = text.split(regex);
+    const splitRegex = /([@#][\wñáéíóú]+)/gi;
+    const parts = text.split(splitRegex);
     return parts.map((part, index) => {
-      if (part.match(regex)) {
+      if (/^[@#][\wñáéíóú]+$/i.test(part)) {
         return (
-          <Text key={index} style={{ color: '#2563eb' }}>
+          <Text key={index} style={{ color: '#2563eb', fontWeight: '600' }}>
             {part}
           </Text>
         );
