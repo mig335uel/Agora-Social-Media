@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Platform, useColorScheme, Linking } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Platform, useColorScheme, Linking, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Post } from '@/Types/Posts';
 import MediaGrid from './MediaGrid';
-import { toggleLike, repostPost, recordShare } from '@/Services/PostService';
+import { toggleLike, repostPost, recordShare, createPost, getTrendingTopics } from '@/Services/PostService';
+import { searchUsers } from '@/Services/UserService';
+import { EditorDeTexto } from '../EditorDeTexto';
+import { ProcessedImage } from '@/Services/ImageService';
 import LinkPreviewCard from './LinkPreviewCard';
 
 // ─── Extrae la primera URL de un texto ────────────────────────────────────────
@@ -43,6 +47,19 @@ export default function ReplyItem({ post, isLast = false, onRefresh }: ReplyItem
   const borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
 
   const [localPost, setLocalPost] = useState<Post>(post);
+  const [isReplyModalVisible, setIsReplyModalVisible] = useState(false);
+  const [replyContent, setReplyContent] = useState('');
+
+  const handlePublishReply = async (content: string, images: ProcessedImage[]) => {
+    try {
+      await createPost(content, images, localPost.id);
+      setIsReplyModalVisible(false);
+      setReplyContent('');
+      if (onRefresh) onRefresh();
+    } catch (error) {
+      console.error("Error al responder:", error);
+    }
+  };
 
   useEffect(() => {
     setLocalPost(post);
@@ -119,22 +136,34 @@ export default function ReplyItem({ post, isLast = false, onRefresh }: ReplyItem
   };
 
   return (
-    <View style={[styles.container, !isLast && { borderBottomColor: borderColor, borderBottomWidth: StyleSheet.hairlineWidth }]}>
+    <TouchableOpacity 
+      style={[styles.container, !isLast && { borderBottomColor: borderColor, borderBottomWidth: StyleSheet.hairlineWidth }]}
+      activeOpacity={0.8}
+      onPress={() => router.push(`/post/${localPost.id}`)}
+    >
       {/* Avatar a la izquierda, similar al feed pero sin la "card" envolvente */}
       <View style={styles.avatarColumn}>
-        <View style={styles.avatarWrapper}>
+        <TouchableOpacity 
+          style={styles.avatarWrapper}
+          onPress={() => router.push(`/perfil/${localPost.user?.id || (localPost as any).user_id}`)}
+          activeOpacity={0.7}
+        >
           <Image
             source={{ uri: localPost.user?.profile_picture_url || (localPost as any).profile_picture_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png" }}
             style={styles.avatar}
           />
-        </View>
+        </TouchableOpacity>
         {/* Aquí podrías añadir la línea vertical si fuera un hilo complejo */}
       </View>
 
       <View style={styles.contentColumn}>
         {/* Header: Nombre + Username + Fecha */}
         <View style={styles.header}>
-          <View style={styles.headerInfo}>
+          <TouchableOpacity 
+            style={styles.headerInfo}
+            onPress={() => router.push(`/perfil/${localPost.user?.id || (localPost as any).user_id}`)}
+            activeOpacity={0.7}
+          >
             <Text style={[styles.displayName, { color: textColor }]} numberOfLines={1}>
               {localPost.user?.display_name || (localPost as any).display_name}
             </Text>
@@ -144,7 +173,7 @@ export default function ReplyItem({ post, isLast = false, onRefresh }: ReplyItem
             <Text style={[styles.subText, { color: subColor }]} numberOfLines={1}>
               @{localPost.user?.username || (localPost as any).username} · {timeAgo(localPost.created_at)}
             </Text>
-          </View>
+          </TouchableOpacity>
           <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="ellipsis-horizontal" size={16} color={subColor} />
           </TouchableOpacity>
@@ -171,6 +200,7 @@ export default function ReplyItem({ post, isLast = false, onRefresh }: ReplyItem
             name={localPost.is_replied ? "chatbubble" : "chatbubble-outline"} 
             count={localPost.replies_count} 
             color={localPost.is_replied ? (isDark ? '#3b82f6' : '#1d4ed8') : subColor} 
+            onPress={() => setIsReplyModalVisible(true)}
           />
           <ActionItem 
             name={localPost.is_reposted ? "repeat" : "repeat-outline"} 
@@ -191,7 +221,45 @@ export default function ReplyItem({ post, isLast = false, onRefresh }: ReplyItem
           />
         </View>
       </View>
-    </View>
+
+      <Modal
+        visible={isReplyModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsReplyModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setIsReplyModalVisible(false)}
+          />
+          <View style={[styles.modalContent, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setIsReplyModalVisible(false)}>
+                <Text style={{ color: '#3b82f6', fontSize: 16 }}>Cancelar</Text>
+              </TouchableOpacity>
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={{ fontWeight: 'bold', fontSize: 16, color: textColor }}>Responder</Text>
+              </View>
+            </View>
+            <View style={{ flex: 1 }}>
+              <EditorDeTexto
+                value={replyContent}
+                onChange={setReplyContent}
+                isDark={isDark}
+                placeholder={`Responder a @${localPost.user?.username || (localPost as any).username}...`}
+                onSearchMention={searchUsers}
+                onSearchHashtag={getTrendingTopics}
+                onPublish={handlePublishReply}
+                appBar={false}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </TouchableOpacity>
   );
 }
 
@@ -286,5 +354,39 @@ const styles = StyleSheet.create({
   actionCount: {
     fontSize: 12,
     fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  modalContent: {
+    height: '80%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+  },
+  modalHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#ccc',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  modalHeader: {
+    padding: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(128,128,128,0.2)',
+    flexDirection: 'row',
+    alignItems: 'center'
   },
 });
