@@ -15,8 +15,23 @@ export async function recordInteractions(interactions: InteractionPayload[]) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // Deduplicar por post_id: si el mismo post aparece varias veces en el batch
+    // (e.g. el usuario scrolleó hacia atrás), sumar dwell_time_seconds.
+    // PostgreSQL ON CONFLICT DO UPDATE no puede afectar la misma fila dos veces
+    // en un solo INSERT, así que deduplicamos aquí.
+    const deduped = Object.values(
+      interactions.reduce<Record<string, InteractionPayload>>((acc, item) => {
+        if (acc[item.post_id]) {
+          acc[item.post_id].dwell_time_seconds += item.dwell_time_seconds;
+        } else {
+          acc[item.post_id] = { ...item };
+        }
+        return acc;
+      }, {})
+    );
+
     const { error } = await supabase.rpc('registrar_retencion_lote', { 
-      payload: interactions 
+      payload: deduped 
     });
 
     if (error) throw error;

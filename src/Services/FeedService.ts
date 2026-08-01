@@ -101,7 +101,7 @@ export async function getForYouFeed(limit = 20, offset = 0): Promise<RankedPost[
   try {
     const { data: { user } } = await supabase.auth.getUser();
 
-    // 1. Lanzamos en paralelo: feed algorítmico + posts propios recientes + lista de bloqueados
+    // 1. Lanzamos en paralelo: feed algorítmico + posts propios (solo en primera página) + bloqueados
     const [rpcResult, ownPostsResult, blockedIds] = await Promise.all([
       supabase.rpc('combine_feed_and_viral', {
         p_user_id: user?.id ?? null,
@@ -110,11 +110,13 @@ export async function getForYouFeed(limit = 20, offset = 0): Promise<RankedPost[
         p_personal_weight: 0.75,
         p_viral_weight: 0.25,
       }),
-      user
+      // Bug #2 fix: Solo inyectar posts propios en la primera página para evitar duplicados al paginar
+      user && offset === 0
         ? supabase
             .from('posts')
             .select('*')
             .eq('user_id', user.id)
+            .eq('is_banned', false)
             .is('parent_post_id', null)
             .order('created_at', { ascending: false })
             .limit(3)
@@ -132,7 +134,7 @@ export async function getForYouFeed(limit = 20, offset = 0): Promise<RankedPost[
       .filter(r => !blockedSet.has(String(r.user_id)))
       .map(mapRpcRow);
 
-    // 2. Posts propios: se unen al feed con prioridad (sin duplicar los que ya trae el RPC)
+    // 2. Posts propios: se insertan al inicio de la primera página sin destruir el ranking
     const { data: ownPosts } = ownPostsResult as any;
     let finalFeed = mapped;
 
@@ -185,8 +187,9 @@ export async function getForYouFeed(limit = 20, offset = 0): Promise<RankedPost[
       const rpcIds = new Set(mapped.map(p => p.id));
       const onlyNew = ownMapped.filter(p => !rpcIds.has(p.id));
 
+      // Bug #1 fix: Insertar posts propios al inicio SIN reordenar todo el feed.
+      // El ranking del RPC (combined_score) se preserva intacto.
       finalFeed = [...onlyNew, ...mapped];
-      finalFeed.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
 
     // 3. Interacciones (likes / reposts / replies)
@@ -212,10 +215,12 @@ export async function getUserPosts(
   try {
     const { data: { user: currentUser } } = await supabase.auth.getUser();
 
+    // Bug #5 fix: Añadido filtro is_banned = false
     const { data: postsData, error: postsError } = await supabase
       .from('posts')
       .select('*')
       .eq('user_id', targetUserId)
+      .eq('is_banned', false)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -224,29 +229,17 @@ export async function getUserPosts(
 
     const postIds = postsData.map(p => String(p.id));
 
-    // Media + perfil en paralelo; interacciones solo si hay sesión
-    const parallelQueries: PromiseLike<any>[] = [
+    // Media + perfil en paralelo
+    const [mediaRes, profileRes] = await Promise.all([
       supabase.from('media_feature').select('*').in('post_id', postIds),
       supabase.from('users').select('*').eq('id', targetUserId).single(),
-    ];
+    ]);
 
-    if (currentUser) {
-      parallelQueries.push(
-        supabase.from('likes').select('post_id').eq('user_id', currentUser.id).in('post_id', postIds),
-        supabase.from('reposts').select('post_id').eq('user_id', currentUser.id).in('post_id', postIds),
-        supabase.from('posts').select('parent_post_id').eq('user_id', currentUser.id).in('parent_post_id', postIds),
-      );
-    }
+    const profile  = profileRes.data;
+    const allMedia = mediaRes.data ?? [];
 
-    const [mediaRes, profileRes, likesRes, repostsRes, repliesRes] = await Promise.all(parallelQueries);
-
-    const profile    = profileRes.data;
-    const allMedia   = mediaRes.data ?? [];
-    const likedIds   = new Set(likesRes?.data?.map((l: any) => l.post_id));
-    const repostedIds = new Set(repostsRes?.data?.map((r: any) => r.post_id));
-    const repliedIds  = new Set(repliesRes?.data?.map((r: any) => r.parent_post_id));
-
-    return postsData.map(p => {
+    // Bug #6 fix: Usar attachInteractions en vez de reimplementar la lógica
+    const base: RankedPost[] = postsData.map(p => {
       const postMedia = allMedia
         .filter((m: any) => String(m.post_id) === String(p.id))
         .map((m: any) => ({
@@ -272,11 +265,13 @@ export async function getUserPosts(
         rank_score: 1.0,
         viral_score: 0,
         combined_score: 1.0,
-        is_liked:    likedIds.has(p.id),
-        is_reposted: repostedIds.has(p.id),
-        is_replied:  repliedIds.has(p.id),
       };
     });
+
+    if (currentUser) {
+      return await attachInteractions(base, currentUser.id);
+    }
+    return base;
   } catch (error) {
     console.error('Error en getUserPosts:', error);
     return [];
@@ -312,6 +307,7 @@ export async function getFollowsFeed(limit = 20, offset = 0): Promise<RankedPost
     if (followingIds.length === 0) return [];
 
     // 2. Posts con user y media (FK correcta: post_id)
+    // Bug #4 fix: Añadido filtro is_banned = false
     const { data: postsData, error: postsError } = await supabase
       .from('posts')
       .select(`
@@ -321,6 +317,7 @@ export async function getFollowsFeed(limit = 20, offset = 0): Promise<RankedPost
       `)
       .in('user_id', followingIds)
       .is('parent_post_id', null)
+      .eq('is_banned', false)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 

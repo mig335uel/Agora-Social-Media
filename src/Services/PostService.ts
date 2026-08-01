@@ -100,18 +100,14 @@ export async function createPost(content: string, localImages: ProcessedImage[] 
     // Hashtags
     const hashtags = extractHashtags(content);
     if (hashtags.length > 0) {
-      const trendPayload = hashtags.map(tag => ({
-        topic_name: tag.toLowerCase(),
-        category: 'General',
-        expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
-      }));
-
-      // Registrar tendencias mediante la RPC centralizada
-      await supabase.rpc('upsert_trend', { trends: trendPayload });
-
-      const topicInserts = hashtags.map(topic => ({ post_id: post.id, topic: topic.toLowerCase() }));
-      await supabase.from('post_topics').insert(topicInserts);
+      // Insertar hashtags literales en la nueva tabla de hashtags (No ensucia los tópicos)
+      const hashtagInserts = hashtags.map(tag => ({ post_id: post.id, hashtag: tag.toLowerCase() }));
+      await supabase.from('post_hashtags').insert(hashtagInserts);
     }
+
+    // Insertar SIEMPRE un tópico base para que el algoritmo de recomendación funcione.
+    // (A futuro: si el usuario elige una categoría en la app, sustituir 'General' por esa categoría).
+    await supabase.from('post_topics').insert({ post_id: post.id, topic: 'General' });
 
     // Menciones
     const mentions = extractMentions(content);
@@ -155,6 +151,7 @@ export async function deletePost(postId: string) {
     // Eliminar relaciones secundarias para evitar bloqueos por clave foránea (FK)
     await supabase.from('media_feature').delete().eq('post_id', postId);
     await supabase.from('post_topics').delete().eq('post_id', postId);
+    await supabase.from('post_hashtags').delete().eq('post_id', postId);
     await supabase.from('likes').delete().eq('post_id', postId);
     await supabase.from('reposts').delete().eq('post_id', postId);
     await supabase.from('user_interactions').delete().eq('post_id', postId);
