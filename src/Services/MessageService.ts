@@ -239,9 +239,9 @@ export const MessageService = {
                 let lastMessage: DecryptedMessage | null = null;
 
                 if (lastRaw && myDeviceId) {
-                    const aesKey = await getOrDecryptAesKey(chat.id, myDeviceId);
-                    const plainText = aesKey
-                        ? await decryptMessage(lastRaw.content, aesKey)
+                    const hasKey = await asegurarLlaveEnBunker(chat.id, myDeviceId);
+                    const plainText = hasKey
+                        ? await decryptMessage(lastRaw.content, chat.id)
                         : '[mensaje cifrado]';
 
                     lastMessage = {
@@ -331,14 +331,14 @@ export const MessageService = {
             const { data, error } = await query;
             if (error || !data) return [];
 
-            // 2. Obtener la llave AES del chat (una sola vez, cacheada en RAM)
-            const aesKey = await getOrDecryptAesKey(chatId, myDeviceId);
+            // 2. Asegurar la llave AES del chat en la bóveda nativa
+            const hasKey = await asegurarLlaveEnBunker(chatId, myDeviceId);
 
             // 3. Descifrar todos en paralelo
             const decrypted = await Promise.all(
                 data.map(async (msg) => {
-                    const plain = aesKey
-                        ? await decryptMessage(msg.content, aesKey)
+                    const plain = hasKey
+                        ? await decryptMessage(msg.content, chatId)
                         : '[mensaje cifrado]';
                     return {
                         id: msg.id,
@@ -373,10 +373,10 @@ export const MessageService = {
             const myDeviceId = await SecureStore.getItemAsync('agora_device_identifier');
             if (!myDeviceId) throw new Error('No device ID');
 
-            const aesKey = await getOrDecryptAesKey(chatId, myDeviceId);
-            if (!aesKey) throw new Error('No AES key for chat');
+            const hasKey = await asegurarLlaveEnBunker(chatId, myDeviceId);
+            if (!hasKey) throw new Error('No AES key for chat');
 
-            const encrypted = await encryptMessage(plainText, aesKey);
+            const encrypted = await encryptMessage(plainText, chatId);
             if (!encrypted) throw new Error('Encryption failed');
 
             const { data, error } = await supabase
@@ -440,9 +440,9 @@ export const MessageService = {
                     if (raw.sender_id === myUserId) return;
 
                     const myDeviceId = await SecureStore.getItemAsync('agora_device_identifier');
-                    const aesKey = myDeviceId ? await getOrDecryptAesKey(chatId, myDeviceId) : null;
-                    const plain = aesKey
-                        ? await decryptMessage(raw.content, aesKey)
+                    const hasKey = myDeviceId ? await asegurarLlaveEnBunker(chatId, myDeviceId) : false;
+                    const plain = hasKey
+                        ? await decryptMessage(raw.content, chatId)
                         : '[mensaje cifrado]';
 
                     cb({
@@ -657,13 +657,13 @@ export const MessageService = {
 
             // 2. Iterar sobre cada chat y cifrar la llave
             for (const p of participations) {
-                // Obtener llave (desde caché o descifrando desde la BD usando el dispositivo ACTUAL)
-                const aesKey = await getOrDecryptAesKey(p.chat_id, myDeviceId);
-                if (!aesKey) continue; // Si no tengo acceso a este chat, lo salto
+                // Asegurar que tenemos la llave localmente
+                const hasKey = await asegurarLlaveEnBunker(p.chat_id, myDeviceId);
+                if (!hasKey) continue; // Si no tengo acceso a este chat, lo salto
 
                 try {
-                    // Cifrar la llave AES usando la clave pública RSA del dispositivo NUEVO
-                    const encryptedKey = await AgoraBunker.cifrarLlaveConPublicKeyR(aesKey, newDevicePublicKey);
+                    // Exportar la llave AES cifrada con la clave pública RSA del dispositivo NUEVO
+                    const encryptedKey = await AgoraBunker.exportarLlaveAESCifrada(p.chat_id, newDevicePublicKey);
                     keyInserts.push({
                         chat_id: p.chat_id,
                         device_id: newDbDeviceId,
