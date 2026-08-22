@@ -58,7 +58,7 @@ export async function requestNotificationPermission(): Promise<string | null> {
 
   // Obtener el token APN (iOS) o FCM (Android)
   try {
-    let token: string;
+    let token: string | undefined = undefined;
     
     if (Platform.OS === 'ios') {
       // Para obtener el token FCM en iOS (en lugar del APNs que da Expo por defecto)
@@ -247,6 +247,11 @@ export function activarInterceptacionDecodificadora() {
   // 3. (Opcional/Legacy) Mantener el listener de Expo por si llegan push por APNs directos (sin FCM data)
   Notifications.addNotificationReceivedListener(async (notification) => {
     const payloadExtra = notification.request.content.data as any;
+    
+    // EVITAR BUCLE INFINITO EN ANDROID:
+    // Si la notificación fue generada localmente por nosotros mismos, la ignoramos.
+    if (payloadExtra?.is_local) return;
+    
     await procesarPushCifrado(payloadExtra);
   });
 
@@ -281,7 +286,7 @@ async function procesarPushCifrado(payloadExtra: any) {
             content: {
               title: title || "Mensaje Confidencial",
               body: mensajePlano,
-              data: payloadExtra, 
+              data: { ...payloadExtra, is_local: true }, 
             },
             trigger: null 
           });
@@ -303,7 +308,7 @@ async function procesarPushCifrado(payloadExtra: any) {
             content: {
               title: title || "Mensaje Confidencial",
               body: mensajePlano,
-              data: payloadExtra, 
+              data: { ...payloadExtra, is_local: true }, 
             },
             trigger: null 
           });
@@ -319,7 +324,7 @@ async function procesarPushCifrado(payloadExtra: any) {
             content: {
               title: payloadExtra.title || "Nuevo mensaje",
               body: payloadExtra.content_plain,
-              data: payloadExtra,
+              data: { ...payloadExtra, is_local: true },
             },
             trigger: null
           });

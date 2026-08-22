@@ -19,7 +19,7 @@ export default class TitleSupport {
 
     static subscribe(listener: (title: string) => void) {
         this.listeners.add(listener);
-        return () => this.listeners.delete(listener);
+        return () => { this.listeners.delete(listener); };
     }
 
     static titleTicket(id: string) {

@@ -23,6 +23,7 @@ import useAuth from '@/hooks/useAuth';
 import { MessageService } from '@/Services/MessageService';
 import { supabase } from '@/lib/supbase/supabase';
 import type { DecryptedMessage } from '@/Types/Chats';
+import * as SecureStore from 'expo-secure-store';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function formatTime(dateStr: string): string {
@@ -251,7 +252,8 @@ export default function ChatScreen() {
     const handleManualKeyDownload = useCallback(async () => {
         if (!chatId || !user?.id) return;
         setLoading(true);
-        const success = await MessageService.downloadChatKey(chatId);
+        const myDeviceId = await SecureStore.getItemAsync('agora_device_identifier');
+        const success = myDeviceId ? await MessageService.asegurarLlaveEnBunker(chatId, myDeviceId) : false;
         if (success) {
             const msgs = await MessageService.getMessages(chatId, user.id);
             setMessages(msgs);
