@@ -95,7 +95,7 @@ export async function requestNotificationPermission(): Promise<string | null> {
     }
     
     console.log("✅ Token push (FCM) obtenido:", token);
-    return token;
+    return token ?? null;
   } catch (error: any) {
     // Fallback: si falla el token real (configuración, red, etc.),
     // generamos un token de desarrollo para no bloquear el registro del Búnker E2EE.

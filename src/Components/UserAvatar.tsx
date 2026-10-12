@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { View, Image, Text, StyleSheet, TouchableOpacity, Modal, Platform, ActionSheetIOS, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
-import { DrawerActions } from '@react-navigation/native';
+import { DrawerActions } from 'expo-router/react-navigation';
 
 
 

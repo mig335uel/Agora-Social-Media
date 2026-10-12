@@ -3,7 +3,6 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome, Octicons 
 import { Platform, StyleSheet, useColorScheme, View, Text, Button, TouchableOpacity, Pressable, DeviceEventEmitter } from 'react-native';
 import { GlassContainer, GlassView } from 'expo-glass-effect';
 import { NativeTabTrigger, NativeTabs } from 'expo-router/build/native-tabs';
-import "/global.css";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeTabsBottomAccessory } from 'expo-router/build/native-tabs/common/elements';
 import { signOut } from '@/Services/authService';

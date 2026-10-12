@@ -215,12 +215,13 @@ export async function getUserPosts(
   try {
     const { data: { user: currentUser } } = await supabase.auth.getUser();
 
-    // Bug #5 fix: Añadido filtro is_banned = false
+    // Bug #5 fix: Añadido filtro is_banned = false y solo posts principales
     const { data: postsData, error: postsError } = await supabase
       .from('posts')
       .select('*')
       .eq('user_id', targetUserId)
       .eq('is_banned', false)
+      .is('parent_post_id', null)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -274,6 +275,156 @@ export async function getUserPosts(
     return base;
   } catch (error) {
     console.error('Error en getUserPosts:', error);
+    return [];
+  }
+}
+
+/**
+ * Respuestas de un usuario concreto (vista de perfil).
+ */
+export async function getUserReplies(
+  targetUserId: string,
+  limit = 20,
+  offset = 0,
+): Promise<RankedPost[]> {
+  try {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+    const { data: postsData, error: postsError } = await supabase
+      .from('posts')
+      .select('*')
+      .eq('user_id', targetUserId)
+      .eq('is_banned', false)
+      .not('parent_post_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (postsError) throw postsError;
+    if (!postsData?.length) return [];
+
+    const postIds = postsData.map(p => String(p.id));
+
+    const [mediaRes, profileRes] = await Promise.all([
+      supabase.from('media_feature').select('*').in('post_id', postIds),
+      supabase.from('users').select('*').eq('id', targetUserId).single(),
+    ]);
+
+    const profile  = profileRes.data;
+    const allMedia = mediaRes.data ?? [];
+
+    const base: RankedPost[] = postsData.map(p => {
+      const postMedia = allMedia
+        .filter((m: any) => String(m.post_id) === String(p.id))
+        .map((m: any) => ({
+          image: m.image || null,
+          post_id: String(m.post_id),
+          user_id: String(p.user_id),
+          created_at: String(m.created_at || p.created_at),
+        }));
+      return {
+        id: String(p.id),
+        content: p.content || '',
+        media: postMedia as any,
+        created_at: String(p.created_at),
+        likes_count: Number(p.likes_count || 0),
+        reposts_count: Number(p.reposts_count || 0),
+        replies_count: Number(p.replies_count || 0),
+        shares_count: Number(p.shares_count || 0),
+        user_id: String(p.user_id),
+        username: profile?.username || '',
+        display_name: profile?.display_name || '',
+        profile_picture_url: profile?.profile_picture_url || null,
+        user: profile,
+        rank_score: 1.0,
+        viral_score: 0,
+        combined_score: 1.0,
+      };
+    });
+
+    if (currentUser) {
+      return await attachInteractions(base, currentUser.id);
+    }
+    return base;
+  } catch (error) {
+    console.error('Error en getUserReplies:', error);
+    return [];
+  }
+}
+
+/**
+ * Publicaciones que le han gustado a un usuario concreto.
+ */
+export async function getUserLikes(
+  targetUserId: string,
+  limit = 20,
+  offset = 0,
+): Promise<RankedPost[]> {
+  try {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+    const { data: likesData, error: likesError } = await supabase
+      .from('likes')
+      .select('post_id, created_at')
+      .eq('user_id', targetUserId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (likesError) throw likesError;
+    if (!likesData?.length) return [];
+
+    const postIds = likesData.map(l => String(l.post_id));
+
+    const { data: postsData, error: postsError } = await supabase
+      .from('posts')
+      .select('*, user:users!user_id(*)')
+      .in('id', postIds)
+      .eq('is_banned', false);
+
+    if (postsError) throw postsError;
+    if (!postsData?.length) return [];
+
+    const { data: mediaData } = await supabase
+      .from('media_feature')
+      .select('*')
+      .in('post_id', postIds);
+
+    const allMedia = mediaData ?? [];
+
+    const base: RankedPost[] = postsData.map(p => {
+      const postMedia = allMedia
+        .filter((m: any) => String(m.post_id) === String(p.id))
+        .map((m: any) => ({
+          image: m.image || null,
+          post_id: String(m.post_id),
+          user_id: String(p.user_id),
+          created_at: String(m.created_at || p.created_at),
+        }));
+      return {
+        id: String(p.id),
+        content: p.content || '',
+        media: postMedia as any,
+        created_at: String(p.created_at),
+        likes_count: Number(p.likes_count || 0),
+        reposts_count: Number(p.reposts_count || 0),
+        replies_count: Number(p.replies_count || 0),
+        shares_count: Number(p.shares_count || 0),
+        user_id: String(p.user_id),
+        username: p.user?.username || '',
+        display_name: p.user?.display_name || '',
+        profile_picture_url: p.user?.profile_picture_url || null,
+        user: p.user,
+        rank_score: 1.0,
+        viral_score: 0,
+        combined_score: 1.0,
+      };
+    });
+
+    if (currentUser) {
+      return await attachInteractions(base, currentUser.id);
+    }
+    return base;
+  } catch (error) {
+    console.error('Error en getUserLikes:', error);
     return [];
   }
 }

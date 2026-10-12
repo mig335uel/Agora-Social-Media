@@ -165,16 +165,16 @@ export default function ProfileHeader({ user, isMe, isFollowing, isPending, isBl
 
   return (
 
-    <View className="items-center pb-6">
+    <View className="items-center pb-6 w-full">
       {/* Background Decor - Less 'Twitter Cover', more 'Agora Brand' */}
-      <View style={StyleSheet.absoluteFillObject} className="opacity-10">
+      <View style={StyleSheet.absoluteFill} className="opacity-10">
         <LinearGradient
           colors={isDark ? ['#3b82f6', '#8b5cf6'] : ['#60a5fa', '#a78bfa']}
           style={{ height: 200, width: '100%' }}
         />
       </View>
 
-      <View className="mt-4 items-center">
+      <View className="mt-4 items-center w-full">
         {/* Avatar - Rounded Square/Squircle for a different look */}
         <View style={styles.avatarWrapper} className="shadow-2xl">
           <LinearGradient
@@ -306,45 +306,52 @@ export default function ProfileHeader({ user, isMe, isFollowing, isPending, isBl
         </View>
 
         {/* Stats Section - Card Layout with Blur */}
-        {Platform.OS === 'ios' ? (
-          <BlurView
-            intensity={isDark ? 20 : 40}
-            tint={isDark ? 'dark' : 'light'}
-            className="mx-4 mt-8 flex-row rounded-3xl overflow-hidden border border-gray-200/50 dark:border-white/10"
-          >
-            <View className="flex-1 p-4 items-center">
-              <Text className="text-xl font-black text-black dark:text-white">{stats.posts}</Text>
-              <Text className="text-[9.5px] font-bold text-gray-500 uppercase">publicaciones</Text>
-            </View>
-            <View className="w-[1px] bg-gray-200/50 dark:bg-white/10 my-4" />
-            <TouchableOpacity onPress={() => router.push({ pathname: '/perfil/followers', params: { userId: user?.id } })} className="flex-1 p-4 items-center">
-              <Text className="text-xl font-black text-black dark:text-white">{stats.followers}</Text>
-              <Text className="text-[9.5px] font-bold text-gray-500 uppercase">seguidores</Text>
-            </TouchableOpacity>
-            <View className="w-[1px] bg-gray-200/50 dark:bg-white/10 my-4" />
-            <TouchableOpacity onPress={() => router.push({ pathname: '/perfil/following', params: { userId: user?.id } })} className="flex-1 p-4 items-center">
-              <Text className="text-xl font-black text-black dark:text-white">{stats.following}</Text>
-              <Text className="text-[9.5px] font-bold text-gray-500 uppercase">seguidos</Text>
-            </TouchableOpacity>
-          </BlurView>
-        ) : (
-          <View className="mx-4 mt-8 flex-row rounded-3xl overflow-hidden border border-gray-200/50 dark:border-white/10">
-            <View className="flex-1 p-4 items-center">
-              <Text className="text-xl font-black text-black dark:text-white">{stats.posts}</Text>
-              <Text className="text-[10px] font-bold text-gray-500 uppercase">publicaciones</Text>
-            </View>
-            <View className="w-[1px] bg-gray-200/50 dark:bg-white/10 my-4" />
-            <TouchableOpacity onPress={() => router.push({ pathname: '/perfil/followers', params: { userId: user?.id } })} className="flex-1 p-4 items-center" activeOpacity={0.7}>
-              <Text className="text-xl font-black text-black dark:text-white">{stats.followers}</Text>
-              <Text className="text-[10px] font-bold text-gray-500 uppercase">seguidores</Text>
-            </TouchableOpacity>
-            <View className="w-[1px] bg-gray-200/50 dark:bg-white/10 my-4" />
-            <TouchableOpacity onPress={() => router.push({ pathname: '/perfil/following', params: { userId: user?.id } })} className="flex-1 p-4 items-center" activeOpacity={0.7}>
-              <Text className="text-xl font-black text-black dark:text-white">{stats.following}</Text>
-              <Text className="text-[10px] font-bold text-gray-500 uppercase">seguidos</Text>
-            </TouchableOpacity>
+        <View
+          style={{
+            width: '92%',
+            maxWidth: 480,
+            alignSelf: 'center',
+            borderRadius: 24,
+            overflow: 'hidden',
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+            marginTop: 24,
+            flexDirection: 'row',
+            alignItems: 'center',
+            minHeight: 68,
+          }}
+        >
+          {Platform.OS === 'ios' && (
+            <BlurView
+              intensity={isDark ? 25 : 45}
+              tint={isDark ? 'dark' : 'light'}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 }}>
+            <Text className="text-xl font-black text-black dark:text-white">{stats.posts}</Text>
+            <Text className="text-[10px] font-bold text-gray-500 uppercase mt-0.5">publicaciones</Text>
           </View>
-        )}
+          <View style={{ width: StyleSheet.hairlineWidth, height: 32, backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }} />
+          <TouchableOpacity
+            onPress={() => router.push({ pathname: '/perfil/followers', params: { id: user?.id, userId: user?.id } })}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 }}
+            activeOpacity={0.7}
+          >
+            <Text className="text-xl font-black text-black dark:text-white">{stats.followers}</Text>
+            <Text className="text-[10px] font-bold text-gray-500 uppercase mt-0.5">seguidores</Text>
+          </TouchableOpacity>
+          <View style={{ width: StyleSheet.hairlineWidth, height: 32, backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }} />
+          <TouchableOpacity
+            onPress={() => router.push({ pathname: '/perfil/following', params: { id: user?.id, userId: user?.id } })}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 }}
+            activeOpacity={0.7}
+          >
+            <Text className="text-xl font-black text-black dark:text-white">{stats.following}</Text>
+            <Text className="text-[10px] font-bold text-gray-500 uppercase mt-0.5">seguidos</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );

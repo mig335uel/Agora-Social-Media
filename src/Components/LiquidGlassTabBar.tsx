@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   pillBorder: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: PILL_HEIGHT / 2,
     borderWidth: 0.8,
   },

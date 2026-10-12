@@ -8,7 +8,7 @@ import {
   useColorScheme,
   Image,
 } from 'react-native';
-import { DrawerContentScrollView, DrawerContentComponentProps } from '@react-navigation/drawer';
+import { DrawerContentScrollView, type DrawerContentComponentProps } from 'expo-router/drawer';
 import { router } from 'expo-router';
 import { signOut } from '@/Services/authService';
 import { Ionicons } from '@expo/vector-icons';
