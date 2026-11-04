@@ -152,7 +152,7 @@ export default function SearchScreen() {
       )} */}
 
       {/* TÍTULO LISTA DE RESULTADOS O TENDENCIAS RESTANTES */}
-      <Text className="text-xs font-black uppercase tracking-wider text-gray-500 mb-2 ml-1">
+      <Text className="text-xs font-black uppercase tracking-wider text-gray-500 mb-3 ml-1">
         {searchQuery ? 'Resultados de búsqueda' : 'Tendencias agora'}
       </Text>
     </View>
@@ -166,42 +166,46 @@ export default function SearchScreen() {
         ListHeaderComponent={renderHeader}
         onRefresh={onRefresh}
         refreshing={loading}
+        contentContainerStyle={{ paddingBottom: 110 }}
         renderItem={({ item }) => (
           <TouchableOpacity
             activeOpacity={0.7}
-            className="mx-4 mb-3 rounded-[24px] overflow-hidden border border-gray-100 dark:border-white/5"
+            className="mx-5 mb-3.5 rounded-[24px] overflow-hidden border border-gray-200 dark:border-white/10"
           >
             <BlurView
-              intensity={isDark ? 10 : 0}
+              intensity={isDark ? 15 : 0}
               tint={isDark ? 'dark' : 'light'}
-              className="p-5"
             >
-              <View className="flex-row justify-between items-start">
-                <View className="flex-1">
-                  <Text className="text-lg font-black text-black dark:text-white mb-1">
-                    {item.topic_name}
-                  </Text>
-                  <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    {item.category} • {item.region}
-                  </Text>
-                </View>
-                <View className="items-end">
-                  <Text className="text-sm font-black text-blue-500">
-                    {item.volume_score}
-                  </Text>
-                  <Text className="text-[8px] font-bold text-gray-500 uppercase">Impacto</Text>
-                </View>
-              </View>
-
-              <View className="flex-row flex-wrap mt-4">
-                {item.hashtags.slice(0, 3).map((hashtag, index) => (
-                  <View
-                    key={index}
-                    className="bg-gray-100 dark:bg-white/5 px-3 py-1.5 rounded-full mr-2 mb-2"
-                  >
-                    <Text className="text-xs font-bold text-gray-600 dark:text-gray-300">#{hashtag}</Text>
+              <View className="p-5">
+                <View className="flex-row justify-between items-start">
+                  <View className="flex-1 pr-3">
+                    <Text className="text-lg font-black text-black dark:text-white leading-6 mb-1">
+                      {item.topic_name}
+                    </Text>
+                    <Text className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                      {item.category} • {item.region}
+                    </Text>
                   </View>
-                ))}
+                  <View className="items-end pl-2">
+                    <Text className="text-base font-black text-blue-500 leading-5">
+                      {item.volume_score}
+                    </Text>
+                    <Text className="text-[9px] font-bold text-gray-500 uppercase mt-0.5">Impacto</Text>
+                  </View>
+                </View>
+
+                {item.hashtags && item.hashtags.length > 0 && (
+                  <View className="flex-row flex-wrap mt-3.5 -mb-1.5">
+                    {item.hashtags.slice(0, 3).map((hashtag, index) => (
+                      <View
+                        key={index}
+                        className="bg-gray-100 dark:bg-white/10 px-3 py-1.5 rounded-full mr-2 mb-1.5"
+                      >
+                        <Text className="text-xs font-bold text-gray-600 dark:text-gray-300">#{hashtag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             </BlurView>
           </TouchableOpacity>

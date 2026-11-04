@@ -105,7 +105,7 @@ export default function UserSearch() {
                 keyExtractor={(item) => item.id}
                 renderItem={renderUserList}
                 ListEmptyComponent={EmptyState}
-                contentContainerStyle={userSearch.length === 0 ? { flex: 1 } : null}
+                contentContainerStyle={userSearch.length === 0 ? { flex: 1 } : { paddingBottom: 110 }}
             />
         </View>
     )
