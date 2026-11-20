@@ -10,10 +10,10 @@ import {
 import { SearchContext } from './_layout';
 import { Trending_topics } from '@/Types/Trendings';
 import { supabase } from '@/lib/supbase/supabase';
+import { router } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import EventoElecciones29N from '@/Components/Elecciones/EventoElecciones29N';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = (width - 48) / 2;
@@ -30,7 +30,6 @@ export default function SearchScreen() {
   const { searchQuery, setSearchQuery } = useContext(SearchContext);
   const [trending, setTrending] = useState<TrendWithTags[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshTick, setRefreshTick] = useState(0);
 
   const filteredTrends = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -81,18 +80,71 @@ export default function SearchScreen() {
   const otherTrends = trending.slice(1);
 
   const onRefresh = useCallback(() => {
-    setRefreshTick((prev) => prev + 1);
     fetchTrending();
   }, []);
 
   const renderHeader = () => (
     <View className="px-5 pt-4">
-      {/* EVENTO EXTRAORDINARIO: ELECCIONES GENERALES 29N */}
-      <EventoElecciones29N
-        externalSearchQuery={searchQuery}
-        onSelectHashtag={(tag) => setSearchQuery(tag)}
-        refreshTrigger={refreshTick}
-      />
+      {/* BANNER ACCESO DIRECTO AL EVENTO EXTRAORDINARIO 29N */}
+      {!searchQuery && (
+        <View className="mb-8">
+          <View className="flex-row items-center mb-3 ml-1">
+            <View className="w-2 h-2 rounded-full bg-red-500 mr-2" />
+            <Text className="text-xs font-black uppercase tracking-wider text-gray-500">
+              Evento Extraordinario
+            </Text>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => router.push('/(drawer)/(tabs)/search/elecciones' as any)}
+            className="overflow-hidden rounded-[32px] shadow-xl border border-gray-200 dark:border-white/10"
+          >
+            <LinearGradient
+              colors={isDark ? ['#1e293b', '#0f172a'] : ['#f8fafc', '#e2e8f0']}
+              style={{ height: 185, width: '100%' }}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View className="absolute right-[-20] top-[-20] opacity-10">
+                <Ionicons
+                  name="podium-outline"
+                  size={130}
+                  color={isDark ? '#fff' : '#000'}
+                />
+              </View>
+              <View className="flex-1 p-6 justify-between">
+                <View>
+                  <View className="flex-row items-center mb-3">
+                    <View className="bg-blue-500 px-3 py-1 rounded-full mr-2">
+                      <Text className="text-[10px] font-black text-white uppercase italic">
+                        Especial 29N
+                      </Text>
+                    </View>
+                    <View className="bg-red-500/15 border border-red-500/30 px-2.5 py-1 rounded-full flex-row items-center">
+                      <View className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5" />
+                      <Text className="text-[10px] font-black text-red-500 uppercase">
+                        En Directo
+                      </Text>
+                    </View>
+                  </View>
+                  <Text className="text-2xl font-black text-black dark:text-white leading-7">
+                    Elecciones Generales 29N
+                  </Text>
+                  <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mt-1 uppercase tracking-wider">
+                    Congreso • Senado • Pactómetro • Provincias y CC.AA.
+                  </Text>
+                </View>
+                <View className="flex-row items-center">
+                  <Text className="text-blue-500 font-bold mr-1">
+                    Abrir sección Especial 29N
+                  </Text>
+                  <Ionicons name="arrow-forward" size={16} color="#3b82f6" />
+                </View>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* SECCIÓN DESTACADA (TENDENCIA GLOBAL) */}
       {featuredTrend && !searchQuery && (

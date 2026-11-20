@@ -1,10 +1,8 @@
 import React, { createContext, useState, Dispatch, SetStateAction } from 'react';
-import AppBar from '@/Components/AppBar';
 import AppSearchBar from '@/Components/AppSearchBar';
 import { MaterialTopTabs } from '@/Components/TopBar/materialtopbars';
 import { useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack } from 'expo-router';
 
 type SearchContextValue = {
   searchQuery: string;
@@ -45,13 +43,14 @@ export default function SearchLayout() {
             },
             tabBarLabelStyle: {
               fontWeight: 'bold',
-              fontSize: 16,
+              fontSize: 15,
             },
             tabBarActiveTintColor: isDark ? '#fff' : '#000',
             tabBarInactiveTintColor: isDark ? '#eee' : '#000',
           }}
         >
           <MaterialTopTabs.Screen name="index" options={{ title: 'Tendencias' }} />
+          <MaterialTopTabs.Screen name="elecciones" options={{ title: 'Especial 29N' }} />
           <MaterialTopTabs.Screen name="usersearch" options={{ title: 'Usuarios' }} />
         </MaterialTopTabs>
       </SafeAreaView>
