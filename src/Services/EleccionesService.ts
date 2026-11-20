@@ -11,9 +11,30 @@ import {
   TerritorialEntry,
 } from '@/Types/Elecciones';
 
-const ELECTIONS_BASE_URL = 'https://prensa.eleccionesparlamentoandalucia2026.es';
-// Basic Auth("usr072anda26:jyFsNJNjYMY")
-const BASIC_AUTH_HEADER = 'Basic dXNyMDcyYW5kYTI2Omp5RnNOSk5qWU1Z';
+const ELECTIONS_BASE_URL = process.env.EXPO_PUBLIC_ELECCIONES_GENERALES_29N_URL;
+const ELECTIONS_USERNAME = process.env.EXPO_PUBLIC_ELECCIONES_GENERALES_29N_USERNAME ?? '';
+const ELECTIONS_PASSWORD = process.env.EXPO_PUBLIC_ELECCIONES_GENERALES_29N_PASSWORD ?? '';
+
+function encodeBase64(input: string): string {
+  if (typeof btoa === 'function') {
+    return btoa(input);
+  }
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let output = '';
+  for (let i = 0; i < input.length; i += 3) {
+    const a = input.charCodeAt(i);
+    const b = i + 1 < input.length ? input.charCodeAt(i + 1) : 0;
+    const c = i + 2 < input.length ? input.charCodeAt(i + 2) : 0;
+    const triple = (a << 16) | (b << 8) | c;
+    output += chars[(triple >> 18) & 63];
+    output += chars[(triple >> 12) & 63];
+    output += i + 1 < input.length ? chars[(triple >> 6) & 63] : '=';
+    output += i + 2 < input.length ? chars[triple & 63] : '=';
+  }
+  return output;
+}
+
+const BASIC_AUTH_HEADER = `Basic ${encodeBase64(`${ELECTIONS_USERNAME}:${ELECTIONS_PASSWORD}`)}`;
 
 let cachedPartidosMap: Map<string, PartidoMeta> | null = null;
 
