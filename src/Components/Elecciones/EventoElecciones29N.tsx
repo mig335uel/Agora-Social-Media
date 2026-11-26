@@ -57,22 +57,28 @@ export default function EventoElecciones29N({
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  const loadElectionData = useCallback(async (activeCamara: Camara) => {
-    try {
-      const bundle = await fetchGeneralesLiveBundle(activeCamara);
-      setEnvio(bundle.envio);
-      setData(bundle.data);
-      setOldData(bundle.oldData);
-      if (bundle.avances.length > 0) {
-        setAvances(bundle.avances);
+  const loadElectionData = useCallback(
+    async (activeCamara: Camara, forceRefreshPartidos: boolean = false) => {
+      try {
+        const bundle = await fetchGeneralesLiveBundle(
+          activeCamara,
+          forceRefreshPartidos
+        );
+        setEnvio(bundle.envio);
+        setData(bundle.data);
+        setOldData(bundle.oldData);
+        if (bundle.avances.length > 0) {
+          setAvances(bundle.avances);
+        }
+      } catch (err) {
+        console.error('Error cargando Especial Elecciones 29N:', err);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-    } catch (err) {
-      console.error('Error cargando Especial Elecciones 29N:', err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   useEffect(() => {
     setLoading(true);
@@ -89,7 +95,7 @@ export default function EventoElecciones29N({
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    loadElectionData(camara);
+    loadElectionData(camara, true);
   }, [camara, loadElectionData]);
 
   const activeRegion: RegionData | null = useMemo(() => {

@@ -7,36 +7,62 @@ import {
   ParsedGeneralesDataset,
   PartidoData,
   PartidoMeta,
+  PartidoPoliticoRow,
   RegionData,
   TerritorialEntry,
 } from '@/Types/Elecciones';
 
-const ELECTIONS_BASE_URL = process.env.EXPO_PUBLIC_ELECCIONES_GENERALES_29N_URL;
-const ELECTIONS_USERNAME = process.env.EXPO_PUBLIC_ELECCIONES_GENERALES_29N_USERNAME ?? '';
-const ELECTIONS_PASSWORD = process.env.EXPO_PUBLIC_ELECCIONES_GENERALES_29N_PASSWORD ?? '';
+const RAW_ENV_URL =
+  process.env.EXPO_PUBLIC_ELECCIONES_GENERALES_29N_URL ||
+  'https://prensa.eleccionesparlamentoandalucia2026.es';
 
-function encodeBase64(input: string): string {
+const ELECTIONS_BASE_URL = /^https?:\/\//i.test(RAW_ENV_URL.trim())
+  ? RAW_ENV_URL.trim().replace(/\/+$/, '')
+  : `https://${RAW_ENV_URL.trim().replace(/\/+$/, '')}`;
+
+const ELECTIONS_USER =
+  process.env.EXPO_PUBLIC_ELECCIONES_GENERALES_29N_USERNAME || 'usr072anda26';
+const ELECTIONS_PASS =
+  process.env.EXPO_PUBLIC_ELECCIONES_GENERALES_29N_PASSWORD || 'jyFsNJNjYMY';
+
+function encodeBasicAuth(user: string, pass: string): string {
+  const raw = `${user}:${pass}`;
   if (typeof btoa === 'function') {
-    return btoa(input);
+    try {
+      return `Basic ${btoa(raw)}`;
+    } catch {
+      // fallback manual base64
+    }
   }
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const chars =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
   let output = '';
-  for (let i = 0; i < input.length; i += 3) {
-    const a = input.charCodeAt(i);
-    const b = i + 1 < input.length ? input.charCodeAt(i + 1) : 0;
-    const c = i + 2 < input.length ? input.charCodeAt(i + 2) : 0;
-    const triple = (a << 16) | (b << 8) | c;
-    output += chars[(triple >> 18) & 63];
-    output += chars[(triple >> 12) & 63];
-    output += i + 1 < input.length ? chars[(triple >> 6) & 63] : '=';
-    output += i + 2 < input.length ? chars[triple & 63] : '=';
+  for (let block = 0, charCode, i = 0, map = chars; raw.charAt(i | 0) || ((map = '='), i % 1); output += map.charAt(63 & (block >> (8 - (i % 1) * 8)))) {
+    charCode = raw.charCodeAt((i += 3 / 4));
+    block = (block << 8) | charCode;
   }
-  return output;
+  return `Basic ${output}`;
 }
 
-const BASIC_AUTH_HEADER = `Basic ${encodeBase64(`${ELECTIONS_USERNAME}:${ELECTIONS_PASSWORD}`)}`;
+const BASIC_AUTH_HEADER = encodeBasicAuth(ELECTIONS_USER, ELECTIONS_PASS);
 
-let cachedPartidosMap: Map<string, PartidoMeta> | null = null;
+let cachedSupabasePartidosMap: Map<string, PartidoMeta> | null = null;
+let cachedNormalizedPartidosMap: Map<string, PartidoMeta> | null = null;
+
+/**
+ * Normaliza siglas eliminando puntos, espacios alrededor de guiones y tildes
+ * para emparejar variantes como "B.N.G." <-> "BNG" o "JxCAT - JUNTS" <-> "JXCAT-JUNTS".
+ */
+function normalizeSiglasKey(siglas: string): string {
+  return siglas
+    .toUpperCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\./g, '')
+    .replace(/\s*-\s*/g, '-')
+    .replace(/\s+/g, ' ');
+}
 
 function decodeCsvArrayBuffer(buffer: ArrayBuffer): string {
   try {
@@ -58,48 +84,84 @@ function decodeCsvArrayBuffer(buffer: ArrayBuffer): string {
   return out;
 }
 
-export async function getPartidosConfigMap(): Promise<Map<string, PartidoMeta>> {
-  if (cachedPartidosMap) return cachedPartidosMap;
-
-  const map = new Map<string, PartidoMeta>();
-  for (const [key, val] of Object.entries(PARTIDOS_CONFIG)) {
-    map.set(key.toUpperCase().trim(), {
-      color: val.color,
-      ideologia: Number(val.ideologia) || 5.0,
-    });
+/**
+ * Obtiene todos los partidos políticos desde la tabla `partidos_politicos` de Supabase
+ * de la red social Agora (con sus colores e ideología) y construye el mapa en memoria.
+ */
+export async function getPartidosConfigMap(
+  forceRefresh: boolean = false
+): Promise<Map<string, PartidoMeta>> {
+  if (cachedSupabasePartidosMap && !forceRefresh) {
+    return cachedSupabasePartidosMap;
   }
 
+  const map = new Map<string, PartidoMeta>();
+  const normalizedMap = new Map<string, PartidoMeta>();
+
+  // 1. Cargamos el catálogo base como respaldo inicial
+  for (const [key, val] of Object.entries(PARTIDOS_CONFIG)) {
+    const cleanKey = key.toUpperCase().trim();
+    const meta: PartidoMeta = {
+      color: val.color,
+      ideologia: Number(val.ideologia) || 5.0,
+    };
+    map.set(cleanKey, meta);
+    normalizedMap.set(normalizeSiglasKey(cleanKey), meta);
+  }
+
+  // 2. Consultamos la tabla `partidos_politicos` de Supabase de Agora (prioridad absoluta)
   try {
     const { data, error } = await supabase
       .from('partidos_politicos')
       .select('siglas, color, ideologia');
 
-    if (!error && data) {
-      for (const row of data) {
+    if (!error && data && data.length > 0) {
+      for (const row of data as PartidoPoliticoRow[]) {
         if (row.siglas) {
-          map.set(String(row.siglas).toUpperCase().trim(), {
+          const cleanKey = String(row.siglas).toUpperCase().trim();
+          const meta: PartidoMeta = {
             color: row.color || '#94A3B8',
-            ideologia: Number(row.ideologia) || 5.0,
-          });
+            ideologia:
+              row.ideologia !== null && row.ideologia !== undefined
+                ? Number(row.ideologia)
+                : 5.0,
+          };
+          map.set(cleanKey, meta);
+          normalizedMap.set(normalizeSiglasKey(cleanKey), meta);
         }
       }
+      // Solo fijamos la caché permanente cuando Supabase ha devuelto filas reales
+      cachedSupabasePartidosMap = map;
+      cachedNormalizedPartidosMap = normalizedMap;
     }
-  } catch {
-    // Si falla la red, usamos PARTIDOS_CONFIG local
+  } catch (err) {
+    console.warn('Error consultando partidos_politicos en Supabase:', err);
   }
 
-  cachedPartidosMap = map;
+  cachedNormalizedPartidosMap = normalizedMap;
   return map;
 }
 
+/**
+ * Resuelve el color y la ideología de un partido priorizando la tabla `partidos_politicos`
+ * de Supabase (coincidencia exacta, normalizada o por prefijo de coalición).
+ */
 export function resolvePartidoMeta(
   siglas: string,
   configMap: Map<string, PartidoMeta>
 ): PartidoMeta {
   const key = siglas.toUpperCase().trim();
+
+  // 1. Coincidencia exacta en `partidos_politicos` de Supabase
   const exact = configMap.get(key);
   if (exact) return exact;
 
+  // 2. Coincidencia normalizada (sin puntos ni tildes, ej. "B.N.G." o "1.ºCAN-CCa")
+  const normKey = normalizeSiglasKey(key);
+  const normMatch = cachedNormalizedPartidosMap?.get(normKey);
+  if (normMatch) return normMatch;
+
+  // 3. Fallback por prefijo de coalición buscando primero en el propio mapa de Supabase
   if (
     key.startsWith('SDP (') ||
     key.startsWith('SENADO DE PROGRESO') ||
@@ -109,25 +171,40 @@ export function resolvePartidoMeta(
     key.startsWith('PSN-PSOE') ||
     key.startsWith('PSE-EE')
   ) {
-    return { color: '#D90202', ideologia: 2.5 };
+    return (
+      configMap.get('SENADO DE PROGRESO') ||
+      configMap.get('PSOE') || { color: '#D90202', ideologia: 2.5 }
+    );
   }
   if (key.startsWith('FRENTE AMPLIO') || key.startsWith('SUMAR')) {
-    return { color: '#E51C55', ideologia: 1.8 };
+    return (
+      configMap.get('FA') ||
+      configMap.get('SUMAR') || { color: '#E51C55', ideologia: 1.8 }
+    );
   }
-  if (key.startsWith('EH BILDU') || key.includes('IZQUIERDAS POR LA INDEPENDENCIA')) {
-    return { color: '#00AC8E', ideologia: 1.2 };
+  if (
+    key.startsWith('EH BILDU') ||
+    key.includes('IZQUIERDAS POR LA INDEPENDENCIA')
+  ) {
+    return configMap.get('EH BILDU') || { color: '#00AC8E', ideologia: 1.2 };
   }
   if (key.startsWith('ERC')) {
-    return { color: '#FFB232', ideologia: 2.2 };
+    return configMap.get('ERC') || { color: '#FFB232', ideologia: 2.2 };
   }
   if (key.startsWith('JXCAT') || key.startsWith('JUNTS')) {
-    return { color: '#00C3B2', ideologia: 6.5 };
+    return configMap.get('JXCAT') || { color: '#00C3B2', ideologia: 6.5 };
   }
   if (key.startsWith('UPN') || key === 'U.P.N.') {
-    return { color: '#00599C', ideologia: 7.8 };
+    return configMap.get('UPN') || { color: '#00599C', ideologia: 7.8 };
   }
   if (key.startsWith('PP-') || key.endsWith('-PP')) {
-    return { color: '#0056A7', ideologia: 8.0 };
+    return configMap.get('PP') || { color: '#0056A7', ideologia: 8.0 };
+  }
+  if (key.startsWith('CCA') || key.includes('1ºCAN')) {
+    return configMap.get('CCA') || { color: '#FFD700', ideologia: 6.2 };
+  }
+  if (key.includes('COMPROMIS') || key.includes('COMPROMÍS')) {
+    return configMap.get('COMPROMÍS') || { color: '#FF6600', ideologia: 2.0 };
   }
 
   return { color: '#94A3B8', ideologia: 5.0 };
@@ -214,10 +291,7 @@ export function parseGeneralesCsvText(
       (parseFloat(cleanField(col[11]).replace(',', '.')) || 0) / 100;
     const escrutado = pctEscrutado.toFixed(2).replace('.', ',') + '%';
 
-    const partidosMap = new Map<
-      string,
-      PartidoData & { rawPorc: number }
-    >();
+    const partidosMap = new Map<string, PartidoData & { rawPorc: number }>();
 
     for (let i = 0; i < 80; i++) {
       const idx = inicio + i * stride;
@@ -388,7 +462,10 @@ async function fetchRemoteText(path: string): Promise<string | null> {
   }
 }
 
-export async function fetchGeneralesLiveBundle(camara: Camara): Promise<{
+export async function fetchGeneralesLiveBundle(
+  camara: Camara,
+  forceRefreshPartidos: boolean = false
+): Promise<{
   envio: string;
   data: ParsedGeneralesDataset;
   oldData: ParsedGeneralesDataset;
@@ -398,7 +475,7 @@ export async function fetchGeneralesLiveBundle(camara: Camara): Promise<{
   const ts = Date.now();
 
   const [configMap, rawEnvio] = await Promise.all([
-    getPartidosConfigMap(),
+    getPartidosConfigMap(forceRefreshPartidos),
     fetchRemoteText(`/descargas/csv/data/getEnvio/${electionId}?t=${ts}`),
   ]);
 
